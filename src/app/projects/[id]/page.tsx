@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Hammer, Settings, Tag, Users } from "lucide-react";
 
+import { ProjectCommentForm } from "@/components/project-comment-form";
 import { ProjectJoinForm } from "@/components/project-join-form";
 import { SiteHeader } from "@/components/site-header";
 import { getRecord, listAllData } from "@/lib/storage";
@@ -19,7 +20,19 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   }
 
   const project = toPublicProject(record);
+  const recruitmentNeeds = project.recruitmentNeeds?.length
+    ? project.recruitmentNeeds
+    : project.neededMembers > 0 || project.skills.length
+      ? [{
+        id: "legacy-recruitment",
+        skill: project.skills.join("、") || "协作者",
+        count: project.neededMembers,
+        work: "旧项目未填写具体工作内容",
+      }]
+      : [];
+  const neededMembers = recruitmentNeeds.length ? recruitmentNeeds.reduce((sum, need) => sum + need.count, 0) : project.neededMembers;
   const updates = snapshot.projectUpdates.filter((update) => update.projectId === project.id && update.reviewStatus !== "rejected");
+  const comments = snapshot.projectComments.filter((comment) => comment.projectId === project.id && comment.reviewStatus !== "rejected");
 
   return (
     <>
@@ -40,7 +53,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           <div className="grid gap-3 md:grid-cols-3">
             <Info label="负责人" value={project.ownerName} />
             <Info label="状态" value={project.projectStatus} icon={<Hammer size={16} aria-hidden />} />
-            <Info label="还需要" value={`${project.neededMembers} 人`} icon={<Users size={16} aria-hidden />} />
+            <Info label="还需要" value={`${neededMembers} 人`} icon={<Users size={16} aria-hidden />} />
           </div>
 
           <div className="flex flex-wrap gap-2">
@@ -54,6 +67,28 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           <div>
             <h2 className="mb-3 text-2xl font-black">项目介绍</h2>
             <p className="whitespace-pre-wrap leading-8 text-[#3f493c]">{project.description}</p>
+          </div>
+
+          <div>
+            <h2 className="mb-3 text-2xl font-black">招工需求</h2>
+            {recruitmentNeeds.length ? (
+              <div className="grid gap-3">
+                {recruitmentNeeds.map((need) => (
+                  <article className="item-slot rounded-[8px] p-4" key={need.id}>
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <h3 className="text-lg font-black text-[#173318]">{need.skill}</h3>
+                      <span className="voxel-chip px-2.5 py-1.5 text-sm">
+                        <Users size={15} aria-hidden />
+                        {need.count} 人
+                      </span>
+                    </div>
+                    <p className="mt-2 whitespace-pre-wrap leading-7 text-[#3f493c]">{need.work}</p>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <p className="item-slot rounded-[8px] p-4 font-bold text-[#52604e]">暂无招工需求</p>
+            )}
           </div>
 
           {project.publicContact ? (
@@ -92,6 +127,8 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
               <p className="item-slot rounded-[8px] p-4 font-bold text-[#52604e]">暂无项目动态</p>
             )}
           </div>
+
+          <ProjectCommentForm projectId={project.id} initialComments={comments} />
         </article>
         <ProjectJoinForm projectId={project.id} projectTitle={project.title} />
         </div>

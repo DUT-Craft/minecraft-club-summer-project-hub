@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, Edit3, LogOut, RefreshCw, Send, ShieldCheck, X } from "lucide-react";
+import { Check, Edit3, Eye, EyeOff, LogOut, RefreshCw, Send, ShieldCheck, X } from "lucide-react";
 
+import { RecruitmentNeedsEditor } from "@/components/recruitment-needs-editor";
 import { StatusBadge } from "@/components/status-badge";
-import type { JoinRequest, ProjectEditableFields, ProjectEditRequest, ProjectUpdate, RequestStatus } from "@/lib/types";
+import type { JoinRequest, ProjectComment, ProjectEditableFields, ProjectEditRequest, ProjectUpdate, RecruitmentNeed, RequestStatus, ReviewStatus } from "@/lib/types";
 
 type LoginState = "checking" | "logged-out" | "logged-in";
 
@@ -18,12 +19,14 @@ type OwnerData = {
     ownerName: string;
     neededMembers: number;
     skills: string[];
+    recruitmentNeeds: RecruitmentNeed[];
     description: string;
     publicContact: string;
     reviewStatus: string;
   };
   joinRequests: JoinRequest[];
   updates: ProjectUpdate[];
+  comments: ProjectComment[];
   editRequests: ProjectEditRequest[];
 };
 
@@ -89,6 +92,20 @@ export function ProjectOwnerDashboard({ projectId }: { projectId: string }) {
     }
   }
 
+  async function patchComment(id: string, reviewStatus: Exclude<ReviewStatus, "pending">) {
+    setMessage("");
+    const response = await fetch("/api/project-owner/comments", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, reviewStatus }),
+    });
+    const payload = (await response.json()) as { message?: string };
+    setMessage(payload.message || (response.ok ? "已保存。" : "保存失败。"));
+    if (response.ok) {
+      await refresh();
+    }
+  }
+
   async function publishUpdate(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage("");
@@ -121,11 +138,9 @@ export function ProjectOwnerDashboard({ projectId }: { projectId: string }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         title: formData.get("title"),
-        summary: formData.get("summary"),
         type: formData.get("type"),
         projectStatus: formData.get("projectStatus"),
-        neededMembers: formData.get("neededMembers"),
-        skills: formData.get("skills"),
+        recruitmentNeeds: formData.get("recruitmentNeeds"),
         description: formData.get("description"),
         publicContact: formData.get("publicContact"),
       }),
@@ -291,6 +306,37 @@ export function ProjectOwnerDashboard({ projectId }: { projectId: string }) {
               <p className="pixel-panel rounded-[8px] p-4 text-sm font-bold text-[#52604e]">暂无动态</p>
             )}
           </section>
+
+          <section className="grid gap-3">
+            <h2 className="text-2xl font-black">项目评论</h2>
+            {data?.comments.length ? (
+              data.comments.map((comment) => {
+                const isHidden = comment.reviewStatus === "rejected";
+                return (
+                  <article className="item-slot rounded-[8px] p-4" key={comment.id}>
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <h3 className="font-black">{comment.nickname}</h3>
+                        <p className="mt-1 text-xs font-bold text-[#52604e]">{new Date(comment.createdAt).toLocaleString("zh-CN")}</p>
+                      </div>
+                      <StatusBadge status={isHidden ? "rejected" : "approved"} />
+                    </div>
+                    <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[#3f493c]">{comment.content}</p>
+                    <button
+                      className={`mt-3 icon-button ${isHidden ? "bg-[linear-gradient(180deg,#93d65a,#55a63a)] text-[#173318]" : "bg-[#fff7d0]"}`}
+                      onClick={() => patchComment(comment.id, isHidden ? "approved" : "rejected")}
+                      type="button"
+                    >
+                      {isHidden ? <Eye size={16} aria-hidden /> : <EyeOff size={16} aria-hidden />}
+                      {isHidden ? "恢复公开" : "隐藏评论"}
+                    </button>
+                  </article>
+                );
+              })
+            ) : (
+              <p className="pixel-panel rounded-[8px] p-4 text-sm font-bold text-[#52604e]">暂无项目评论</p>
+            )}
+          </section>
         </div>
       </section>
     </div>
@@ -322,27 +368,14 @@ function ProjectEditRequestForm({
         </label>
       </div>
       <label className="field-label">
-        简介
-        <input className="field-input" name="summary" defaultValue={project.summary} maxLength={160} required />
-      </label>
-      <div className="grid gap-3 md:grid-cols-2">
-        <label className="field-label">
-          当前状态
-          <input className="field-input" name="projectStatus" defaultValue={project.projectStatus} maxLength={40} required />
-        </label>
-        <label className="field-label">
-          还需要人数
-          <input className="field-input" name="neededMembers" type="number" min="0" max="99" defaultValue={project.neededMembers} required />
-        </label>
-      </div>
-      <label className="field-label">
-        技能标签
-        <input className="field-input" name="skills" defaultValue={project.skills.join("、")} />
+        当前状态
+        <input className="field-input" name="projectStatus" defaultValue={project.projectStatus} maxLength={40} required />
       </label>
       <label className="field-label">
         项目介绍
         <textarea className="field-input min-h-32 resize-y" name="description" defaultValue={project.description} maxLength={1600} required />
       </label>
+      <RecruitmentNeedsEditor initialNeeds={project.recruitmentNeeds} fallbackSkills={project.skills} fallbackCount={project.neededMembers} />
       <label className="field-label">
         公开联系方式（可选）
         <input className="field-input" name="publicContact" defaultValue={project.publicContact} maxLength={120} />

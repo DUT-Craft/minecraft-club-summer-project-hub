@@ -54,6 +54,19 @@ export class LocalFileStore implements DataStore {
     await fs.writeFile(this.filePath(collection, id), `${JSON.stringify(data, null, 2)}\n`, "utf8");
   }
 
+  async delete(collection: CollectionName, id: string): Promise<void> {
+    assertSafeId(id);
+
+    try {
+      await fs.unlink(this.filePath(collection, id));
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+        throw new Error("没有找到这条记录。");
+      }
+      throw error;
+    }
+  }
+
   private collectionDir(collection: CollectionName) {
     return path.join(this.dataDir, collectionFolders[collection]);
   }

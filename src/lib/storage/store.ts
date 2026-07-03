@@ -6,6 +6,7 @@ export interface DataStore {
   list<T extends JsonRecord>(collection: CollectionName): Promise<T[]>;
   get<T extends JsonRecord>(collection: CollectionName, id: string): Promise<T | null>;
   put<T extends JsonRecord>(collection: CollectionName, id: string, data: T): Promise<void>;
+  delete(collection: CollectionName, id: string): Promise<void>;
 }
 
 export const collectionFolders: Record<CollectionName, string> = {
@@ -13,6 +14,7 @@ export const collectionFolders: Record<CollectionName, string> = {
   ideas: "ideas",
   joinRequests: "join-requests",
   projectUpdates: "project-updates",
+  projectComments: "project-comments",
   projectEditRequests: "project-edit-requests",
   auditLogs: "audit-logs",
 };

@@ -5,6 +5,10 @@ import { StatusBadge } from "@/components/status-badge";
 import type { PublicProject } from "@/lib/types";
 
 export function ProjectCard({ project, compact = false }: { project: PublicProject; compact?: boolean }) {
+  const recruitmentNeeds = project.recruitmentNeeds?.length ? project.recruitmentNeeds : [];
+  const neededSkills = recruitmentNeeds.length ? recruitmentNeeds.map((need) => need.skill) : project.skills;
+  const neededMembers = recruitmentNeeds.length ? recruitmentNeeds.reduce((sum, need) => sum + need.count, 0) : project.neededMembers;
+
   return (
     <article className={`pixel-panel flex h-full flex-col rounded-[8px] ${compact ? "gap-3 p-3" : "gap-4 p-4"}`}>
       {!compact ? <div className="grass-strip -mx-4 -mt-4 rounded-t-[6px]" /> : null}
@@ -19,8 +23,8 @@ export function ProjectCard({ project, compact = false }: { project: PublicProje
       </div>
       <p className={`${compact ? "line-clamp-2" : ""} text-sm font-semibold leading-6 text-[#5f6b58]`}>{project.summary}</p>
       <div className="flex flex-wrap gap-2">
-        {(compact ? project.skills.slice(0, 4) : project.skills).map((skill) => (
-          <span key={skill} className="rounded-[6px] border-2 border-[#38261747] bg-[#fff3bc] px-2.5 py-1 text-xs font-black text-[#5b431d]">
+        {(compact ? neededSkills.slice(0, 4) : neededSkills).map((skill, index) => (
+          <span key={`${skill}-${index}`} className="rounded-[6px] border-2 border-[#38261747] bg-[#fff3bc] px-2.5 py-1 text-xs font-black text-[#5b431d]">
             {skill}
           </span>
         ))}
@@ -32,7 +36,7 @@ export function ProjectCard({ project, compact = false }: { project: PublicProje
         </span>
         <span className="flex items-center gap-2">
           <Users size={16} aria-hidden />
-          还需要 {project.neededMembers} 人
+          还需要 {neededMembers} 人
         </span>
       </div>
       <Link className="icon-button bg-[linear-gradient(180deg,#93d65a,#55a63a)] text-[#173318]" href={`/projects/${project.id}`}>

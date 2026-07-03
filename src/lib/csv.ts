@@ -1,7 +1,7 @@
 import type { DataSnapshot } from "@/lib/types";
 
 function escapeCsv(value: unknown) {
-  const text = Array.isArray(value) ? value.join("、") : String(value ?? "");
+  const text = typeof value === "object" && value !== null ? JSON.stringify(value) : String(value ?? "");
   return `"${text.replace(/"/g, '""')}"`;
 }
 
@@ -30,6 +30,9 @@ export function snapshotToCsv(snapshot: DataSnapshot) {
     "",
     "# projectUpdates",
     rowsToCsv(snapshot.projectUpdates),
+    "",
+    "# projectComments",
+    rowsToCsv(snapshot.projectComments),
     "",
     "# projectEditRequests",
     rowsToCsv(snapshot.projectEditRequests),

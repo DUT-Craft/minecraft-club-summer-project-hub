@@ -22,10 +22,13 @@ export async function getPublicSnapshot(): Promise<PublicSnapshot> {
       projectUpdates: data.projectUpdates
         .filter((update) => approvedProjectIds.has(update.projectId) && update.reviewStatus !== "rejected")
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+      projectComments: data.projectComments
+        .filter((comment) => approvedProjectIds.has(comment.projectId) && comment.reviewStatus !== "rejected")
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     };
   } catch (error) {
     if (error instanceof AppConfigError) {
-      return { projects: [], ideas: [], projectUpdates: [], setupError: error.message };
+      return { projects: [], ideas: [], projectUpdates: [], projectComments: [], setupError: error.message };
     }
 
     throw error;

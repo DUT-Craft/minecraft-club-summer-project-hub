@@ -1,7 +1,9 @@
 ﻿"use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Lightbulb, Send, SquarePen } from "lucide-react";
+
+import { RecruitmentNeedsEditor } from "@/components/recruitment-needs-editor";
 
 type Target = "project" | "idea";
 
@@ -27,6 +29,16 @@ export function SubmissionForms() {
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState("");
 
+  useEffect(() => {
+    function syncFromHash() {
+      setActive(window.location.hash === "#idea" ? "idea" : "project");
+    }
+
+    syncFromHash();
+    window.addEventListener("hashchange", syncFromHash);
+    return () => window.removeEventListener("hashchange", syncFromHash);
+  }, []);
+
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setPending(true);
@@ -44,11 +56,14 @@ export function SubmissionForms() {
   }
 
   return (
-    <section className="content-shell py-8">
+    <section className="content-shell py-8" id={active}>
       <div className="mb-5 flex flex-wrap gap-2">
         <button
           className={`icon-button ${active === "project" ? "bg-[linear-gradient(180deg,#93d65a,#55a63a)] text-[#173318]" : "bg-[#fff7d0] text-[#20301f]"}`}
-          onClick={() => setActive("project")}
+          onClick={() => {
+            setActive("project");
+            history.replaceState(null, "", "#project");
+          }}
           type="button"
         >
           <SquarePen size={17} aria-hidden />
@@ -56,7 +71,10 @@ export function SubmissionForms() {
         </button>
         <button
           className={`icon-button ${active === "idea" ? "bg-[linear-gradient(180deg,#93d65a,#55a63a)] text-[#173318]" : "bg-[#fff7d0] text-[#20301f]"}`}
-          onClick={() => setActive("idea")}
+          onClick={() => {
+            setActive("idea");
+            history.replaceState(null, "", "#idea");
+          }}
           type="button"
         >
           <Lightbulb size={17} aria-hidden />
@@ -100,11 +118,7 @@ function ProjectFields() {
           </datalist>
         </label>
       </div>
-      <label className="field-label">
-        简介
-        <input className="field-input" name="summary" maxLength={160} required />
-      </label>
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2">
         <label className="field-label">
           当前状态
           <select className="field-input" name="projectStatus" required>
@@ -118,30 +132,19 @@ function ProjectFields() {
           负责人昵称
           <input className="field-input" name="ownerName" maxLength={40} required />
         </label>
-        <label className="field-label">
-          还需要人数
-          <input className="field-input" name="neededMembers" type="number" min="0" max="99" defaultValue="1" required />
-        </label>
       </div>
       <label className="field-label">
-        技能标签
-        <input className="field-input" name="skills" maxLength={120} placeholder="建筑、红石、文案" required />
-      </label>
-      <label className="field-label">
         项目介绍
-        <textarea className="field-input min-h-40 resize-y" name="description" maxLength={1600} required />
+        <textarea className="field-input min-h-56 resize-y" name="description" maxLength={1600} required />
       </label>
-      <div className="grid gap-4 md:grid-cols-3">
+      <RecruitmentNeedsEditor />
+      <div className="grid gap-4 md:grid-cols-2">
         <label className="field-label">
           你的 Minecraft ID
           <input className="field-input" name="submitterMinecraftId" minLength={3} maxLength={32} required />
         </label>
         <label className="field-label">
-          后台联系方式
-          <input className="field-input" name="privateContact" maxLength={120} required />
-        </label>
-        <label className="field-label">
-          公开联系方式
+          联系方式
           <input className="field-input" name="publicContact" maxLength={120} />
         </label>
       </div>

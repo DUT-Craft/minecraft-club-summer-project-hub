@@ -85,6 +85,34 @@ export class GitHubStore implements DataStore {
     }
   }
 
+  async delete(collection: CollectionName, id: string): Promise<void> {
+    assertSafeId(id);
+    const filePath = this.recordPath(collection, id);
+    const existing = await this.fileMeta(filePath);
+
+    if (!existing?.sha) {
+      throw new Error("没有找到这条记录。");
+    }
+
+    const body: Record<string, unknown> = {
+      message: `Delete ${filePath}`,
+      sha: existing.sha,
+    };
+
+    if (this.config.branch) {
+      body.branch = this.config.branch;
+    }
+
+    const response = await this.request(`/contents/${encodeURI(filePath)}`, {
+      method: "DELETE",
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      throw new Error(await this.githubError(response));
+    }
+  }
+
   private async getByPath<T extends JsonRecord>(filePath: string): Promise<T | null> {
     const response = await this.request(`/contents/${encodeURI(filePath)}${this.refQuery()}`);
 

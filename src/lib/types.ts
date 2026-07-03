@@ -11,6 +11,7 @@ export type CollectionName =
   | "ideas"
   | "joinRequests"
   | "projectUpdates"
+  | "projectComments"
   | "projectEditRequests"
   | "auditLogs";
 
@@ -23,6 +24,7 @@ export type Project = {
   ownerName: string;
   neededMembers: number;
   skills: string[];
+  recruitmentNeeds?: RecruitmentNeed[];
   description: string;
   publicContact: string;
   privateContact: string;
@@ -33,11 +35,18 @@ export type Project = {
   updatedAt: string;
 };
 
+export type RecruitmentNeed = {
+  id: string;
+  skill: string;
+  count: number;
+  work: string;
+};
+
 export type PublicProject = Omit<Project, "privateContact" | "ownerPasswordHash" | "submitterMinecraftId">;
 
 export type ProjectEditableFields = Pick<
   Project,
-  "title" | "summary" | "type" | "projectStatus" | "neededMembers" | "skills" | "description" | "publicContact"
+  "title" | "summary" | "type" | "projectStatus" | "neededMembers" | "skills" | "recruitmentNeeds" | "description" | "publicContact"
 >;
 
 export type Idea = {
@@ -76,6 +85,17 @@ export type ProjectUpdate = {
   updatedAt: string;
 };
 
+export type ProjectComment = {
+  id: string;
+  projectId: string;
+  projectTitle: string;
+  nickname: string;
+  content: string;
+  reviewStatus?: "approved" | "rejected";
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type ProjectEditRequest = {
   id: string;
   projectId: string;
@@ -88,7 +108,7 @@ export type ProjectEditRequest = {
   reviewedAt?: string;
 };
 
-export type AuditActorRole = "admin" | "project-owner";
+export type AuditActorRole = "admin" | "project-owner" | "visitor";
 
 export type AuditLog = {
   id: string;
@@ -107,6 +127,7 @@ export type DataSnapshot = {
   ideas: Idea[];
   joinRequests: JoinRequest[];
   projectUpdates: ProjectUpdate[];
+  projectComments: ProjectComment[];
   projectEditRequests: ProjectEditRequest[];
   auditLogs: AuditLog[];
 };
@@ -115,5 +136,6 @@ export type PublicSnapshot = {
   projects: PublicProject[];
   ideas: Idea[];
   projectUpdates: ProjectUpdate[];
+  projectComments: ProjectComment[];
   setupError?: string;
 };

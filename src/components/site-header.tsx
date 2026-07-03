@@ -1,5 +1,5 @@
 ﻿import Link from "next/link";
-import { Blocks, ClipboardList, Home, ShieldCheck } from "lucide-react";
+import { Blocks, ClipboardList, Home, Lightbulb, ShieldCheck } from "lucide-react";
 
 export function SiteHeader() {
   return (
@@ -19,6 +19,14 @@ export function SiteHeader() {
           <Link className="inline-flex min-h-[38px] items-center gap-1.5 rounded-[8px] border-2 border-transparent px-3 transition hover:-translate-y-0.5 hover:border-[#38261759] hover:bg-[#fff7ce]" href="/submit">
             <ClipboardList size={16} aria-hidden />
             投稿
+          </Link>
+          <Link className="inline-flex min-h-[38px] items-center gap-1.5 rounded-[8px] border-2 border-transparent px-3 transition hover:-translate-y-0.5 hover:border-[#38261759] hover:bg-[#fff7ce]" href="/projects">
+            <Blocks size={16} aria-hidden />
+            项目
+          </Link>
+          <Link className="inline-flex min-h-[38px] items-center gap-1.5 rounded-[8px] border-2 border-transparent px-3 transition hover:-translate-y-0.5 hover:border-[#38261759] hover:bg-[#fff7ce]" href="/ideas">
+            <Lightbulb size={16} aria-hidden />
+            想法
           </Link>
           <Link className="inline-flex min-h-[38px] items-center gap-1.5 rounded-[8px] border-2 border-transparent px-3 transition hover:-translate-y-0.5 hover:border-[#38261759] hover:bg-[#fff7ce]" href="/admin">
             <ShieldCheck size={16} aria-hidden />

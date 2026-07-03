@@ -5,6 +5,7 @@ import type {
   Idea,
   JoinRequest,
   Project,
+  ProjectComment,
   ProjectEditRequest,
   ProjectUpdate,
   CollectionName,
@@ -20,16 +21,17 @@ export function getStore(): DataStore {
 
 export async function listAllData(): Promise<DataSnapshot> {
   const store = getStore();
-  const [projects, ideas, joinRequests, projectUpdates, projectEditRequests, auditLogs] = await Promise.all([
+  const [projects, ideas, joinRequests, projectUpdates, projectComments, projectEditRequests, auditLogs] = await Promise.all([
     store.list<Project>("projects"),
     store.list<Idea>("ideas"),
     store.list<JoinRequest>("joinRequests"),
     store.list<ProjectUpdate>("projectUpdates"),
+    store.list<ProjectComment>("projectComments"),
     store.list<ProjectEditRequest>("projectEditRequests"),
     store.list<AuditLog>("auditLogs"),
   ]);
 
-  return { projects, ideas, joinRequests, projectUpdates, projectEditRequests, auditLogs };
+  return { projects, ideas, joinRequests, projectUpdates, projectComments, projectEditRequests, auditLogs };
 }
 
 export async function putRecord<T extends JsonRecord>(
@@ -42,6 +44,10 @@ export async function putRecord<T extends JsonRecord>(
 
 export async function getRecord<T extends JsonRecord>(collection: CollectionName, id: string) {
   return getStore().get<T>(collection, id);
+}
+
+export async function deleteRecord(collection: CollectionName, id: string) {
+  await getStore().delete(collection, id);
 }
 
 export async function updateRecord<T extends JsonRecord>(

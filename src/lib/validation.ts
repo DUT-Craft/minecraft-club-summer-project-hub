@@ -1,4 +1,4 @@
-import type { CollectionName, ReviewStatus, RequestStatus } from "@/lib/types";
+import type { CollectionName, RecruitmentNeed, ReviewStatus, RequestStatus } from "@/lib/types";
 import { requestStatuses, reviewStatuses } from "@/lib/types";
 
 export class ValidationError extends Error {
@@ -80,6 +80,70 @@ export function skillsValue(input: unknown) {
     .slice(0, 12);
 }
 
+export function recruitmentNeedsValue(input: unknown) {
+  let source: unknown = input;
+  if (typeof input === "string") {
+    try {
+      source = JSON.parse(input);
+    } catch {
+      throw new ValidationError("招工需求格式不正确。");
+    }
+  }
+
+  if (!Array.isArray(source)) {
+    throw new ValidationError("招工需求不能为空。");
+  }
+
+  const needs: RecruitmentNeed[] = [];
+  for (const [index, item] of source.entries()) {
+    if (!item || typeof item !== "object" || Array.isArray(item)) {
+      continue;
+    }
+
+    const record = item as Record<string, unknown>;
+    const skill = optionalText(record.skill, 40);
+    const work = optionalText(record.work, 400);
+    const rawCount = record.count === "" || record.count === undefined || record.count === null ? 0 : Number(record.count);
+
+    if (!skill && !work && !rawCount) {
+      continue;
+    }
+
+    if (!skill) {
+      throw new ValidationError("招工需求需要填写技能或人才方向。");
+    }
+
+    if (!work) {
+      throw new ValidationError("招工需求需要填写大概工作内容。");
+    }
+
+    if (!Number.isFinite(rawCount) || rawCount < 1 || rawCount > 99) {
+      throw new ValidationError("招工需求人数需要是 1 到 99 之间的数字。");
+    }
+
+    needs.push({
+      id: optionalText(record.id, 80) || `need-${index + 1}`,
+      skill,
+      count: Math.round(rawCount),
+      work,
+    });
+  }
+
+  if (!needs.length) {
+    throw new ValidationError("至少填写一条招工需求。");
+  }
+
+  return needs.slice(0, 12);
+}
+
+export function deriveProjectLegacyFields(description: string, recruitmentNeeds: RecruitmentNeed[]) {
+  return {
+    summary: description.replace(/\s+/g, " ").trim().slice(0, 120) || "暂无介绍",
+    neededMembers: recruitmentNeeds.reduce((sum, need) => sum + need.count, 0),
+    skills: Array.from(new Set(recruitmentNeeds.map((need) => need.skill).filter(Boolean))).slice(0, 12),
+  };
+}
+
 export function reviewStatusValue(input: unknown): ReviewStatus {
   if (reviewStatuses.includes(input as ReviewStatus)) {
     return input as ReviewStatus;
@@ -97,7 +161,13 @@ export function requestStatusValue(input: unknown): RequestStatus {
 }
 
 export function collectionValue(input: unknown): CollectionName {
-  if (input === "projects" || input === "ideas" || input === "joinRequests" || input === "projectUpdates") {
+  if (
+    input === "projects" ||
+    input === "ideas" ||
+    input === "joinRequests" ||
+    input === "projectUpdates" ||
+    input === "projectComments"
+  ) {
     return input;
   }
 
