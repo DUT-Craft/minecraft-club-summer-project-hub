@@ -5,6 +5,7 @@ import { Check, Download, Eye, EyeOff, LogOut, RefreshCw, ShieldCheck, Trash2, X
 
 import { StatusBadge } from "@/components/status-badge";
 import { RecruitmentNeedsEditor } from "@/components/recruitment-needs-editor";
+import { getHttpErrorMessage, getHttpStatusCode, useHttp } from "@/lib/useHttp";
 import type {
   AuditLog,
   DataSnapshot,
@@ -28,6 +29,7 @@ type AdminProjectPatch = Partial<Omit<Project, "recruitmentNeeds">> & {
 };
 
 export function AdminDashboard() {
+  const http = useHttp();
   const [loginState, setLoginState] = useState<LoginState>("checking");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
@@ -45,17 +47,19 @@ export function AdminDashboard() {
 
   async function refresh() {
     setLoading(true);
-    const response = await fetch("/api/admin/data");
-    if (response.ok) {
-      setSnapshot((await response.json()) as DataSnapshot);
+    try {
+      const result = await http.getRaw<DataSnapshot>("/admin/data");
+      setSnapshot(result.data);
       setLoginState("logged-in");
-    } else if (response.status === 401) {
-      setLoginState("logged-out");
-    } else {
-      const data = (await response.json()) as { message?: string };
-      setMessage(data.message || "后台数据读取失败。");
+    } catch (error) {
+      if (getHttpStatusCode(error) === 401) {
+        setLoginState("logged-out");
+      } else {
+        setMessage(getHttpErrorMessage(error, "后台数据读取失败。"));
+      }
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
 
   useEffect(() => {
@@ -65,49 +69,43 @@ export function AdminDashboard() {
   async function login(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage("");
-    const response = await fetch("/api/admin/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password }),
-    });
-    const data = (await response.json()) as { message?: string };
-    setMessage(data.message || "");
-    if (response.ok) {
+    try {
+      const result = await http.postRaw<null, { password: string }>("/admin/login", { password });
+      setMessage(result.msg || "");
       setPassword("");
       await refresh();
+    } catch (error) {
+      setMessage(getHttpErrorMessage(error, "登录失败。"));
     }
   }
 
   async function logout() {
-    await fetch("/api/admin/logout", { method: "POST" });
+    await http.postRaw<null>("/admin/logout");
     setLoginState("logged-out");
   }
 
   async function patchRecord(collection: AdminEditableCollection, id: string, patch: Record<string, unknown>) {
     setMessage("");
-    const response = await fetch("/api/admin/records", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ collection, id, patch }),
-    });
-    const data = (await response.json()) as { message?: string };
-    setMessage(data.message || (response.ok ? "已保存。" : "保存失败。"));
-    if (response.ok) {
+    try {
+      const result = await http.patchRaw<{ record: unknown }>("/admin/records", { collection, id, patch });
+      setMessage(result.msg || "已保存。");
       await refresh();
+    } catch (error) {
+      setMessage(getHttpErrorMessage(error, "保存失败。"));
     }
   }
 
   async function deleteRecord(collection: AdminEditableCollection, id: string) {
     setMessage("");
-    const response = await fetch("/api/admin/records", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ collection, id }),
-    });
-    const data = (await response.json()) as { message?: string };
-    setMessage(data.message || (response.ok ? "已删除。" : "删除失败。"));
-    if (response.ok) {
+    try {
+      const result = await http.requestRaw<null, { collection: AdminEditableCollection; id: string }>("/admin/records", { collection, id }, {
+        method: "DELETE",
+        payloadMode: "json",
+      });
+      setMessage(result.msg || "已删除。");
       await refresh();
+    } catch (error) {
+      setMessage(getHttpErrorMessage(error, "删除失败。"));
     }
   }
 
@@ -125,15 +123,12 @@ export function AdminDashboard() {
 
   async function reviewEditRequest(id: string, reviewStatus: ReviewStatus) {
     setMessage("");
-    const response = await fetch("/api/admin/edit-requests", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, reviewStatus }),
-    });
-    const data = (await response.json()) as { message?: string };
-    setMessage(data.message || (response.ok ? "已保存。" : "保存失败。"));
-    if (response.ok) {
+    try {
+      const result = await http.patchRaw<{ record: ProjectEditRequest }>("/admin/edit-requests", { id, reviewStatus });
+      setMessage(result.msg || "已保存。");
       await refresh();
+    } catch (error) {
+      setMessage(getHttpErrorMessage(error, "保存失败。"));
     }
   }
 

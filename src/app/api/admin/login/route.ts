@@ -1,9 +1,7 @@
-import { NextResponse } from "next/server";
-
 import { writeAuditLog } from "@/lib/audit";
 import { createSessionToken } from "@/lib/auth";
 import { getAdminConfig } from "@/lib/env";
-import { jsonError } from "@/lib/api";
+import { jsonError, jsonFail, jsonOk } from "@/lib/api";
 import { asRecord } from "@/lib/validation";
 
 export const runtime = "nodejs";
@@ -14,10 +12,10 @@ export async function POST(request: Request) {
     const body = asRecord(await request.json());
 
     if (body.password !== config.password) {
-      return NextResponse.json({ ok: false, message: "管理密码不正确。" }, { status: 401 });
+      return jsonFail("管理密码不正确。", 401);
     }
 
-    const response = NextResponse.json({ ok: true, message: "已登录。" });
+    const response = jsonOk(null, 200, "已登录。");
     await writeAuditLog({
       actorRole: "admin",
       actorLabel: "全站管理员",

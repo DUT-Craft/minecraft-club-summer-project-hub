@@ -3,12 +3,15 @@
 import { useState } from "react";
 import { Send } from "lucide-react";
 
+import { getHttpErrorMessage, useHttp } from "@/lib/useHttp";
+
 type JoinFormProps = {
   projectId: string;
   projectTitle: string;
 };
 
 export function ProjectJoinForm({ projectId, projectTitle }: JoinFormProps) {
+  const http = useHttp();
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState("");
 
@@ -20,25 +23,22 @@ export function ProjectJoinForm({ projectId, projectTitle }: JoinFormProps) {
     const form = event.currentTarget;
     const formData = new FormData(form);
 
-    const response = await fetch("/api/public/join", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+    try {
+      const result = await http.postRaw<{ id: string }>("/public/join", {
         projectId,
         projectTitle,
         applicantName: formData.get("applicantName"),
         minecraftId: formData.get("minecraftId"),
         contact: formData.get("contact"),
         reason: formData.get("reason"),
-      }),
-    });
+      });
 
-    const data = (await response.json()) as { message?: string };
-    setPending(false);
-    setMessage(data.message || (response.ok ? "申请已提交。" : "提交失败。"));
-
-    if (response.ok) {
+      setMessage(result.msg || "申请已提交。");
       form.reset();
+    } catch (error) {
+      setMessage(getHttpErrorMessage(error, "提交失败。"));
+    } finally {
+      setPending(false);
     }
   }
 

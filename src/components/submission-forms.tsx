@@ -4,27 +4,20 @@ import { useEffect, useState } from "react";
 import { Lightbulb, Send, SquarePen } from "lucide-react";
 
 import { RecruitmentNeedsEditor } from "@/components/recruitment-needs-editor";
+import { getHttpErrorMessage, useHttp } from "@/lib/useHttp";
 
 type Target = "project" | "idea";
 
-async function postForm(target: Target, form: HTMLFormElement) {
+async function postForm(http: ReturnType<typeof useHttp>, target: Target, form: HTMLFormElement) {
   const formData = new FormData(form);
   const payload = Object.fromEntries(formData.entries());
-  const endpoint = target === "project" ? "/api/public/projects" : "/api/public/ideas";
+  const endpoint = target === "project" ? "/public/projects" : "/public/ideas";
 
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-
-  return {
-    ok: response.ok,
-    data: (await response.json()) as { message?: string },
-  };
+  return http.postRaw<{ id: string }, Record<string, FormDataEntryValue>>(endpoint, payload);
 }
 
 export function SubmissionForms() {
+  const http = useHttp();
   const [active, setActive] = useState<Target>("project");
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState("");
@@ -45,13 +38,14 @@ export function SubmissionForms() {
     setMessage("");
 
     const form = event.currentTarget;
-    const result = await postForm(active, form);
-
-    setPending(false);
-    setMessage(result.data.message || (result.ok ? "提交成功。" : "提交失败。"));
-
-    if (result.ok) {
+    try {
+      const result = await postForm(http, active, form);
+      setMessage(result.msg || "提交成功。");
       form.reset();
+    } catch (error) {
+      setMessage(getHttpErrorMessage(error, "提交失败。"));
+    } finally {
+      setPending(false);
     }
   }
 

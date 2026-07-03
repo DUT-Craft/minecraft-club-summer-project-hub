@@ -6,6 +6,7 @@ import { Check, Edit3, Eye, EyeOff, LogOut, RefreshCw, Send, ShieldCheck, X } fr
 import { RecruitmentNeedsEditor } from "@/components/recruitment-needs-editor";
 import { StatusBadge } from "@/components/status-badge";
 import type { JoinRequest, ProjectComment, ProjectEditableFields, ProjectEditRequest, ProjectUpdate, RecruitmentNeed, RequestStatus, ReviewStatus } from "@/lib/types";
+import { getHttpErrorMessage, getHttpStatusCode, useHttp } from "@/lib/useHttp";
 
 type LoginState = "checking" | "logged-out" | "logged-in";
 
@@ -31,6 +32,7 @@ type OwnerData = {
 };
 
 export function ProjectOwnerDashboard({ projectId }: { projectId: string }) {
+  const http = useHttp();
   const [loginState, setLoginState] = useState<LoginState>("checking");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
@@ -39,17 +41,19 @@ export function ProjectOwnerDashboard({ projectId }: { projectId: string }) {
 
   async function refresh() {
     setLoading(true);
-    const response = await fetch("/api/project-owner/data");
-    const payload = (await response.json()) as OwnerData & { message?: string };
-    if (response.ok) {
-      setData(payload);
+    try {
+      const result = await http.getRaw<OwnerData>("/project-owner/data");
+      setData(result.data);
       setLoginState("logged-in");
-    } else if (response.status === 401) {
-      setLoginState("logged-out");
-    } else {
-      setMessage(payload.message || "项目数据读取失败。");
+    } catch (error) {
+      if (getHttpStatusCode(error) === 401) {
+        setLoginState("logged-out");
+      } else {
+        setMessage(getHttpErrorMessage(error, "项目数据读取失败。"));
+      }
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
 
   useEffect(() => {
@@ -59,50 +63,41 @@ export function ProjectOwnerDashboard({ projectId }: { projectId: string }) {
   async function login(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage("");
-    const response = await fetch("/api/project-owner/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ projectId, password }),
-    });
-    const payload = (await response.json()) as { message?: string };
-    setMessage(payload.message || "");
-    if (response.ok) {
+    try {
+      const result = await http.postRaw<null, { projectId: string; password: string }>("/project-owner/login", { projectId, password });
+      setMessage(result.msg || "");
       setPassword("");
       await refresh();
+    } catch (error) {
+      setMessage(getHttpErrorMessage(error, "登录失败。"));
     }
   }
 
   async function logout() {
-    await fetch("/api/project-owner/logout", { method: "POST" });
+    await http.postRaw<null>("/project-owner/logout");
     setLoginState("logged-out");
     setData(null);
   }
 
   async function patchRequest(id: string, processStatus: RequestStatus) {
     setMessage("");
-    const response = await fetch("/api/project-owner/requests", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, processStatus }),
-    });
-    const payload = (await response.json()) as { message?: string };
-    setMessage(payload.message || (response.ok ? "已保存。" : "保存失败。"));
-    if (response.ok) {
+    try {
+      const result = await http.patchRaw<{ record: JoinRequest }>("/project-owner/requests", { id, processStatus });
+      setMessage(result.msg || "已保存。");
       await refresh();
+    } catch (error) {
+      setMessage(getHttpErrorMessage(error, "保存失败。"));
     }
   }
 
   async function patchComment(id: string, reviewStatus: Exclude<ReviewStatus, "pending">) {
     setMessage("");
-    const response = await fetch("/api/project-owner/comments", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, reviewStatus }),
-    });
-    const payload = (await response.json()) as { message?: string };
-    setMessage(payload.message || (response.ok ? "已保存。" : "保存失败。"));
-    if (response.ok) {
+    try {
+      const result = await http.patchRaw<{ record: ProjectComment }>("/project-owner/comments", { id, reviewStatus });
+      setMessage(result.msg || "已保存。");
       await refresh();
+    } catch (error) {
+      setMessage(getHttpErrorMessage(error, "保存失败。"));
     }
   }
 
@@ -111,20 +106,17 @@ export function ProjectOwnerDashboard({ projectId }: { projectId: string }) {
     setMessage("");
     const form = event.currentTarget;
     const formData = new FormData(form);
-    const response = await fetch("/api/project-owner/updates", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+    try {
+      const result = await http.postRaw<{ record: ProjectUpdate }>("/project-owner/updates", {
         title: formData.get("title"),
         content: formData.get("content"),
         imageUrl: formData.get("imageUrl"),
-      }),
-    });
-    const payload = (await response.json()) as { message?: string };
-    setMessage(payload.message || (response.ok ? "已发布。" : "发布失败。"));
-    if (response.ok) {
+      });
+      setMessage(result.msg || "已发布。");
       form.reset();
       await refresh();
+    } catch (error) {
+      setMessage(getHttpErrorMessage(error, "发布失败。"));
     }
   }
 
@@ -133,22 +125,19 @@ export function ProjectOwnerDashboard({ projectId }: { projectId: string }) {
     setMessage("");
     const form = event.currentTarget;
     const formData = new FormData(form);
-    const response = await fetch("/api/project-owner/edit-requests", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+    try {
+      const result = await http.postRaw<{ record: ProjectEditRequest }>("/project-owner/edit-requests", {
         title: formData.get("title"),
         type: formData.get("type"),
         projectStatus: formData.get("projectStatus"),
         recruitmentNeeds: formData.get("recruitmentNeeds"),
         description: formData.get("description"),
         publicContact: formData.get("publicContact"),
-      }),
-    });
-    const payload = (await response.json()) as { message?: string };
-    setMessage(payload.message || (response.ok ? "已提交修改申请。" : "提交失败。"));
-    if (response.ok) {
+      });
+      setMessage(result.msg || "已提交修改申请。");
       await refresh();
+    } catch (error) {
+      setMessage(getHttpErrorMessage(error, "提交失败。"));
     }
   }
 

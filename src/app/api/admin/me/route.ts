@@ -1,14 +1,12 @@
-import { NextResponse } from "next/server";
-
 import { isAdminRequest } from "@/lib/auth";
-import { jsonError } from "@/lib/api";
+import { jsonError, jsonOk } from "@/lib/api";
 
 export const runtime = "nodejs";
 
 export async function GET() {
   try {
     const authenticated = await isAdminRequest();
-    return NextResponse.json({ authenticated });
+    return jsonOk({ authenticated });
   } catch (error) {
     return jsonError(error);
   }

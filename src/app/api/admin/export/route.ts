@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { writeAuditLog } from "@/lib/audit";
 import { isAdminRequest } from "@/lib/auth";
-import { jsonError } from "@/lib/api";
+import { jsonError, jsonFail } from "@/lib/api";
 import { snapshotToCsv } from "@/lib/csv";
 import { listAllData } from "@/lib/storage";
 
@@ -11,7 +11,7 @@ export const runtime = "nodejs";
 export async function GET(request: Request) {
   try {
     if (!(await isAdminRequest())) {
-      return NextResponse.json({ ok: false, message: "请先登录管理后台。" }, { status: 401 });
+      return jsonFail("请先登录管理后台。", 401);
     }
 
     const format = new URL(request.url).searchParams.get("format");

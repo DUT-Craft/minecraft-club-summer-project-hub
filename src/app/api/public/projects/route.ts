@@ -36,7 +36,7 @@ export async function POST(request: Request) {
     };
 
     await putRecord("projects", project.id, project);
-    return jsonOk({ ok: true, id: project.id, message: "项目已提交，审核通过后会公开。" }, 201);
+    return jsonOk({ id: project.id }, 201, "项目已提交，审核通过后会公开。");
   } catch (error) {
     return jsonError(error);
   }

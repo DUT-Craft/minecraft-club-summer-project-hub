@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { jsonError, jsonOk } from "@/lib/api";
+import { jsonError, jsonFail, jsonOk } from "@/lib/api";
 import { getRecord, putRecord } from "@/lib/storage";
 import type { JoinRequest, Project } from "@/lib/types";
 import { asRecord, minecraftIdValue, text } from "@/lib/validation";
@@ -14,7 +14,7 @@ export async function POST(request: Request) {
     const project = await getRecord<Project>("projects", projectId);
 
     if (!project || project.reviewStatus !== "approved") {
-      return jsonOk({ ok: false, message: "这个项目暂时不能申请。" }, 404);
+      return jsonFail("这个项目暂时不能申请。", 404);
     }
 
     const now = new Date().toISOString();
@@ -32,7 +32,7 @@ export async function POST(request: Request) {
     };
 
     await putRecord("joinRequests", joinRequest.id, joinRequest);
-    return jsonOk({ ok: true, id: joinRequest.id, message: "申请已提交，管理员会在后台查看。" }, 201);
+    return jsonOk({ id: joinRequest.id }, 201, "申请已提交，管理员会在后台查看。");
   } catch (error) {
     return jsonError(error);
   }

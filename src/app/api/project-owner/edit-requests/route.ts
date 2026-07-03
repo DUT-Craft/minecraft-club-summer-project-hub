@@ -1,10 +1,8 @@
 import { randomUUID } from "node:crypto";
 
-import { NextResponse } from "next/server";
-
 import { writeAuditLog } from "@/lib/audit";
 import { getProjectOwnerSession } from "@/lib/auth";
-import { jsonError, jsonOk } from "@/lib/api";
+import { jsonError, jsonFail, jsonOk } from "@/lib/api";
 import { getRecord, putRecord } from "@/lib/storage";
 import type { Project, ProjectEditRequest } from "@/lib/types";
 import { asRecord, deriveProjectLegacyFields, optionalText, recruitmentNeedsValue, text } from "@/lib/validation";
@@ -15,12 +13,12 @@ export async function POST(request: Request) {
   try {
     const session = await getProjectOwnerSession();
     if (!session) {
-      return NextResponse.json({ ok: false, message: "请先登录项目管理。" }, { status: 401 });
+      return jsonFail("请先登录项目管理。", 401);
     }
 
     const project = await getRecord<Project>("projects", session.projectId);
     if (!project || project.reviewStatus !== "approved") {
-      return NextResponse.json({ ok: false, message: "这个项目暂时不能提交修改。" }, { status: 403 });
+      return jsonFail("这个项目暂时不能提交修改。", 403);
     }
 
     const body = asRecord(await request.json());
@@ -60,7 +58,7 @@ export async function POST(request: Request) {
       summary: `提交项目资料修改申请：${project.title}`,
     });
 
-    return jsonOk({ ok: true, record: editRequest, message: "修改申请已提交，管理员审核后会公开更新。" }, 201);
+    return jsonOk({ record: editRequest }, 201, "修改申请已提交，管理员审核后会公开更新。");
   } catch (error) {
     return jsonError(error);
   }

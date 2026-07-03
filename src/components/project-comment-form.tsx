@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { MessageSquare, Send } from "lucide-react";
 
 import type { ProjectComment } from "@/lib/types";
+import { getHttpErrorMessage, useHttp } from "@/lib/useHttp";
 
 type CommentFormProps = {
   projectId: string;
@@ -11,6 +12,7 @@ type CommentFormProps = {
 };
 
 export function ProjectCommentForm({ projectId, initialComments }: CommentFormProps) {
+  const http = useHttp();
   const [comments, setComments] = useState(initialComments);
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState("");
@@ -30,23 +32,20 @@ export function ProjectCommentForm({ projectId, initialComments }: CommentFormPr
 
     const form = event.currentTarget;
     const formData = new FormData(form);
-    const response = await fetch("/api/public/comments", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+    try {
+      const result = await http.postRaw<{ record: ProjectComment }>("/public/comments", {
         projectId,
         nickname: formData.get("nickname"),
         content: formData.get("content"),
-      }),
-    });
+      });
 
-    const data = (await response.json()) as { message?: string; record?: ProjectComment };
-    setPending(false);
-    setMessage(data.message || (response.ok ? "评论已发布。" : "评论发布失败。"));
-
-    if (response.ok && data.record) {
-      setComments((current) => [data.record as ProjectComment, ...current]);
+      setMessage(result.msg || "评论已发布。");
+      setComments((current) => [result.data.record, ...current]);
       form.reset();
+    } catch (error) {
+      setMessage(getHttpErrorMessage(error, "评论发布失败。"));
+    } finally {
+      setPending(false);
     }
   }
 

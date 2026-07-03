@@ -1,8 +1,6 @@
-import { NextResponse } from "next/server";
-
 import { writeAuditLog } from "@/lib/audit";
 import { getProjectOwnerSession } from "@/lib/auth";
-import { jsonError, jsonOk } from "@/lib/api";
+import { jsonError, jsonFail, jsonOk } from "@/lib/api";
 import { getRecord, updateRecord } from "@/lib/storage";
 import type { Project, ProjectComment } from "@/lib/types";
 import { asRecord, reviewStatusValue, text } from "@/lib/validation";
@@ -13,7 +11,7 @@ export async function PATCH(request: Request) {
   try {
     const session = await getProjectOwnerSession();
     if (!session) {
-      return NextResponse.json({ ok: false, message: "请先登录项目管理。" }, { status: 401 });
+      return jsonFail("请先登录项目管理。", 401);
     }
 
     const body = asRecord(await request.json());
@@ -21,12 +19,12 @@ export async function PATCH(request: Request) {
     const reviewStatus = reviewStatusValue(body.reviewStatus);
 
     if (reviewStatus !== "approved" && reviewStatus !== "rejected") {
-      return NextResponse.json({ ok: false, message: "项目评论只能公开或隐藏。" }, { status: 400 });
+      return jsonFail("项目评论只能公开或隐藏。", 400);
     }
 
     const current = await getRecord<ProjectComment>("projectComments", id);
     if (!current || current.projectId !== session.projectId) {
-      return NextResponse.json({ ok: false, message: "没有权限处理这条评论。" }, { status: 403 });
+      return jsonFail("没有权限处理这条评论。", 403);
     }
 
     const next = await updateRecord<ProjectComment>("projectComments", id, { reviewStatus });
@@ -41,7 +39,7 @@ export async function PATCH(request: Request) {
       summary: `项目发起者将评论状态改为 ${reviewStatus}：${next.nickname}`,
     });
 
-    return jsonOk({ ok: true, record: next, message: "项目评论已保存。" });
+    return jsonOk({ record: next }, 200, "项目评论已保存。");
   } catch (error) {
     return jsonError(error);
   }

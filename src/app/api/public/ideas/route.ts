@@ -23,7 +23,7 @@ export async function POST(request: Request) {
     };
 
     await putRecord("ideas", idea.id, idea);
-    return jsonOk({ ok: true, id: idea.id, message: "想法已提交，审核通过后会公开。" }, 201);
+    return jsonOk({ id: idea.id }, 201, "想法已提交，审核通过后会公开。");
   } catch (error) {
     return jsonError(error);
   }

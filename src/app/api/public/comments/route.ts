@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import { writeAuditLog } from "@/lib/audit";
-import { jsonError, jsonOk } from "@/lib/api";
+import { jsonError, jsonFail, jsonOk } from "@/lib/api";
 import { getRecord, putRecord } from "@/lib/storage";
 import type { Project, ProjectComment } from "@/lib/types";
 import { asRecord, text } from "@/lib/validation";
@@ -15,7 +15,7 @@ export async function POST(request: Request) {
     const project = await getRecord<Project>("projects", projectId);
 
     if (!project || project.reviewStatus !== "approved") {
-      return jsonOk({ ok: false, message: "这个项目暂时不能评论。" }, 404);
+      return jsonFail("这个项目暂时不能评论。", 404);
     }
 
     const now = new Date().toISOString();
@@ -41,7 +41,7 @@ export async function POST(request: Request) {
       summary: `访客给项目留言：${project.title} / ${comment.nickname}`,
     });
 
-    return jsonOk({ ok: true, record: comment, message: "评论已公开发布。" }, 201);
+    return jsonOk({ record: comment }, 201, "评论已公开发布。");
   } catch (error) {
     return jsonError(error);
   }
