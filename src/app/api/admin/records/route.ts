@@ -1,7 +1,7 @@
 import { writeAuditLog } from "@/lib/audit";
 import { hashPassword, isAdminRequest } from "@/lib/auth";
 import { jsonError, jsonFail, jsonOk } from "@/lib/api";
-import { deleteRecord, getRecord, updateRecord } from "@/lib/storage";
+import { deleteRecord, getRecord, listAllData, updateRecord } from "@/lib/storage";
 import type { Idea, JoinRequest, Project, ProjectComment, ProjectUpdate } from "@/lib/types";
 import {
   asRecord,
@@ -158,8 +158,45 @@ export async function DELETE(request: Request) {
     const collection = collectionValue(body.collection);
     const id = text(body.id, "记录 ID", 80);
 
+    if (collection === "projects") {
+      const current = await getRecord<Project>("projects", id);
+      if (!current) {
+        return jsonFail("没有找到这个项目。", 404);
+      }
+
+      if (current.reviewStatus !== "rejected") {
+        return jsonFail("只能永久删除已经归档的项目。", 400);
+      }
+
+      const snapshot = await listAllData();
+      const relatedJoinRequests = snapshot.joinRequests.filter((item) => item.projectId === current.id);
+      const relatedUpdates = snapshot.projectUpdates.filter((item) => item.projectId === current.id);
+      const relatedComments = snapshot.projectComments.filter((item) => item.projectId === current.id);
+      const relatedEditRequests = snapshot.projectEditRequests.filter((item) => item.projectId === current.id);
+
+      await Promise.all([
+        ...relatedJoinRequests.map((item) => deleteRecord("joinRequests", item.id)),
+        ...relatedUpdates.map((item) => deleteRecord("projectUpdates", item.id)),
+        ...relatedComments.map((item) => deleteRecord("projectComments", item.id)),
+        ...relatedEditRequests.map((item) => deleteRecord("projectEditRequests", item.id)),
+      ]);
+      await deleteRecord("projects", id);
+
+      await writeAuditLog({
+        actorRole: "admin",
+        actorLabel: "全站管理员",
+        action: "project.delete",
+        targetType: "project",
+        targetId: current.id,
+        targetTitle: current.title,
+        summary: `管理员永久删除归档项目：${current.title}，同时删除关联申请 ${relatedJoinRequests.length} 条、动态 ${relatedUpdates.length} 条、评论 ${relatedComments.length} 条、修改申请 ${relatedEditRequests.length} 条。`,
+      });
+
+      return jsonOk(null, 200, "归档项目已永久删除。");
+    }
+
     if (collection !== "projectUpdates") {
-      return jsonFail("目前只支持删除项目动态。", 400);
+      return jsonFail("目前只支持删除归档项目和项目动态。", 400);
     }
 
     const current = await getRecord<ProjectUpdate>("projectUpdates", id);

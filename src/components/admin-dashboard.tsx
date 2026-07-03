@@ -212,6 +212,7 @@ export function AdminDashboard() {
       {activeTab === "archivedProjects" ? (
         <ProjectAdminList
           archived
+          onDelete={(id) => deleteRecord("projects", id)}
           projects={snapshot.projects.filter((project) => project.reviewStatus === "rejected")}
           onPatch={(id, patch) => patchRecord("projects", id, patch)}
         />
@@ -261,10 +262,12 @@ function TabButton({ active, onClick, children }: { active: boolean; onClick: ()
 
 function ProjectAdminList({
   projects,
+  onDelete,
   onPatch,
   archived = false,
 }: {
   projects: Project[];
+  onDelete?: (id: string) => void;
   onPatch: (id: string, patch: AdminProjectPatch) => void;
   archived?: boolean;
 }) {
@@ -296,6 +299,18 @@ function ProjectAdminList({
                 <button className="icon-button bg-[linear-gradient(180deg,#93d65a,#55a63a)] text-[#173318]" onClick={() => onPatch(project.id, { reviewStatus: "approved" })} type="button">
                   <Check size={16} aria-hidden />
                   恢复公开
+                </button>
+                <button
+                  className="icon-button bg-[#c9473a] text-white"
+                  onClick={() => {
+                    if (window.confirm(`确定要永久删除归档项目“${project.title}”吗？相关加入申请、项目动态、项目评论和修改申请也会一起删除。`)) {
+                      onDelete?.(project.id);
+                    }
+                  }}
+                  type="button"
+                >
+                  <Trash2 size={16} aria-hidden />
+                  永久删除
                 </button>
               </>
             ) : (
