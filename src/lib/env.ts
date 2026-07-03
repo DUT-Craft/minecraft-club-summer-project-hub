@@ -1,5 +1,3 @@
-import path from "node:path";
-
 export class AppConfigError extends Error {
   constructor(message: string) {
     super(message);
@@ -7,53 +5,24 @@ export class AppConfigError extends Error {
   }
 }
 
-export type StorageConfig =
-  | {
-      mode: "local";
-      dataDir: string;
-    }
-  | {
-      mode: "github";
-      token: string;
-      repo: string;
-      branch?: string;
-      dataPath: string;
-    };
+export type BackendConfig = {
+  baseUrl: string;
+  token?: string;
+};
 
-export function getStorageConfig(): StorageConfig {
-  const mode = (process.env.DATA_STORAGE || "local").trim().toLowerCase();
+export function getBackendConfig(): BackendConfig {
+  const baseUrl = (process.env.BACKEND_API_BASE || "").trim().replace(/\/+$/, "");
 
-  if (mode === "local") {
-    return {
-      mode: "local",
-      dataDir: path.resolve(/* turbopackIgnore: true */ process.cwd(), process.env.LOCAL_DATA_DIR || "./data"),
-    };
+  if (!baseUrl) {
+    throw new AppConfigError("后端 API 还没配置：请设置 BACKEND_API_BASE。");
   }
 
-  if (mode === "github") {
-    const token = process.env.GITHUB_TOKEN;
-    const repo = process.env.GITHUB_REPO;
+  const token = (process.env.BACKEND_API_TOKEN || "").trim();
 
-    if (!token || !repo) {
-      throw new AppConfigError(
-        "GitHub 数据存储还没配置完整：请设置 GITHUB_TOKEN 和 GITHUB_REPO。",
-      );
-    }
-
-    if (!repo.includes("/")) {
-      throw new AppConfigError("GITHUB_REPO 需要写成 owner/repo-name 的格式。");
-    }
-
-    return {
-      mode: "github",
-      token,
-      repo,
-      branch: process.env.GITHUB_BRANCH || undefined,
-      dataPath: (process.env.GITHUB_DATA_PATH || "data").replace(/^\/+|\/+$/g, ""),
-    };
-  }
-
-  throw new AppConfigError("DATA_STORAGE 只能设置为 local 或 github。");
+  return {
+    baseUrl,
+    token: token || undefined,
+  };
 }
 
 export function getAdminConfig() {

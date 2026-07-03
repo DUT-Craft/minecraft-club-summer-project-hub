@@ -1,4 +1,3 @@
-import { getStorageConfig } from "@/lib/env";
 import type {
   AuditLog,
   DataSnapshot,
@@ -10,13 +9,11 @@ import type {
   ProjectUpdate,
   CollectionName,
 } from "@/lib/types";
-import { LocalFileStore } from "./local";
-import { GitHubStore } from "./github";
+import { BackendApiStore } from "./api";
 import type { DataStore, JsonRecord } from "./store";
 
 export function getStore(): DataStore {
-  const config = getStorageConfig();
-  return config.mode === "local" ? new LocalFileStore(config.dataDir) : new GitHubStore(config);
+  return new BackendApiStore();
 }
 
 export async function listAllData(): Promise<DataSnapshot> {

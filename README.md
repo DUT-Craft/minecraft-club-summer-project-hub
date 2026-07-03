@@ -7,7 +7,7 @@
 ## 运行方式
 
 1. 安装 Node.js 24 或更新版本。
-2. 复制 `.env.example` 为 `.env`，修改管理密码和密钥。
+2. 复制 `.env.example` 为 `.env`，填写后端 API 地址、管理密码和密钥。
 3. 安装依赖并启动：
 
 ```bash
@@ -19,28 +19,33 @@ npm run dev
 
 ## 数据保存
 
-默认使用本地文件模式：
+所有数据都通过后端 API 接口读写，不再使用本地文件或 GitHub 私有仓库。请在环境变量里配置后端地址：
 
 ```env
-DATA_STORAGE=local
-LOCAL_DATA_DIR=./data
-```
-
-这种模式适合负责人在自己的电脑上开发和临时演示，数据会保存到 `data/` 文件夹。请定期备份这个文件夹。
-
-如果部署到 Vercel，建议改用 GitHub 私有仓库模式：
-
-```env
-DATA_STORAGE=github
-GITHUB_TOKEN=github_pat_xxx
-GITHUB_REPO=owner/private-data-repo
-GITHUB_BRANCH=main
-GITHUB_DATA_PATH=data
+BACKEND_API_BASE=http://localhost:8080/api
+# 可选：后端接口的访问令牌
+# BACKEND_API_TOKEN=your-backend-token
 ADMIN_PASSWORD=change-this-password
 ADMIN_SESSION_SECRET=replace-with-a-long-random-secret
 ```
 
-GitHub Token 只需要给数据仓库的 Contents 读写权限。Token 只能放在 Vercel 环境变量里，不要写进代码。
+- `BACKEND_API_BASE` 是后端服务的根地址，Next.js 端会从这里读写数据。
+- `BACKEND_API_TOKEN` 如果配置了，会以 `Authorization: Bearer ...` 带在每次请求里。
+- `ADMIN_PASSWORD` 是全站管理员共用的后台密码。
+- `ADMIN_SESSION_SECRET` 用来保护管理员和项目发起者的登录状态，建议至少 32 位随机字符。
+
+### 后端需要提供的接口
+
+后端按集合名管理记录，集合包括：`projects`、`ideas`、`joinRequests`、`projectUpdates`、`projectComments`、`projectEditRequests`、`auditLogs`。
+
+```text
+GET    {base}/collections/{collection}          列出集合里的全部记录
+GET    {base}/collections/{collection}/{id}     读取一条记录（找不到返回 404）
+PUT    {base}/collections/{collection}/{id}     创建或覆盖一条记录，请求体为记录本身
+DELETE {base}/collections/{collection}/{id}     删除一条记录（找不到返回 404）
+```
+
+响应体可以是 `{ code, status, msg, data }` 形式（取 `data` 字段），也可以直接是记录或数组。如果后端要求鉴权，把令牌配置到 `BACKEND_API_TOKEN` 即可。
 
 ## 主要入口
 
@@ -59,29 +64,23 @@ GitHub Token 只需要给数据仓库的 Contents 读写权限。Token 只能放
 ## Vercel 部署交接
 
 1. 把代码推到 GitHub 代码仓库。
-2. 创建一个 GitHub 私有仓库专门保存数据。
-3. 创建 GitHub Fine-grained token，只给数据仓库的 Contents 读写权限。
-4. 在 Vercel 导入代码仓库。
-5. 在 Vercel 项目设置里添加环境变量。
-6. 重新部署后即可使用。
+2. 部署并启动后端服务，确认它实现了上面的接口。
+3. 在 Vercel 导入代码仓库。
+4. 在 Vercel 项目设置里添加环境变量。
+5. 重新部署后即可使用。
 
-## 数据目录
+## 数据在哪里
 
-部署到 Vercel 后，数据会保存到 GitHub 私有数据仓库里：
+数据保存在后端服务里，按集合分类：
 
 ```text
-data/projects
-data/ideas
-data/join-requests
-data/project-updates
-data/project-edit-requests
-data/audit-logs
+projects / ideas / joinRequests / projectUpdates / projectComments / projectEditRequests / auditLogs
 ```
 
-公开页面只展示审核通过的项目和想法，项目动态被管理员隐藏后不会公开展示。联系方式、项目管理密码哈希、操作记录只在后台数据里保存，不会展示到公开页面。
+公开页面只展示审核通过的项目和想法；项目动态被管理员隐藏后不会公开展示。联系方式、项目管理密码哈希、操作记录只在后台数据里保存，不会展示到公开页面。
 
 ## 维护注意
 
-- 不要把 `.env.local`、`.env`、GitHub Token 或管理密码发到公开仓库。
-- 不要把 `node_modules`、`.next`、`data` 打包上传。
+- 不要把 `.env.local`、`.env`、`BACKEND_API_TOKEN` 或管理密码发到公开仓库。
+- 不要把 `node_modules`、`.next` 打包上传。
 - 如果 `npm audit` 提示 Next 内部的 PostCSS 依赖问题，不要直接运行 `npm audit fix --force`，它可能把 Next 降级到不兼容的旧版本；优先等待 Next 官方版本更新。

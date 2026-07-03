@@ -9,16 +9,6 @@ export interface DataStore {
   delete(collection: CollectionName, id: string): Promise<void>;
 }
 
-export const collectionFolders: Record<CollectionName, string> = {
-  projects: "projects",
-  ideas: "ideas",
-  joinRequests: "join-requests",
-  projectUpdates: "project-updates",
-  projectComments: "project-comments",
-  projectEditRequests: "project-edit-requests",
-  auditLogs: "audit-logs",
-};
-
 export function assertSafeId(id: string) {
   if (!/^[a-zA-Z0-9_-]+$/.test(id)) {
     throw new Error("记录 ID 不合法。");
