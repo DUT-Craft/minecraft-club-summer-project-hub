@@ -2,6 +2,9 @@ import type { Config } from "tailwindcss";
 
 const config: Config = {
   content: [
+    "./app/**/*.{vue,js,ts}",
+    "./components/**/*.{vue,js,ts}",
+    "./server/**/*.{js,ts}",
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
