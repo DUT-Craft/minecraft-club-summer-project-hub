@@ -1,121 +1,63 @@
 <template>
-  <n-config-provider
-    :hljs="hljs"
-    :theme="osTheme"
-    :locale="zhCN"
-    :date-locale="dateZhCN"
-  >
-    <nuxt-loading-indicator />
-    <n-dialog-provider>
-      <n-notification-provider>
-        <n-layout class="app-layout" has-sider>
-          <n-layout-sider
-            v-model:collapsed="collapsed"
-            bordered
-            collapse-mode="width"
-            :collapsed-width="64"
-            :width="232"
-            :native-scrollbar="false"
-            class="app-sider"
-          >
-            <div class="brand" :class="{ 'brand-collapsed': collapsed }">
-              <div class="brand-mark">N</div>
-              <div v-if="!collapsed" class="brand-copy">
-                <strong>DUT Neko</strong>
-                <span>猫娘管理系统</span>
-              </div>
-            </div>
+  <n-layout class="app-layout">
+    <n-layout-header bordered class="app-header">
+      <div class="brand">
+        <div class="brand-mark">MC</div>
+        <div class="brand-copy">
+          <strong>DUT Craft</strong>
+          <span>暑假项目协作站</span>
+        </div>
+      </div>
 
-            <n-menu
-              :collapsed="collapsed"
-              :collapsed-width="64"
-              :collapsed-icon-size="20"
-              :options="menuOptions"
-              :value="activeMenuKey"
-              class="side-menu"
-              @update:value="handleMenuSelect"
-            />
-          </n-layout-sider>
+      <n-menu
+        mode="horizontal"
+        :options="menuOptions"
+        :value="activeMenuKey"
+        responsive
+        class="top-menu"
+        @update:value="handleMenuSelect"
+      />
+    </n-layout-header>
 
-          <n-layout class="main-layout">
-            <n-layout-header bordered class="app-header">
-              <n-button quaternary circle type="primary" @click="collapsed = !collapsed">
-                {{ collapsed ? "展" : "收" }}
-              </n-button>
-              <div class="header-title">
-                <strong>{{ currentTitle }}</strong>
-                <span>欢迎回来，开始处理今天的工作。</span>
-              </div>
-            </n-layout-header>
-
-            <n-layout-content class="app-content">
-              <slot />
-            </n-layout-content>
-
-            <n-layout-footer bordered class="app-footer">
-              DUT Neko 猫娘管理系统喵~
-            </n-layout-footer>
-          </n-layout>
-        </n-layout>
-      </n-notification-provider>
-    </n-dialog-provider>
-  </n-config-provider>
+    <n-layout-content class="app-content">
+      <slot />
+    </n-layout-content>
+  </n-layout>
 </template>
 
 <script setup lang="ts">
 import type { MenuOption } from "naive-ui";
-import { dateZhCN, darkTheme, useOsTheme, zhCN } from "naive-ui";
-
-import hljs from "highlight.js/lib/core";
-import ini from "highlight.js/lib/languages/ini";
-import json from "highlight.js/lib/languages/json";
-import yaml from "highlight.js/lib/languages/yaml";
-
-hljs.registerLanguage("json", json);
-hljs.registerLanguage("ini", ini);
-hljs.registerLanguage("toml", ini);
-hljs.registerLanguage("yaml", yaml);
 
 const route = useRoute();
-const naiveOsTheme = useOsTheme();
-const collapsed = ref(false);
-
-const osTheme = computed(() => (naiveOsTheme.value === "dark" ? darkTheme : null));
 
 const menuOptions: MenuOption[] = [
   {
-    label: "工作台",
+    label: "首页",
     key: "/",
   },
   {
-    label: "用户中心",
-    key: "/user-center",
+    label: "全部公开项目",
+    key: "/projects",
   },
   {
-    label: "PVE 管理",
-    key: "/pve-users",
+    label: "提交项目 / 想法",
+    key: "/submit",
   },
   {
-    label: "VM 管理",
-    key: "/virtual-machines",
-  }
+    label: "想法墙",
+    key: "/ideas",
+  },
 ];
 
-const menuTitleMap = new Map(
-  menuOptions
-    .filter((item): item is MenuOption & { key: string; label: string } => {
-      return typeof item.key === "string" && typeof item.label === "string";
-    })
-    .map((item) => [item.key, item.label]),
-);
+const menuKeys = new Set(menuOptions.map((item) => String(item.key)));
 
 const activeMenuKey = computed(() => {
-  const path = route.path === "" ? "/" : route.path;
+  if (route.path.startsWith("/projects")) {
+    return "/projects";
+  }
 
-  return menuTitleMap.has(path) ? path : "/";
+  return menuKeys.has(route.path) ? route.path : "/";
 });
-
-const currentTitle = computed(() => menuTitleMap.get(activeMenuKey.value) ?? "工作台");
 
 const handleMenuSelect = (key: string) => {
   if (key !== route.path) {
@@ -127,113 +69,79 @@ const handleMenuSelect = (key: string) => {
 <style scoped>
 .app-layout {
   min-height: 100dvh;
+  background: #dff0ff;
 }
 
-.app-sider {
-  min-height: 100dvh;
+.app-header {
+  min-height: 72px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 0 28px;
+  background: rgba(255, 245, 207, 0.95);
+  border-bottom: 2px solid #5a3a21;
 }
 
 .brand {
-  height: 72px;
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 16px;
-  border-bottom: 1px solid rgba(128, 128, 128, 0.18);
-}
-
-.brand-collapsed {
-  justify-content: center;
-  padding-inline: 10px;
 }
 
 .brand-mark {
-  width: 36px;
-  height: 36px;
-  flex: 0 0 auto;
+  width: 42px;
+  height: 42px;
   display: grid;
   place-items: center;
+  border: 2px solid #5a3a21;
   border-radius: 8px;
-  color: #ffffff;
-  background: linear-gradient(135deg, #f36ca7, #59a8ff);
-  font-weight: 800;
+  color: #fffbe4;
+  background: #5f9f46;
+  box-shadow: 3px 3px 0 rgba(56, 38, 23, 0.18);
+  font-weight: 900;
 }
 
 .brand-copy {
-  min-width: 0;
   display: grid;
   gap: 2px;
   line-height: 1.2;
 }
 
 .brand-copy strong {
-  font-size: 16px;
+  color: #2d2418;
+  font-size: 17px;
+  font-weight: 900;
 }
 
-.brand-copy span,
-.header-title span {
-  color: var(--n-text-color-3);
+.brand-copy span {
+  color: #795b36;
   font-size: 13px;
 }
 
-.side-menu {
-  padding-block: 12px;
-}
-
-.main-layout {
+.top-menu {
   min-width: 0;
-  min-height: 100dvh;
-}
-
-.app-header {
-  height: 72px;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 0 24px;
-}
-
-.header-title {
-  min-width: 0;
-  display: grid;
-  gap: 3px;
-}
-
-.header-title strong {
-  font-size: 18px;
+  flex: 1;
+  justify-content: flex-end;
+  border-bottom: 0;
+  background: transparent;
 }
 
 .app-content {
-  min-height: calc(100dvh - 121px);
-  padding: 24px;
-}
-
-.app-footer {
-  height: 49px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--n-text-color-3);
-  font-size: 13px;
+  min-height: calc(100dvh - 72px);
 }
 
 @media (width <= 720px) {
-  .app-sider {
-    position: sticky;
-    left: 0;
-    z-index: 10;
-  }
-
   .app-header {
-    padding: 0 16px;
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 10px;
+    padding: 14px 16px;
   }
 
-  .header-title span {
-    display: none;
-  }
-
-  .app-content {
-    padding: 16px;
+  .top-menu {
+    width: 100%;
+    justify-content: flex-start;
   }
 }
 </style>
