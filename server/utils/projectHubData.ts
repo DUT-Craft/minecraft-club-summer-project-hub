@@ -94,7 +94,8 @@ const collectionDirs: Record<CollectionName, string> = {
   projectComments: "project-comments",
 };
 
-const dataRoot = () => path.resolve(process.cwd(), process.env.LOCAL_DATA_DIR || "data");
+const defaultDataDir = process.env.VERCEL ? "/tmp/minecraft-club-project-hub-data" : "data";
+const dataRoot = () => path.resolve(process.env.LOCAL_DATA_DIR || defaultDataDir);
 
 const collectionPath = (collection: CollectionName) => path.join(dataRoot(), collectionDirs[collection]);
 

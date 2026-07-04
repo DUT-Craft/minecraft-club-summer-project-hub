@@ -5,6 +5,9 @@ import { NaiveUiResolver } from "unplugin-vue-components/resolvers";
 export default defineNuxtConfig({
   ssr: true,
   compatibilityDate: "2025-07-15",
+  nitro: {
+    preset: "vercel",
+  },
   runtimeConfig: {
     public: {
       apiBase: process.env.NUXT_PUBLIC_API_BASE || "/api",
