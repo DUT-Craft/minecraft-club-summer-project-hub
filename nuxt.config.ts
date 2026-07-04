@@ -6,7 +6,9 @@ export default defineNuxtConfig({
   ssr: true,
   compatibilityDate: "2025-07-15",
   nitro: {
-    preset: "vercel",
+    prerender: {
+      autoSubfolderIndex: false
+    }
   },
   runtimeConfig: {
     public: {
