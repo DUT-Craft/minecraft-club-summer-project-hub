@@ -2,9 +2,7 @@
   <header class="site-header">
     <div class="wide-shell header-inner">
       <NuxtLink to="/projects" class="brand">
-        <span class="brand-mark" aria-hidden="true">
-          猫
-        </span>
+        <span class="brand-mark" aria-hidden="true">猫</span>
         <span class="brand-copy">
           <strong>猫娘社</strong>
           <small>暑假项目站</small>
@@ -12,19 +10,22 @@
       </NuxtLink>
 
       <nav class="nav" aria-label="站点导航">
-        <NuxtLink class="nav-item" to="/projects/groud">
+        <n-button quaternary class="nav-item" @click="navigateTo('/projects/groud')">
           全部公开项目
-        </NuxtLink>
-        <NuxtLink class="nav-item" to="/ideas">
+        </n-button>
+        <n-button quaternary class="nav-item" @click="navigateTo('/ideas')">
           想法墙
-        </NuxtLink>
-        <NuxtLink class="nav-item" to="/submit">
+        </n-button>
+        <n-button quaternary class="nav-item" @click="navigateTo('/submit')">
           投稿
-        </NuxtLink>
+        </n-button>
       </nav>
     </div>
   </header>
 </template>
+
+<script setup lang="ts">
+</script>
 
 <style scoped>
 .site-header {
@@ -33,9 +34,7 @@
   z-index: 30;
   padding: 12px 0 0;
   border-top: 8px solid #5c318e;
-  background:
-    linear-gradient(#fffdf4, #fffdf4) padding-box,
-    linear-gradient(90deg, rgba(189, 233, 255, 0.58), rgba(255, 244, 185, 0.58)) border-box;
+  background: var(--n-color, #18181c);
 }
 
 .wide-shell {
@@ -50,33 +49,18 @@
   align-items: center;
   justify-content: space-between;
   gap: 18px;
-  border: 3px solid #5a3a21;
+  border: 1px solid rgba(255, 255, 255, 0.09);
   border-radius: 8px;
-  background:
-    radial-gradient(circle at 12% 10%, rgba(255, 232, 135, 0.28), transparent 20rem),
-    linear-gradient(90deg, rgba(255, 248, 218, 0.96), rgba(255, 248, 218, 0.84));
-  box-shadow: 0 6px 0 #5a3a21;
+  background: rgba(255, 255, 255, 0.03);
   padding: 10px 14px;
-}
-
-.header-inner::before {
-  position: absolute;
-  left: 50%;
-  top: -22px;
-  width: 90px;
-  height: 22px;
-  content: "";
-  border-radius: 0 0 12px 12px;
-  background: #000;
-  transform: translateX(-50%);
 }
 
 .brand {
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  color: #173318;
-  font-weight: 950;
+  color: rgba(255, 255, 255, 0.82);
+  font-weight: 700;
   text-decoration: none;
 }
 
@@ -85,14 +69,12 @@
   height: 36px;
   display: grid;
   place-items: center;
-  border: 2px solid #382617;
-  border-radius: 5px;
-  background: linear-gradient(180deg, #93d65a, #55a63a);
-  color: #fff8dc;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.9);
   font-size: 15px;
   line-height: 1;
-  text-shadow: 1px 1px 0 #2d501f;
-  box-shadow: 3px 3px 0 rgba(56, 38, 23, 0.18);
 }
 
 .brand-copy {
@@ -102,47 +84,35 @@
 }
 
 .brand-copy strong {
-  color: #173318;
+  color: rgba(255, 255, 255, 0.92);
   font-size: 16px;
-  font-weight: 950;
+  font-weight: 700;
 }
 
 .brand-copy small {
-  color: #6b5a36;
+  color: rgba(255, 255, 255, 0.52);
   font-size: 12px;
-  font-weight: 850;
+  font-weight: 500;
 }
 
 .nav {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: 4px;
 }
 
 .nav-item {
-  min-height: 34px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 0;
-  border-radius: 7px;
-  background: #ffd873;
+  height: 34px;
   padding: 0 14px;
-  color: #2f2a17;
+  color: rgba(255, 255, 255, 0.82);
   font-size: 14px;
-  font-weight: 950;
+  font-weight: 500;
   text-decoration: none;
-  box-shadow: inset 0 -2px 0 rgba(56, 38, 23, 0.1);
-  transition:
-    transform 150ms ease,
-    background 150ms ease;
 }
 
-.nav-item:hover,
-.nav-item.router-link-active {
-  transform: translateY(-1px);
-  background: #ffe28c;
+.nav-item :deep(.n-button__content) {
+  font-weight: 500;
 }
 
 @media (width <= 720px) {
