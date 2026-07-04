@@ -4,7 +4,7 @@
     class="mc-header"
     content-style="padding: 0; display: flex; align-items: center; justify-content: space-between; gap: 14px;"
   >
-    <NuxtLink to="/projects" class="brand">
+    <NuxtLink to="/app/pages" class="brand">
       <n-tag :bordered="false" class="brand-mark">猫</n-tag>
       <span>
         <strong>猫娘社</strong>

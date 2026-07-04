@@ -41,7 +41,7 @@
 </template>
 
 <script setup lang="ts">
-import type { DataSnapshot, Project } from "~/types/projectHub";
+import type { DataSnapshot, Project } from "app/types/projectHub";
 
 definePageMeta({
   layout: false,
