@@ -41,19 +41,17 @@
 </template>
 
 <script setup lang="ts">
-import type { DataSnapshot, Project } from "app/types/projectHub";
+import type {Project} from "~/types/projectHub";
+
 
 definePageMeta({
   layout: false,
 });
 
-const { loadSnapshot } = useProjectHubApi();
-const snapshot = ref<DataSnapshot>({
-  projects: [],
-  ideas: [],
-  projectUpdates: [],
-  projectComments: [],
-});
+// 数据源对应 openapi.json：GET /api/project/object-items?status=IN_PROGRESS / PAUSED
+// （接口仅支持单个 status，在 useProjectHubApi 内并行请求两个公开状态后合并）
+const { loadPublicProjectCatalog } = useProjectHubApi();
+const projects = ref<Project[]>([]);
 
 const keyword = ref("");
 const typeFilter = ref("");
@@ -61,17 +59,15 @@ const statusFilter = ref("");
 const skillFilter = ref("");
 
 onMounted(async () => {
-  snapshot.value = await loadSnapshot();
+  projects.value = await loadPublicProjectCatalog();
 });
 
-const projects = computed(() => snapshot.value.projects.filter((item) => item.reviewStatus === "approved"));
-
 const projectSkills = (project: Project) => {
-  const needSkills = project.recruitmentNeeds?.map((item) => item.skill).filter(Boolean) ?? [];
+  const needSkills = project.recruitmentNeeds?.map((item: { skill: any; }) => item.skill).filter(Boolean) ?? [];
   return [...new Set(needSkills.length ? needSkills : project.skills ?? [])];
 };
 
-const typeOptions = computed(() => [...new Set(projects.value.map((item) => item.type).filter(Boolean))]);
+const typeOptions = computed(() => [...new Set(projects.value.map((item: { type: any; }) => item.type).filter(Boolean))]);
 const statusOptions = computed(() => [...new Set(projects.value.map((item) => item.status).filter(Boolean))]);
 const skillOptions = computed(() => [...new Set(projects.value.flatMap(projectSkills).filter(Boolean))]);
 

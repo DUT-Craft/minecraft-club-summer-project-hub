@@ -1,7 +1,5 @@
 export interface ApiResult<T> {
-    code?: string | number;
-    msg?: string;
-    status?: string | number;
+    status?: number;
     message?: string;
     data: T;
 }

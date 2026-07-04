@@ -9,7 +9,7 @@
           <h1>{{ project.title }}</h1>
           <span>负责人：{{ project.ownerName || "未填写" }}</span>
         </div>
-        <NuxtLink to="/groud">返回项目列表</NuxtLink>
+        <NuxtLink to="/app/pages/mall">返回项目列表</NuxtLink>
       </section>
 
       <section class="layout">
@@ -95,13 +95,14 @@
       title="没有找到这个公开项目"
       text="项目可能还在审核，或已被管理员隐藏。"
     >
-      <NuxtLink class="inline-action" to="/groud">回到项目列表</NuxtLink>
+      <NuxtLink class="inline-action" to="/app/pages/mall">回到项目列表</NuxtLink>
     </MinecraftEmptyState>
   </main>
 </template>
 
 <script setup lang="ts">
-import type { DataSnapshot, RecruitmentNeed } from "app/types/projectHub";
+import type { DataSnapshot, ProjectComment, ProjectUpdate, RecruitmentNeed } from "~/types/projectHub";
+
 
 definePageMeta({
   layout: false,
@@ -153,11 +154,11 @@ const needs = computed<RecruitmentNeed[]>(() => {
 });
 
 const updates = computed(() => snapshot.value.projectUpdates
-  .filter((item) => item.projectId === projectId.value && (item.reviewStatus ?? "approved") === "approved")
+  .filter((item: ProjectUpdate) => item.projectId === projectId.value && (item.reviewStatus ?? "approved") === "approved")
   .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)));
 
 const comments = computed(() => snapshot.value.projectComments
-  .filter((item) => item.projectId === projectId.value && (item.reviewStatus ?? "approved") === "approved")
+  .filter((item: ProjectComment) => item.projectId === projectId.value && (item.reviewStatus ?? "approved") === "approved")
   .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)));
 
 const formatDate = (value: string) => value ? new Date(value).toLocaleString("zh-CN") : "未记录时间";

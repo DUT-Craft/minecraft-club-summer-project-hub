@@ -26,29 +26,20 @@
           </div>
 
           <div class="actions">
-            <n-button type="primary" size="large" @click="navigateTo('/projects/groud')">
-              浏览项目
-            </n-button>
-            <n-button type="primary" size="large" @click="navigateTo('/submit')">
-              投稿项目
-            </n-button>
-            <n-button size="large" @click="navigateTo('/submit#idea')">
-              提交想法
-            </n-button>
-            <n-button size="large" @click="navigateTo('/ideas')">
-              查看想法
+            <n-button
+              v-for="action in heroActions"
+              :key="action.to"
+              :type="action.primary ? 'primary' : 'default'"
+              size="large"
+              @click="navigateTo(action.to)"
+            >
+              {{ action.label }}
             </n-button>
           </div>
 
           <div class="stats-grid">
-            <n-card class="stat" size="small">
-              <n-statistic label="公开项目" :value="approvedProjects.length" />
-            </n-card>
-            <n-card class="stat" size="small">
-              <n-statistic label="公开想法" :value="approvedIdeas.length" />
-            </n-card>
-            <n-card class="stat" size="small">
-              <n-statistic label="公开建议" :value="approvedComments.length" />
+            <n-card v-for="stat in stats" :key="stat.label" class="stat" size="small">
+              <n-statistic :label="stat.label" :value="stat.value" />
             </n-card>
           </div>
         </section>
@@ -69,7 +60,7 @@
           <div class="mini-grid">
             <n-card class="mini-card" size="small">
               <strong>真实公开数据</strong>
-              <span>{{ approvedProjects.length ? `已有 ${approvedProjects.length} 个项目通过审核` : "暂无公开项目，投稿后会先进入后台审核" }}</span>
+              <span>{{ projectCountHint }}</span>
             </n-card>
             <n-card class="mini-card" size="small">
               <strong>审核说明</strong>
@@ -135,19 +126,33 @@
 </template>
 
 <script setup lang="ts">
-import type { DataSnapshot, Project } from "app/types/projectHub";
+
+import type {Project} from "~/types/projectHub";
 
 definePageMeta({
   layout: false,
 });
 
-const { loadSnapshot } = useProjectHubApi();
-const snapshot = ref<DataSnapshot>({
-  projects: [],
-  ideas: [],
-  projectUpdates: [],
-  projectComments: [],
-});
+// 数据源对应 openapi.json：
+// - 公开项目列表：GET /api/project/object-items?status=IN_PROGRESS（用于汇总标签和招募岗位）
+// - 公开项目总数：GET /api/project/object-items/count/in-progress
+// - 公开想法总数：GET /api/project/minds/count/approved
+// - openapi 没有评论 / 建议接口，原"公开建议"统计改为"招募岗位"（needMembers.number 合计）
+const { loadPublicProjects, loadApprovedProjectCount, loadApprovedIdeaCount } = useProjectHubApi();
+
+// 接口层已按状态过滤，这里保存的就是可直接公开展示的数据
+const approvedProjects = ref<Project[]>([]);
+// 公开项目 / 想法总数走专用 count 接口，无需拉全量列表只为取 length
+const approvedProjectCount = ref(0);
+const approvedIdeaCount = ref(0);
+
+// 首页入口按钮：label 与路由集中维护，避免模板里散落多个 navigateTo
+const heroActions = [
+  { label: "浏览项目", to: "/mall", primary: true },
+  { label: "投稿项目", to: "/submit", primary: true },
+  { label: "提交想法", to: "/submit", primary: false },
+  { label: "查看想法", to: "/ideas", primary: false },
+];
 
 const portalEntries = [
   {
@@ -157,7 +162,6 @@ const portalEntries = [
     title: "浏览正在招人的项目",
     text: "看项目介绍、招工需求、动态和公开评论，找到合适的项目后直接申请加入。",
     action: "进入项目列表",
-    icon: "icon-blocks",
   },
   {
     to: "/submit",
@@ -166,7 +170,6 @@ const portalEntries = [
     title: "把你的暑假计划挂出来",
     text: "把项目标题、介绍和招工需求写清楚，管理员审核通过后就会公开展示。",
     action: "提交项目草案",
-    icon: "icon-note",
   },
   {
     to: "/ideas",
@@ -175,24 +178,47 @@ const portalEntries = [
     title: "围着营火讨论新玩法",
     text: "还没形成项目也没关系，先把玩法点子放到想法墙，等人一起完善。",
     action: "查看想法墙",
-    icon: "icon-light",
   },
 ];
 
 onMounted(async () => {
-  snapshot.value = await loadSnapshot();
+  // 列表与总数接口互不依赖，并行拉取；任一失败时各自方法内部已降级为空数组 / 0
+  const [projects, projectCount, ideaCount] = await Promise.all([
+    loadPublicProjects(),
+    loadApprovedProjectCount(),
+    loadApprovedIdeaCount(),
+  ]);
+
+  approvedProjects.value = projects;
+  approvedProjectCount.value = projectCount;
+  approvedIdeaCount.value = ideaCount;
 });
 
-const approvedProjects = computed(() => snapshot.value.projects.filter((item) => item.reviewStatus === "approved"));
-const approvedIdeas = computed(() => snapshot.value.ideas.filter((item) => item.reviewStatus === "approved"));
-const approvedComments = computed(() =>
-  snapshot.value.projectComments.filter((item) => (item.reviewStatus ?? "approved") === "approved"),
+// 招募岗位 = 所有公开项目 recruitmentNeeds.count 之和（由 needMembers.number 映射）
+const openPositions = computed(() =>
+  approvedProjects.value
+    .flatMap((project) => project.recruitmentNeeds ?? [])
+    .reduce((total, need) => total + (need.count || 0), 0),
 );
 
+// 汇总项目类型 + 标签（skills 由 object-items 的 tags 映射而来），取出现次数最多的 4 个
 const hotTags = computed(() => buildHotTags(approvedProjects.value));
 const heroTags = computed(() =>
-  hotTags.value.length ? hotTags.value : ["项目投稿", "想法收集", "申请加入", "公开评论"],
+  hotTags.value.length ? hotTags.value : ["项目投稿", "想法收集", "制作中项目", "招募岗位"],
 );
+
+const projectCountHint = computed(() =>
+  approvedProjectCount.value
+    ? `已有 ${approvedProjectCount.value} 个项目通过审核`
+    : "暂无公开项目，投稿后会先进入后台审核",
+);
+
+// 顶部三张统计卡：标签与取值放在一起，模板直接 v-for 渲染
+const stats = computed(() => [
+  { label: "公开项目", value: approvedProjectCount.value },
+  { label: "公开想法", value: approvedIdeaCount.value },
+  { label: "招募岗位", value: openPositions.value },
+]);
 
 function buildHotTags(projects: Project[]) {
   const counts = new Map<string, number>();
@@ -287,31 +313,6 @@ h1 {
   flex-wrap: wrap;
   gap: 12px;
   margin-top: 28px;
-}
-
-.light::after,
-.icon-light::after {
-  left: 7px;
-  bottom: 1px;
-  width: 6px;
-  height: 4px;
-  border-top: 2px solid currentColor;
-  border-bottom: 2px solid currentColor;
-}
-
-.compass::before {
-  inset: 1px;
-  border: 2px solid currentColor;
-  border-radius: 50%;
-}
-
-.compass::after {
-  left: 7px;
-  top: 4px;
-  width: 4px;
-  height: 9px;
-  background: currentColor;
-  clip-path: polygon(50% 0, 100% 100%, 50% 78%, 0 100%);
 }
 
 .stats-grid {

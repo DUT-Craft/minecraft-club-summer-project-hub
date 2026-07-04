@@ -29,7 +29,7 @@ function normalizeAuthorization(token?: string | null) {
 }
 
 function getResponseCode(response: ApiResult<unknown>) {
-    const rawCode = response.code ?? response.status;
+    const rawCode = response.status;
     if (rawCode === null || rawCode === undefined) {
         return "";
     }
@@ -38,13 +38,12 @@ function getResponseCode(response: ApiResult<unknown>) {
 }
 
 function getResponseMessage(response: ApiResult<unknown>) {
-    return response.msg ?? response.message ?? "Request failed";
+    return response.message ?? "Request failed";
 }
 
 export const useHttp = () => {
     const authToken = useCookie<string | null>("chat_auth_token");
-    const runtimeConfig = useRuntimeConfig();
-    const apiBase = runtimeConfig.public.apiBase as string || "http://127.0.0.1:8080/api";
+    const apiBase = "http://127.0.0.1:8080/api";
 
     const http = createFetch({
         defaults: {

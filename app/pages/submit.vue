@@ -25,10 +25,15 @@
             <input v-model="projectForm.type" required placeholder="可自定义，例如 建筑 / 生电 / 活动" />
           </label>
           <label>
-            当前状态
-            <input v-model="projectForm.status" required placeholder="筹备中 / 招募中 / 进行中" />
+            标签
+            <input v-model="projectForm.tagsText" placeholder="用逗号分隔，例如 建筑,红石,生电" />
           </label>
         </div>
+
+        <label>
+          项目简介
+          <input v-model="projectForm.introduction" required placeholder="一句话概括这个项目" />
+        </label>
 
         <label>
           负责人昵称
@@ -36,7 +41,7 @@
         </label>
 
         <label>
-          项目介绍
+          项目详细介绍
           <textarea v-model="projectForm.description" required rows="7" placeholder="主要写这个项目想做什么、怎么玩、希望做成什么样。" />
         </label>
 
@@ -130,7 +135,8 @@ const newNeed = (): RecruitmentNeed => ({
 const projectForm = reactive({
   title: "",
   type: "",
-  status: "招募中",
+  tagsText: "",
+  introduction: "",
   ownerName: "",
   ownerMinecraftId: "",
   description: "",
@@ -163,7 +169,8 @@ const resetProject = () => {
   Object.assign(projectForm, {
     title: "",
     type: "",
-    status: "招募中",
+    tagsText: "",
+    introduction: "",
     ownerName: "",
     ownerMinecraftId: "",
     description: "",
@@ -173,11 +180,25 @@ const resetProject = () => {
   });
 };
 
+const parseTags = (text: string): string[] =>
+  text
+    .split(",")
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+
 const handleSubmitProject = async () => {
   try {
     submitting.value = true;
     await submitProject({
-      ...projectForm,
+      title: projectForm.title,
+      type: projectForm.type,
+      introduction: projectForm.introduction,
+      tags: parseTags(projectForm.tagsText),
+      ownerName: projectForm.ownerName,
+      ownerMinecraftId: projectForm.ownerMinecraftId,
+      description: projectForm.description,
+      publicContact: projectForm.publicContact,
+      ownerPassword: projectForm.ownerPassword,
       recruitmentNeeds: projectForm.recruitmentNeeds.map((need) => ({
         ...need,
         count: Number(need.count) || 1,

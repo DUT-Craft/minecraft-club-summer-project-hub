@@ -10,7 +10,7 @@
       </NuxtLink>
 
       <nav class="nav" aria-label="站点导航">
-        <n-button quaternary class="nav-item" @click="navigateTo('/projects/groud')">
+        <n-button quaternary class="nav-item" @click="navigateTo('/mall')">
           全部公开项目
         </n-button>
         <n-button quaternary class="nav-item" @click="navigateTo('/ideas')">

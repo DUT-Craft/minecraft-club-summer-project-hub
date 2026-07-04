@@ -71,11 +71,10 @@ export interface DataSnapshot {
 export interface SubmitProjectPayload {
   title: string;
   type: string;
-  status: string;
-  projectStatus?: string;
+  introduction?: string;
+  tags?: string[];
   ownerName: string;
   ownerMinecraftId: string;
-  submitterMinecraftId?: string;
   description: string;
   publicContact: string;
   ownerPassword: string;
