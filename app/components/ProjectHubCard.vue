@@ -2,7 +2,7 @@
   <article class="project-card">
     <div class="card-top">
       <span class="chip">{{ project.type || "未分类" }}</span>
-      <span class="chip muted">{{ project.status || "筹备中" }}</span>
+      <span class="chip muted">{{ formatProjectStatus(project.status) }}</span>
     </div>
     <h3>{{ project.title }}</h3>
     <p class="desc">{{ intro }}</p>

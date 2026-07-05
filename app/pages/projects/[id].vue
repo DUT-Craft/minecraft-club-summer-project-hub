@@ -167,22 +167,12 @@ import type { Project, ProjectComment, ProjectUpdate, RecruitmentNeed } from "~/
 
 definePageMeta({
   layout: false,
+  // 仅允许纯数字 id；非数字（如 /projects/abc）直接落到 404
+  validate: (to) => /^\d+$/.test(String(to.params.id)),
 });
 
 // 仅对外展示非隐藏状态的项目；PENDING / REJECTED / DELETED 视为不可见
 const HIDDEN_STATUSES = new Set(["PENDING", "REJECTED", "DELETED"]);
-
-// 后端 status 枚举（见 openapi.json）→ 前端展示文案
-const STATUS_LABEL: Record<string, string> = {
-  PENDING: "待审核",
-  APPROVED: "审核通过",
-  REJECTED: "审核未通过",
-  DELETED: "已删除",
-  RECRUITING: "招募中",
-  PREPARING: "筹备中",
-  IN_PROGRESS: "制作中",
-  PAUSED: "暂缓",
-};
 
 const route = useRoute();
 const message = useMessage();
@@ -225,7 +215,7 @@ const commentRules: FormRules = {
 // Minecraft 暖色主题（草地绿主色 + 羊皮纸卡片 + 木边输入），见 useMinecraftTheme
 const { themeOverrides, primaryGreen } = useMinecraftTheme();
 
-// route.params.id 来自文件名 project[id].vue
+// route.params.id 来自文件名 projects/[id].vue（已在 definePageMeta.validate 限制为纯数字）
 const projectId = computed(() => String(route.params.id));
 
 onMounted(async () => {
@@ -246,10 +236,8 @@ onMounted(async () => {
   loading.value = false;
 });
 
-const statusLabel = computed(() => {
-  const raw = project.value?.status?.toUpperCase();
-  return (raw && STATUS_LABEL[raw]) || "筹备中";
-});
+// 状态文案走共享映射（useProjectStatus），后端原始英文枚举仍保存在 project.value.status
+const statusLabel = computed(() => formatProjectStatus(project.value?.status));
 
 const needs = computed<RecruitmentNeed[]>(() => {
   const current = project.value;

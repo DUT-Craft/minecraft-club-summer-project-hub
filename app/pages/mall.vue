@@ -74,7 +74,11 @@ const toSelectOptions = (values: string[], allLabel: string) => [
   ...values.map((value) => ({ label: value, value })),
 ];
 const typeSelectOptions = computed(() => toSelectOptions(typeOptions.value, "全部类型"));
-const statusSelectOptions = computed(() => toSelectOptions(statusOptions.value, "全部状态"));
+// 状态下拉展示中文文案，value 仍是英文枚举，与 project.status 过滤匹配口径一致
+const statusSelectOptions = computed(() => [
+  { label: "全部状态", value: "" },
+  ...statusOptions.value.map((value) => ({ label: formatProjectStatus(value), value })),
+]);
 const skillSelectOptions = computed(() => toSelectOptions(skillOptions.value, "全部技能"));
 
 const filteredProjects = computed(() => {
@@ -87,6 +91,7 @@ const filteredProjects = computed(() => {
       project.summary,
       project.type,
       project.status,
+      formatProjectStatus(project.status),
       project.ownerName,
       ...skills,
     ].join(" ").toLowerCase();
