@@ -141,6 +141,8 @@ definePageMeta({
 const message = useMessage();
 const route = useRoute();
 const { submitProject, submitIdea } = useProjectHubApi();
+// 投稿成功后把项目信息 + 表单里的明文密码带到 /submit/success 做一次性展示
+const { write: writeSubmission } = useLastSubmission();
 const mode = ref<"project" | "idea">("project");
 const submitting = ref(false);
 
@@ -237,7 +239,7 @@ const handleSubmitProject = async () => {
   }
   try {
     submitting.value = true;
-    await submitProject({
+    const created = await submitProject({
       title: projectForm.title,
       type: projectForm.type,
       introduction: projectForm.introduction,
@@ -252,8 +254,15 @@ const handleSubmitProject = async () => {
         count: Number(need.count) || 1,
       })),
     });
-    message.success("项目已提交，等待管理员审核");
+    // 后端返回的 controlPassword 是密文无法回显，这里把表单里的明文密码连同
+    // 返回的项目信息存到 useLastSubmission，带到 /submit/success 做一次性展示
+    writeSubmission({
+      project: created,
+      ownerPassword: projectForm.ownerPassword,
+      submittedAt: new Date().toISOString(),
+    });
     resetProject();
+    await navigateTo("/submit/success");
   } catch (error) {
     message.error(error instanceof Error ? error.message : "提交失败，请确认后端接口是否已配置");
   } finally {

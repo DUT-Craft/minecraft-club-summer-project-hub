@@ -73,13 +73,25 @@
           </n-card>
 
           <n-card title="申请加入" :bordered="false">
+            <n-empty
+              v-if="!needs.length"
+              description="该项目暂未公开招工需求，暂时无法申请加入。"
+            />
             <n-form
+              v-else
               ref="joinFormRef"
               :model="joinForm"
               :rules="joinRules"
               label-placement="top"
               @submit.prevent="handleJoin"
             >
+              <n-form-item label="申请岗位" path="position">
+                <n-select
+                  v-model:value="joinForm.position"
+                  :options="positionOptions"
+                  placeholder="选择你想加入的岗位"
+                />
+              </n-form-item>
               <n-form-item label="昵称" path="nickname">
                 <n-input v-model:value="joinForm.nickname" placeholder="你的昵称" />
               </n-form-item>
@@ -215,6 +227,7 @@ const submittingJoin = ref(false);
 const submittingComment = ref(false);
 
 const joinForm = reactive({
+  position: "",
   nickname: "",
   minecraftId: "",
   contact: "",
@@ -230,6 +243,7 @@ const joinFormRef = ref<FormInst | null>(null);
 const commentFormRef = ref<FormInst | null>(null);
 
 const joinRules: FormRules = {
+  position: { required: true, message: "请选择申请岗位", trigger: ["change", "blur"] },
   nickname: { required: true, message: "请填写昵称", trigger: ["blur", "input"] },
   minecraftId: { required: true, message: "请填写 Minecraft ID", trigger: ["blur", "input"] },
   contact: { required: true, message: "请填写联系方式", trigger: ["blur", "input"] },
@@ -291,6 +305,14 @@ const totalSlots = computed(() =>
   needs.value.reduce((sum, need) => sum + (Number(need.count) || 0), 0),
 );
 
+// 申请加入表单的岗位下拉选项：只能从该项目招工需求里选
+const positionOptions = computed(() =>
+  needs.value.map((need) => ({
+    label: need.count > 0 ? `${need.skill} · 招 ${need.count} 人` : need.skill,
+    value: need.skill,
+  })),
+);
+
 const formatDate = (value: string) => value ? new Date(value).toLocaleString("zh-CN") : "未记录时间";
 
 // 评论头像：用昵称首字符 + 基于昵称哈希的 Minecraft 风格配色，给每条评论一点辨识度
@@ -326,12 +348,19 @@ const handleJoin = async () => {
   }
   try {
     submittingJoin.value = true;
+    // 后端 join-applications 请求体只有 nickName/mcId/contact/reason，没有岗位字段，
+    // 把选择的岗位拼到 reason 最前面，方便项目方审核时看到申请方向
+    const reason = `【申请岗位：${joinForm.position}】\n${joinForm.reason}`;
     await submitJoin({
       projectId: projectId.value,
-      ...joinForm,
+      nickname: joinForm.nickname,
+      minecraftId: joinForm.minecraftId,
+      contact: joinForm.contact,
+      reason,
     });
     message.success("申请已提交，等待项目发起者或管理员处理");
     Object.assign(joinForm, {
+      position: "",
       nickname: "",
       minecraftId: "",
       contact: "",
