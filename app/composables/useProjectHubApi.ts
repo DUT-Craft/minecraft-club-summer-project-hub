@@ -216,13 +216,17 @@ export const useProjectHubApi = () => {
     }
   };
 
-  // 首页公开展示：GET /api/project/minds?status=APPROVED
+  // 想法墙 / 首页公开展示：GET /api/project/minds?status=APPROVED（openapi.json）
+  // 接口已按 APPROVED 过滤；这里按创建时间倒序，方便页面直接渲染。
   const loadPublicIdeas = async (): Promise<Idea[]> => {
     try {
       const minds = await request<MindResponse[]>("/project/minds", {
         query: { status: "APPROVED" },
       });
-      return normalizeArray<MindResponse>(minds).map(mapMindToIdea).map(normalizeIdea);
+      return normalizeArray<MindResponse>(minds)
+        .map(mapMindToIdea)
+        .map(normalizeIdea)
+        .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
     } catch {
       return [];
     }

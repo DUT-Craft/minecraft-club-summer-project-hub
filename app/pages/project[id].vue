@@ -2,7 +2,7 @@
   <main class="mc-page">
     <MinecraftSiteHeader />
 
-    <n-config-provider :theme="null" :theme-overrides="panelThemeOverrides">
+    <n-config-provider :theme="null" :theme-overrides="themeOverrides">
       <div v-if="loading" class="loading-state">
         <n-spin size="large" />
       </div>
@@ -161,7 +161,7 @@
 </template>
 
 <script setup lang="ts">
-import type { FormInst, FormRules, GlobalThemeOverrides } from "naive-ui";
+import type { FormInst, FormRules } from "naive-ui";
 import type { Project, ProjectComment, ProjectUpdate, RecruitmentNeed } from "~/types/projectHub";
 
 
@@ -222,22 +222,8 @@ const commentRules: FormRules = {
   content: { required: true, message: "请填写评论内容", trigger: ["blur", "input"] },
 };
 
-// 让 Naive UI 组件在本页贴合 Minecraft 暖色风格：主色换成草地绿、卡片底色换成羊皮纸色。
-const primaryGreen = "#65a844";
-const panelThemeOverrides: GlobalThemeOverrides = {
-  common: {
-    primaryColor: primaryGreen,
-    primaryColorHover: "#76b850",
-    primaryColorPressed: "#54903a",
-    primaryColorSuppl: primaryGreen,
-  },
-  Card: {
-    color: "rgba(255, 245, 207, 0.94)",
-    titleTextColor: "#2d2418",
-    textColor: "#4f3924",
-    borderRadius: "10px",
-  },
-};
+// Minecraft 暖色主题（草地绿主色 + 羊皮纸卡片 + 木边输入），见 useMinecraftTheme
+const { themeOverrides, primaryGreen } = useMinecraftTheme();
 
 // route.params.id 来自文件名 project[id].vue
 const projectId = computed(() => String(route.params.id));

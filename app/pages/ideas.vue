@@ -2,55 +2,61 @@
   <main class="mc-page">
     <MinecraftSiteHeader />
 
-    <section class="page-head">
-      <div>
-        <p>Idea Wall</p>
-        <h1>想法墙</h1>
+    <n-config-provider :theme="null" :theme-overrides="themeOverrides">
+      <n-card class="page-head" :bordered="false">
+        <div class="head-info">
+          <span class="head-eyebrow">Idea Wall</span>
+          <h1>想法墙</h1>
+        </div>
+        <n-button size="large" type="primary" @click="navigateTo('/submit#idea')">
+          提交想法
+        </n-button>
+      </n-card>
+
+      <div v-if="ideas.length" class="idea-grid">
+        <n-card v-for="idea in ideas" :key="idea.id" class="idea-card" :bordered="false">
+          <span class="idea-date">{{ formatDate(idea.createdAt) }}</span>
+          <h2 class="idea-title">{{ idea.title }}</h2>
+          <p class="idea-content">{{ idea.content }}</p>
+          <strong class="idea-author">
+            {{ idea.nickname || "匿名同学" }}
+            <small v-if="idea.minecraftId">/ {{ idea.minecraftId }}</small>
+          </strong>
+        </n-card>
       </div>
-      <NuxtLink to="/submit#idea">提交想法</NuxtLink>
-    </section>
 
-    <section v-if="ideas.length" class="idea-grid">
-      <article v-for="idea in ideas" :key="idea.id" class="idea-card">
-        <span>{{ formatDate(idea.createdAt) }}</span>
-        <h2>{{ idea.title }}</h2>
-        <p>{{ idea.content }}</p>
-        <strong>{{ idea.nickname || "匿名同学" }} <small v-if="idea.minecraftId">/ {{ idea.minecraftId }}</small></strong>
-      </article>
-    </section>
-
-    <MinecraftEmptyState
-      v-else
-      class="empty-space"
-      title="想法墙还没有公开内容"
-    >
-      <NuxtLink class="inline-action" to="/submit#idea">提交想法</NuxtLink>
-    </MinecraftEmptyState>
+      <n-empty
+        v-else
+        class="empty-space"
+        description="想法墙还没有公开内容"
+      >
+        <template #extra>
+          <n-button type="primary" @click="navigateTo('/submit#idea')">提交想法</n-button>
+        </template>
+      </n-empty>
+    </n-config-provider>
   </main>
 </template>
 
 <script setup lang="ts">
-import type { DataSnapshot } from "~/types/projectHub";
+import type { Idea } from "~/types/projectHub";
+
 
 definePageMeta({
   layout: false,
 });
 
-const { loadSnapshot } = useProjectHubApi();
-const snapshot = ref<DataSnapshot>({
-  projects: [],
-  ideas: [],
-  projectUpdates: [],
-  projectComments: [],
-});
+// 数据源：GET /api/project/minds?status=APPROVED（openapi.json）
+// 接口已按 APPROVED 过滤、组合式函数内已按创建时间倒序，页面直接渲染即可。
+const { loadPublicIdeas } = useProjectHubApi();
+const ideas = ref<Idea[]>([]);
 
 onMounted(async () => {
-  snapshot.value = await loadSnapshot();
+  ideas.value = await loadPublicIdeas();
 });
 
-const ideas = computed(() => snapshot.value.ideas
-  .filter((item) => item.reviewStatus === "approved")
-  .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)));
+// Minecraft 暖色主题（草地绿主色 + 羊皮纸卡片），见 useMinecraftTheme
+const { themeOverrides } = useMinecraftTheme();
 
 const formatDate = (value: string) => value ? new Date(value).toLocaleDateString("zh-CN") : "未记录日期";
 </script>
@@ -75,47 +81,31 @@ const formatDate = (value: string) => value ? new Date(value).toLocaleDateString
   margin: 22px auto 0;
 }
 
-.page-head {
-  display: flex;
-  justify-content: space-between;
-  gap: 14px;
-  align-items: center;
-  padding: 22px;
+/* 把 Naive UI 卡片包成 Minecraft 风格的木边面板 */
+:deep(.n-card) {
   border: 2px solid #5a3a21;
-  border-radius: 10px;
-  background: rgba(255, 245, 207, 0.93);
   box-shadow: 0 6px 0 #5a3a21;
 }
 
-.page-head p,
-.page-head h1 {
-  margin: 0;
+.page-head :deep(.n-card__content) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
 }
 
-.page-head p {
+.head-eyebrow {
+  display: block;
   color: #6b8f32;
   font-weight: 900;
+  font-size: 13px;
 }
 
-.page-head h1 {
+.head-info h1 {
+  margin: 6px 0 0;
   font-size: clamp(32px, 4vw, 52px);
-}
-
-.page-head a,
-.inline-action {
-  padding: 10px 14px;
-  border: 2px solid #5a3a21;
-  border-radius: 8px;
-  background: #65a844;
-  color: #fffbe4;
-  text-decoration: none;
-  font-weight: 900;
-  box-shadow: 0 4px 0 #5a3a21;
-}
-
-.inline-action {
-  display: inline-flex;
-  margin-top: 12px;
+  line-height: 1.08;
+  color: #2d2418;
 }
 
 .idea-grid {
@@ -124,45 +114,40 @@ const formatDate = (value: string) => value ? new Date(value).toLocaleDateString
   gap: 16px;
 }
 
-.idea-card {
-  padding: 18px;
-  border: 2px solid #5a3a21;
-  border-radius: 10px;
-  background: #fff5cf;
-  box-shadow: 0 6px 0 #5a3a21;
-}
-
-.idea-card span {
+.idea-date {
+  display: block;
   color: #6b8f32;
   font-size: 13px;
   font-weight: 900;
 }
 
-.idea-card h2 {
+.idea-title {
   margin: 8px 0 10px;
   font-size: 22px;
+  color: #2d2418;
 }
 
-.idea-card p {
+.idea-content {
   margin: 0;
   color: #60462b;
   line-height: 1.75;
   white-space: pre-wrap;
 }
 
-.idea-card strong {
+.idea-author {
   display: block;
   margin-top: 16px;
+  color: #2d2418;
 }
 
-.idea-card small {
+.idea-author small {
   color: #795b36;
 }
 
 @media (width <= 680px) {
-  .page-head {
-    align-items: flex-start;
+  .page-head :deep(.n-card__content) {
     flex-direction: column;
+    align-items: flex-start;
   }
 }
 </style>
