@@ -31,20 +31,27 @@
           </n-card>
 
           <n-card title="招工需求" :bordered="false">
+            <template v-if="needs.length" #header-extra>
+              <n-tag :bordered="false" size="small" round class="needs-count">
+                共 {{ totalSlots }} 个名额
+              </n-tag>
+            </template>
             <n-empty v-if="!needs.length" description="这个项目暂时没有公开招工需求。" />
-            <n-list v-else hoverable>
-              <n-list-item v-for="need in needs" :key="need.id || need.skill">
-                <n-thing>
-                  <template #header>
-                    <span class="need-skill">{{ need.skill }}</span>
-                  </template>
-                  <template #header-extra>
-                    <n-tag :bordered="false" size="small">{{ need.count }} 人</n-tag>
-                  </template>
-                  <p class="need-work">{{ need.work }}</p>
-                </n-thing>
-              </n-list-item>
-            </n-list>
+            <div v-else class="need-list">
+              <article
+                v-for="need in needs"
+                :key="need.id || need.skill"
+                class="need-card"
+              >
+                <div class="need-card-head">
+                  <span class="need-skill">{{ need.skill }}</span>
+                  <n-tag :bordered="false" size="small" round class="need-count">
+                    招 {{ need.count }} 人
+                  </n-tag>
+                </div>
+                <p class="need-work">{{ need.work }}</p>
+              </article>
+            </div>
           </n-card>
         </div>
 
@@ -100,8 +107,19 @@
         <n-card class="comments-panel" :bordered="false">
           <template #header>
             <div class="comments-head">
-              <span class="comments-eyebrow">Public Comments</span>
-              <h2>项目评论 / 建议</h2>
+              <div class="comments-titles">
+                <span class="comments-eyebrow">Public Comments</span>
+                <h2>项目评论 / 建议</h2>
+              </div>
+              <n-tag
+                v-if="comments.length"
+                :bordered="false"
+                size="small"
+                round
+                class="comments-count"
+              >
+                {{ comments.length }} 条
+              </n-tag>
             </div>
           </template>
 
@@ -114,7 +132,7 @@
             @submit.prevent="handleComment"
           >
             <n-form-item path="nickname">
-              <n-input v-model:value="commentForm.nickname" placeholder="昵称" />
+              <n-input v-model:value="commentForm.nickname" placeholder="你的昵称" />
             </n-form-item>
             <n-form-item path="content">
               <n-input
@@ -124,25 +142,36 @@
                 placeholder="给项目组留下一条建议"
               />
             </n-form-item>
-            <n-button type="primary" attr-type="submit" :loading="submittingComment">
-              {{ submittingComment ? "提交中..." : "发表评论" }}
-            </n-button>
+            <div class="comment-form-actions">
+              <span class="comment-form-hint">审核通过后将公开展示</span>
+              <n-button type="primary" attr-type="submit" :loading="submittingComment">
+                {{ submittingComment ? "提交中..." : "发表评论" }}
+              </n-button>
+            </div>
           </n-form>
 
           <n-empty v-if="!comments.length" description="还没有评论，可以先给这个项目提一个想法。" />
-          <n-list v-else class="comment-list">
-            <n-list-item v-for="comment in comments" :key="comment.id">
-              <n-thing>
-                <template #header>
+          <div v-else class="comment-list">
+            <article
+              v-for="comment in comments"
+              :key="comment.id"
+              class="comment-card"
+            >
+              <div
+                class="comment-avatar"
+                :style="{ background: avatarColor(comment.nickname) }"
+              >
+                {{ avatarLetter(comment.nickname) }}
+              </div>
+              <div class="comment-body">
+                <div class="comment-meta">
                   <span class="comment-author">{{ comment.nickname || "匿名访客" }}</span>
-                </template>
-                <template #header-extra>
                   <span class="comment-time">{{ formatDate(comment.createdAt) }}</span>
-                </template>
+                </div>
                 <p class="comment-text">{{ comment.content }}</p>
-              </n-thing>
-            </n-list-item>
-          </n-list>
+              </div>
+            </article>
+          </div>
         </n-card>
       </template>
 
@@ -257,7 +286,37 @@ const needs = computed<RecruitmentNeed[]>(() => {
   }));
 });
 
+// 招工总名额：把每条 need.count 相加，给卡片头部做一个汇总徽标
+const totalSlots = computed(() =>
+  needs.value.reduce((sum, need) => sum + (Number(need.count) || 0), 0),
+);
+
 const formatDate = (value: string) => value ? new Date(value).toLocaleString("zh-CN") : "未记录时间";
+
+// 评论头像：用昵称首字符 + 基于昵称哈希的 Minecraft 风格配色，给每条评论一点辨识度
+const AVATAR_COLORS = [
+  "#6b8f32", // 草地绿
+  "#7a5a36", // 木板棕
+  "#a6732b", // 琥珀
+  "#3f6e94", // 水
+  "#963c30", // 红石
+  "#6a4ea0", // 紫水晶
+  "#2f6b56", // 青苔
+];
+
+const avatarLetter = (name?: string) => {
+  const trimmed = (name || "").trim();
+  return trimmed ? trimmed.charAt(0).toUpperCase() : "?";
+};
+
+const avatarColor = (name?: string) => {
+  const source = (name || "").trim() || "匿名访客";
+  let hash = 0;
+  for (let i = 0; i < source.length; i += 1) {
+    hash = (hash * 31 + source.charCodeAt(i)) >>> 0;
+  }
+  return AVATAR_COLORS[hash % AVATAR_COLORS.length];
+};
 
 const handleJoin = async () => {
   try {
@@ -353,7 +412,7 @@ const handleComment = async () => {
 
 .detail-hero :deep(.n-card__content) {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
   gap: 16px;
 }
@@ -394,14 +453,13 @@ const handleComment = async () => {
   margin-right: 4px;
 }
 
-.need-skill,
-.comment-author {
+.need-skill {
   font-weight: 900;
   color: #2d2418;
+  font-size: 17px;
 }
 
 .need-work,
-.comment-text,
 .update-content {
   margin: 0;
   color: #60462b;
@@ -409,10 +467,56 @@ const handleComment = async () => {
   white-space: pre-wrap;
 }
 
-.comment-time {
-  color: #795b36;
-  font-size: 13px;
-  font-weight: 700;
+.needs-count {
+  background: #fff8df;
+  color: #5a3a21;
+  font-weight: 800;
+}
+
+/* 招工需求列表：每条做成左侧带绿条强调的羊皮纸便签 */
+.need-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.need-card {
+  position: relative;
+  padding: 14px 16px 14px 20px;
+  border: 2px solid #8b6a3d;
+  border-radius: 10px;
+  background: #fff8df;
+  box-shadow: 0 3px 0 rgba(90, 58, 33, 0.18);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  overflow: hidden;
+}
+
+.need-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 5px;
+  background: #6b8f32;
+}
+
+.need-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 0 rgba(90, 58, 33, 0.22);
+}
+
+.need-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.need-count {
+  background: #6b8f32;
+  color: #fff8df;
+  font-weight: 800;
+  white-space: nowrap;
 }
 
 .update-image {
@@ -426,6 +530,13 @@ const handleComment = async () => {
 
 .comments-head {
   display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.comments-titles {
+  display: flex;
   flex-direction: column;
   gap: 4px;
 }
@@ -434,6 +545,7 @@ const handleComment = async () => {
   color: #6b8f32;
   font-weight: 900;
   font-size: 13px;
+  letter-spacing: 0.08em;
 }
 
 .comments-head h2 {
@@ -441,20 +553,109 @@ const handleComment = async () => {
   color: #2d2418;
 }
 
+.comments-count {
+  background: #fff8df;
+  color: #5a3a21;
+  font-weight: 800;
+}
+
+/* 评论输入区：用虚线木边把表单圈成一张便签 */
 .comment-form {
-  display: grid;
-  grid-template-columns: minmax(150px, 0.22fr) minmax(240px, 1fr) auto;
-  gap: 12px;
-  align-items: start;
-  margin: 0 0 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0 0 20px;
+  padding: 16px;
+  border: 2px dashed #8b6a3d;
+  border-radius: 10px;
+  background: rgba(255, 248, 223, 0.55);
 }
 
 .comment-form :deep(.n-form-item) {
   margin-bottom: 0;
 }
 
+.comment-form-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.comment-form-hint {
+  color: #795b36;
+  font-size: 13px;
+}
+
+/* 评论列表：每条评论做成带头像的羊皮纸卡片 */
 .comment-list {
-  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.comment-card {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 12px;
+  padding: 14px 16px;
+  border: 2px solid #8b6a3d;
+  border-radius: 10px;
+  background: #fff8df;
+  box-shadow: 0 3px 0 rgba(90, 58, 33, 0.18);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.comment-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 0 rgba(90, 58, 33, 0.22);
+}
+
+.comment-avatar {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 2px solid #2d2418;
+  border-radius: 8px;
+  color: #fff8df;
+  font-weight: 900;
+  font-size: 20px;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.25);
+  user-select: none;
+}
+
+.comment-body {
+  min-width: 0;
+}
+
+.comment-meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.comment-author {
+  font-weight: 900;
+  color: #2d2418;
+}
+
+.comment-time {
+  color: #795b36;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.comment-text {
+  margin: 0;
+  color: #4f3924;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .empty-subtext {
@@ -469,9 +670,13 @@ const handleComment = async () => {
     align-items: flex-start;
   }
 
-  .layout,
-  .comment-form {
+  .layout {
     grid-template-columns: 1fr;
+  }
+
+  .comment-meta {
+    flex-direction: column;
+    gap: 2px;
   }
 }
 </style>

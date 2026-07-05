@@ -19,6 +19,9 @@
         <n-button quaternary class="nav-item" @click="navigateTo('/submit')">
           投稿
         </n-button>
+        <n-button quaternary class="nav-item" @click="navigateTo('/submit')">
+          项目管理后台
+        </n-button>
       </nav>
     </div>
   </header>

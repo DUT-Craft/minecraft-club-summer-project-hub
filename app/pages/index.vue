@@ -1,127 +1,129 @@
 <template>
   <main class="hub-page">
-    <MinecraftHomeHeader />
+    <MinecraftSiteHeader />
 
-    <section class="grid-paper">
-      <div class="wide-shell hero-shell">
-        <section class="hero-copy">
-          <n-tag class="hero-chip" type="info" :bordered="false">
-            暑假共创 / 审核后公开展示
-          </n-tag>
-
-          <h1>Minecraft 暑假共创项目站</h1>
-          <p class="lead">
-            集中展示社团项目、收集玩法灵感、处理加入申请。公开内容由管理员审核后展示。
-          </p>
-
-          <div class="tag-row" :aria-label="hotTags.length ? '公开项目标签' : '站点入口'">
-            <n-tag
-              v-for="tag in heroTags"
-              :key="tag"
-              type="success"
-              size="small"
-            >
-              {{ tag }}
+    <n-config-provider :theme="null" :theme-overrides="themeOverrides">
+      <section class="grid-paper">
+        <div class="wide-shell hero-shell">
+          <section class="hero-copy">
+            <n-tag class="hero-chip" type="info" :bordered="false">
+              暑假共创 / 审核后公开展示
             </n-tag>
-          </div>
 
-          <div class="actions">
-            <n-button
-              v-for="action in heroActions"
-              :key="action.to"
-              :type="action.primary ? 'primary' : 'default'"
-              size="large"
-              @click="navigateTo(action.to)"
+            <h1>Minecraft 暑假共创项目站</h1>
+            <p class="lead">
+              集中展示社团项目、收集玩法灵感、处理加入申请。公开内容由管理员审核后展示。
+            </p>
+
+            <div class="tag-row" :aria-label="hotTags.length ? '公开项目标签' : '站点入口'">
+              <n-tag
+                v-for="tag in heroTags"
+                :key="tag"
+                type="success"
+                size="small"
+              >
+                {{ tag }}
+              </n-tag>
+            </div>
+
+            <div class="actions">
+              <n-button
+                v-for="action in heroActions"
+                :key="action.to"
+                :type="action.primary ? 'primary' : 'default'"
+                size="large"
+                @click="navigateTo(action.to)"
+              >
+                {{ action.label }}
+              </n-button>
+            </div>
+
+            <div class="stats-grid">
+              <n-card v-for="stat in stats" :key="stat.label" class="stat" size="small">
+                <n-statistic :label="stat.label" :value="stat.value" />
+              </n-card>
+            </div>
+          </section>
+
+          <section class="hero-art-wrap">
+            <figure class="hero-art">
+              <n-image
+                preview-disabled
+                class="hero-image"
+                src="/assets/catgirl-concepts/catgirl-sky-island.png"
+                alt="像素方块风格的猫娘社成员在空岛基地整理项目计划"
+              />
+              <figcaption>
+                空岛基地已开工 · 暑假共创招募中
+              </figcaption>
+            </figure>
+
+            <div class="mini-grid">
+              <n-card class="mini-card" size="small">
+                <strong>真实公开数据</strong>
+                <span>{{ projectCountHint }}</span>
+              </n-card>
+              <n-card class="mini-card" size="small">
+                <strong>审核说明</strong>
+                <span>投稿会先进入后台，公开页面只展示通过审核的项目和想法</span>
+              </n-card>
+            </div>
+          </section>
+        </div>
+
+        <div class="wide-shell portal-section">
+          <section class="portal-grid">
+            <NuxtLink
+              v-for="entry in portalEntries"
+              :key="entry.to"
+              :to="entry.to"
+              class="portal-card-link"
             >
-              {{ action.label }}
-            </n-button>
-          </div>
+              <n-card class="portal-card" size="small" :content-style="'padding: 0;'">
+                <span class="portal-image">
+                  <n-image preview-disabled :src="entry.image" :alt="entry.title" />
+                  <n-tag class="portal-kicker" type="warning" size="small">{{ entry.kicker }}</n-tag>
+                </span>
+                <span class="portal-body">
+                  <span class="portal-head">
+                    <strong>{{ entry.title }}</strong>
+                    <n-tag class="portal-icon" size="small" round>
+                      {{ entry.action }}
+                    </n-tag>
+                  </span>
+                  <span class="portal-text">{{ entry.text }}</span>
+                  <n-button text type="primary" class="portal-action">{{ entry.action }}</n-button>
+                </span>
+              </n-card>
+            </NuxtLink>
+          </section>
 
-          <div class="stats-grid">
-            <n-card v-for="stat in stats" :key="stat.label" class="stat" size="small">
-              <n-statistic :label="stat.label" :value="stat.value" />
-            </n-card>
-          </div>
-        </section>
-
-        <section class="hero-art-wrap">
-          <figure class="hero-art">
+          <section class="future-panel">
             <n-image
               preview-disabled
-              class="hero-image"
-              src="/assets/catgirl-concepts/catgirl-sky-island.png"
-              alt="像素方块风格的猫娘社成员在空岛基地整理项目计划"
+              class="future-image"
+              src="/assets/catgirl-concepts/catgirl-cave-adventure.png"
+              alt="像素方块风格的猫娘社成员在洞穴中探索矿物和新路线"
             />
-            <figcaption>
-              空岛基地已开工 · 暑假共创招募中
-            </figcaption>
-          </figure>
+            <div class="future-overlay" />
+            <div class="future-copy">
+              <n-tag class="future-chip" type="warning" size="small">
+                下一步扩展
+              </n-tag>
+              <h2>后续可以把每周活动、长期组队和服务器玩法继续接进来</h2>
+              <p>
+                首页先保持入口清楚：看项目、交项目、看想法。等服务器主站功能确定后，可以继续把活动置顶、长期玩法和在线状态做成同一套方块面板。
+              </p>
+              <n-button class="future-button" size="large" @click="navigateTo('/submit#idea')">
+                先提交一个点子
+              </n-button>
+            </div>
+          </section>
+        </div>
 
-          <div class="mini-grid">
-            <n-card class="mini-card" size="small">
-              <strong>真实公开数据</strong>
-              <span>{{ projectCountHint }}</span>
-            </n-card>
-            <n-card class="mini-card" size="small">
-              <strong>审核说明</strong>
-              <span>投稿会先进入后台，公开页面只展示通过审核的项目和想法</span>
-            </n-card>
-          </div>
-        </section>
-      </div>
-
-      <div class="wide-shell portal-section">
-        <section class="portal-grid">
-          <NuxtLink
-            v-for="entry in portalEntries"
-            :key="entry.to"
-            :to="entry.to"
-            class="portal-card-link"
-          >
-            <n-card class="portal-card" size="small" :content-style="'padding: 0;'">
-              <span class="portal-image">
-                <n-image preview-disabled :src="entry.image" :alt="entry.title" />
-                <n-tag class="portal-kicker" type="warning" size="small">{{ entry.kicker }}</n-tag>
-              </span>
-              <span class="portal-body">
-                <span class="portal-head">
-                  <strong>{{ entry.title }}</strong>
-                  <n-tag class="portal-icon" size="small" round>
-                    {{ entry.action }}
-                  </n-tag>
-                </span>
-                <span class="portal-text">{{ entry.text }}</span>
-                <n-button text type="primary" class="portal-action">{{ entry.action }}</n-button>
-              </span>
-            </n-card>
-          </NuxtLink>
-        </section>
-
-        <section class="future-panel">
-          <n-image
-            preview-disabled
-            class="future-image"
-            src="/assets/catgirl-concepts/catgirl-cave-adventure.png"
-            alt="像素方块风格的猫娘社成员在洞穴中探索矿物和新路线"
-          />
-          <div class="future-overlay" />
-          <div class="future-copy">
-            <n-tag class="future-chip" type="warning" size="small">
-              下一步扩展
-            </n-tag>
-            <h2>后续可以把每周活动、长期组队和服务器玩法继续接进来</h2>
-            <p>
-              首页先保持入口清楚：看项目、交项目、看想法。等服务器主站功能确定后，可以继续把活动置顶、长期玩法和在线状态做成同一套方块面板。
-            </p>
-            <n-button class="future-button" size="large" @click="navigateTo('/submit#idea')">
-              先提交一个点子
-            </n-button>
-          </div>
-        </section>
-      </div>
-
-      <div class="grass-strip" />
-    </section>
+        <div class="grass-strip" />
+      </section>
+    </n-config-provider>
   </main>
 </template>
 
@@ -132,6 +134,10 @@ import type {Project} from "~/types/projectHub";
 definePageMeta({
   layout: false,
 });
+
+// Minecraft 暖色主题（草地绿主色 + 羊皮纸卡片 + 木边输入），见 useMinecraftTheme。
+// app.vue 是全局暗色主题，这里用局部 n-config-provider 切回浅色，与 mall / submit 等页一致。
+const { themeOverrides } = useMinecraftTheme();
 
 // 数据源对应 openapi.json：
 // - 公开项目列表：GET /api/project/object-items?status=IN_PROGRESS（用于汇总标签和招募岗位）
@@ -239,23 +245,33 @@ function buildHotTags(projects: Project[]) {
 </script>
 
 <style scoped>
+/* 与 mall / submit / ideas 等页一致的浅色网格底：蓝白格子 + 暖色光晕 */
 .hub-page {
   min-height: 100dvh;
-  color: rgba(255, 255, 255, 0.82);
-  background: #101014;
+  padding-bottom: 24px;
+  color: #4f3924;
+  background:
+    radial-gradient(circle at 80% 8%, rgba(255, 215, 101, 0.44), transparent 21%),
+    linear-gradient(rgba(97, 153, 202, 0.17) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(97, 153, 202, 0.17) 1px, transparent 1px),
+    #dff0ff;
+  background-size: auto, 26px 26px, 26px 26px, auto;
 }
 
 .grid-paper {
   position: relative;
   overflow: hidden;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  background:
-    radial-gradient(circle at 18% 12%, rgba(64, 128, 255, 0.10), transparent 21rem),
-    radial-gradient(circle at 78% 18%, rgba(255, 200, 120, 0.06), transparent 26rem),
-    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px),
-    #101014;
-  background-size: auto, auto, 22px 22px, 22px 22px, auto;
+}
+
+/* 站点头部默认 1180px，首页内容区是 1360px，这里把头部拉到与 .wide-shell 同宽对齐 */
+:deep(.mc-header) {
+  width: min(1360px, calc(100% - 32px));
+}
+
+/* 统一给 Naive UI 卡片加上木边 + 偏移阴影，和 mall / submit 等页保持同一套卡片语言 */
+:deep(.n-card) {
+  border: 2px solid #5a3a21;
+  box-shadow: 0 4px 0 rgba(90, 58, 33, 0.45);
 }
 
 .wide-shell {
@@ -284,9 +300,9 @@ function buildHotTags(projects: Project[]) {
 h1 {
   max-width: 9.6em;
   margin: 0;
-  color: rgba(255, 255, 255, 0.92);
+  color: #2d2418;
   font-size: clamp(48px, 5.9vw, 86px);
-  font-weight: 800;
+  font-weight: 900;
   line-height: 0.96;
   letter-spacing: 0;
 }
@@ -294,9 +310,9 @@ h1 {
 .lead {
   max-width: 590px;
   margin: 20px 0 0;
-  color: rgba(255, 255, 255, 0.62);
+  color: #60462b;
   font-size: clamp(16px, 1.35vw, 19px);
-  font-weight: 400;
+  font-weight: 500;
   line-height: 1.72;
 }
 
@@ -335,9 +351,10 @@ h1 {
   position: relative;
   overflow: hidden;
   margin: 0;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 8px;
-  background: #18181c;
+  border: 2px solid #5a3a21;
+  border-radius: 10px;
+  background: #fff8df;
+  box-shadow: 0 6px 0 rgba(90, 58, 33, 0.5);
 }
 
 .hero-image,
@@ -358,14 +375,14 @@ h1 {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 2px solid #5a3a21;
   border-radius: 8px;
-  background: rgba(24, 24, 28, 0.82);
+  background: rgba(255, 248, 223, 0.94);
   backdrop-filter: blur(8px);
   padding: 9px 12px;
-  color: rgba(255, 255, 255, 0.82);
+  color: #4f3924;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 800;
 }
 
 .mini-grid {
@@ -377,18 +394,18 @@ h1 {
 
 .mini-card strong {
   display: block;
-  color: rgba(255, 255, 255, 0.9);
+  color: #2d2418;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 900;
   line-height: 1.3;
 }
 
 .mini-card span {
   display: block;
   margin-top: 6px;
-  color: rgba(255, 255, 255, 0.52);
+  color: #795b36;
   font-size: 12px;
-  font-weight: 400;
+  font-weight: 500;
   line-height: 1.65;
 }
 
@@ -403,21 +420,21 @@ h1 {
 }
 
 .portal-card-link {
-  color: rgba(255, 255, 255, 0.82);
+  color: #4f3924;
   text-decoration: none;
 }
 
 .portal-card {
   display: grid;
   overflow: hidden;
-  background: transparent;
-  color: rgba(255, 255, 255, 0.82);
+  color: #4f3924;
   text-decoration: none;
-  transition: transform 160ms ease;
+  transition: transform 160ms ease, box-shadow 160ms ease;
 }
 
 .portal-card-link:hover .portal-card {
   transform: translateY(-4px);
+  box-shadow: 0 8px 0 rgba(90, 58, 33, 0.5);
 }
 
 .portal-image {
@@ -425,8 +442,7 @@ h1 {
   display: block;
   height: clamp(160px, 16vw, 260px);
   overflow: hidden;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  background: #18181c;
+  background: #fff8df;
 }
 
 .portal-image :deep(.n-image),
@@ -462,9 +478,9 @@ h1 {
 }
 
 .portal-head strong {
-  color: rgba(255, 255, 255, 0.92);
+  color: #2d2418;
   font-size: 20px;
-  font-weight: 700;
+  font-weight: 900;
   line-height: 1.25;
 }
 
@@ -474,9 +490,9 @@ h1 {
 
 .portal-text {
   min-height: 56px;
-  color: rgba(255, 255, 255, 0.52);
+  color: #795b36;
   font-size: 14px;
-  font-weight: 400;
+  font-weight: 500;
   line-height: 1.75;
 }
 
@@ -489,7 +505,7 @@ h1 {
 }
 
 .portal-action::after {
-  content: "->";
+  content: "→";
 }
 
 .future-panel {
@@ -497,9 +513,10 @@ h1 {
   min-height: 320px;
   overflow: hidden;
   margin-top: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 8px;
-  background: #18181c;
+  border: 2px solid #5a3a21;
+  border-radius: 10px;
+  background: #fff8df;
+  box-shadow: 0 6px 0 rgba(90, 58, 33, 0.5);
 }
 
 .future-image,
@@ -513,17 +530,18 @@ h1 {
   object-position: center 48%;
 }
 
+/* 浅色版遮罩：左侧羊皮纸实底托住深色文字，右侧渐隐露出底图 */
 .future-overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg, rgba(16, 16, 20, 0.94), rgba(16, 16, 20, 0.62) 48%, rgba(16, 16, 20, 0.08));
+  background: linear-gradient(90deg, rgba(255, 248, 223, 0.96), rgba(255, 248, 223, 0.74) 48%, rgba(255, 248, 223, 0.12));
 }
 
 .future-copy {
   position: relative;
   max-width: 640px;
   padding: 28px;
-  color: rgba(255, 255, 255, 0.82);
+  color: #4f3924;
 }
 
 .future-chip {
@@ -532,18 +550,18 @@ h1 {
 
 .future-copy h2 {
   margin: 0;
-  color: rgba(255, 255, 255, 0.92);
+  color: #2d2418;
   font-size: clamp(28px, 3vw, 45px);
-  font-weight: 700;
+  font-weight: 900;
   line-height: 1.12;
 }
 
 .future-copy p {
   max-width: 560px;
   margin: 14px 0 0;
-  color: rgba(255, 255, 255, 0.62);
+  color: #60462b;
   font-size: 16px;
-  font-weight: 400;
+  font-weight: 500;
   line-height: 1.75;
 }
 
@@ -551,10 +569,13 @@ h1 {
   margin-top: 18px;
 }
 
+/* 底部草地块，呼应 Minecraft 草方块顶面 */
 .grass-strip {
-  height: 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  background: rgba(255, 255, 255, 0.03);
+  height: 14px;
+  margin-top: 8px;
+  border-top: 2px solid #2d2418;
+  border-bottom: 2px solid #2d2418;
+  background: linear-gradient(#76b850, #54903a);
 }
 
 @media (width <= 1020px) {
