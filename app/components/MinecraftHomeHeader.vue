@@ -1,7 +1,7 @@
 <template>
   <header class="site-header">
     <div class="wide-shell header-inner">
-      <NuxtLink to="/app/pages" class="brand">
+      <NuxtLink to="/" class="brand">
         <span class="brand-mark" aria-hidden="true">猫</span>
         <span class="brand-copy">
           <strong>猫娘社</strong>

@@ -9,14 +9,16 @@
         </div>
       </div>
 
-      <n-menu
-        mode="horizontal"
-        :options="menuOptions"
-        :value="activeMenuKey"
-        responsive
-        class="top-menu"
-        @update:value="handleMenuSelect"
-      />
+      <ClientOnly>
+        <n-menu
+          mode="horizontal"
+          :options="menuOptions"
+          :value="activeMenuKey"
+          responsive
+          class="top-menu"
+          @update:value="handleMenuSelect"
+        />
+      </ClientOnly>
     </n-layout-header>
 
     <n-layout-content class="app-content">
