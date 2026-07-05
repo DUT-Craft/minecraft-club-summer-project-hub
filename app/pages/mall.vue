@@ -63,7 +63,9 @@ const projectSkills = (project: Project) => {
 };
 
 const typeOptions = computed(() => [...new Set(projects.value.map((item) => item.type).filter(Boolean))]);
-const statusOptions = computed(() => [...new Set(projects.value.map((item) => item.status).filter(Boolean))]);
+const statusOptions = computed(() => [
+  ...new Set(projects.value.map((item) => item.status).filter((value): value is string => Boolean(value))),
+]);
 const skillOptions = computed(() => [...new Set(projects.value.flatMap(projectSkills).filter(Boolean))]);
 
 // n-select 需要 { label, value } 形式的选项；首项 value="" 代表"全部"，与原 <option value=""> 行为一致
