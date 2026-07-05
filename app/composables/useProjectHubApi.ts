@@ -217,12 +217,12 @@ export const useProjectHubApi = () => {
   };
 
   // 想法墙 / 首页公开展示：GET /api/project/minds?status=APPROVED（openapi.json）
-  // 接口已按 APPROVED 过滤；这里按创建时间倒序，方便页面直接渲染。
+  // 接口已按 APPROVED 过滤；走统一 http 客户端（useHttp）拉取 ApiResult<MindVO[]> 并解包，
+  // 与 loadApprovedIdeaCount / loadPublicProjectCatalog 等公开查询保持同一调用口径。
+  // 这里再按创建时间倒序，方便页面直接渲染。
   const loadPublicIdeas = async (): Promise<Idea[]> => {
     try {
-      const minds = await request<MindResponse[]>("/project/minds", {
-        query: { status: "APPROVED" },
-      });
+      const minds = await get<MindResponse[]>("/project/minds", { status: "APPROVED" });
       return normalizeArray<MindResponse>(minds)
         .map(mapMindToIdea)
         .map(normalizeIdea)

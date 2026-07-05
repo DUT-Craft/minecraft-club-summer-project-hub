@@ -7,6 +7,7 @@
         <div class="head-info">
           <span class="head-eyebrow">Idea Wall</span>
           <h1>想法墙</h1>
+          <span v-if="approvedIdeaCount" class="head-count">已公开 {{ approvedIdeaCount }} 条</span>
         </div>
         <n-button size="large" type="primary" @click="navigateTo('/submit#idea')">
           提交想法
@@ -46,13 +47,21 @@ definePageMeta({
   layout: false,
 });
 
-// 数据源：GET /api/project/minds?status=APPROVED（openapi.json）
-// 接口已按 APPROVED 过滤、组合式函数内已按创建时间倒序，页面直接渲染即可。
-const { loadPublicIdeas } = useProjectHubApi();
+// 数据源（openapi.json）：
+// - 想法列表：GET /api/project/minds?status=APPROVED（已按 APPROVED 过滤，组合式函数内按创建时间倒序）
+// - 想法总数：GET /api/project/minds/count/approved（用于头部统计）
+const { loadPublicIdeas, loadApprovedIdeaCount } = useProjectHubApi();
 const ideas = ref<Idea[]>([]);
+const approvedIdeaCount = ref(0);
 
 onMounted(async () => {
-  ideas.value = await loadPublicIdeas();
+  // 列表与总数互不依赖，并行拉取；任一失败时各自方法内部已降级为空数组 / 0
+  const [list, count] = await Promise.all([
+    loadPublicIdeas(),
+    loadApprovedIdeaCount(),
+  ]);
+  ideas.value = list;
+  approvedIdeaCount.value = count;
 });
 
 // Minecraft 暖色主题（草地绿主色 + 羊皮纸卡片），见 useMinecraftTheme
@@ -106,6 +115,14 @@ const formatDate = (value: string) => value ? new Date(value).toLocaleDateString
   font-size: clamp(32px, 4vw, 52px);
   line-height: 1.08;
   color: #2d2418;
+}
+
+.head-count {
+  display: block;
+  margin-top: 6px;
+  color: #795b36;
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .idea-grid {
