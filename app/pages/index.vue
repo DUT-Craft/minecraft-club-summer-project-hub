@@ -156,7 +156,7 @@ const heroActions = [
 
 const portalEntries = [
   {
-    to: "/projects/groud",
+    to: "/mall",
     image: "/assets/catgirl-concepts/catgirl-farm-base.png",
     kicker: "全部公开项目",
     title: "浏览正在招人的项目",
