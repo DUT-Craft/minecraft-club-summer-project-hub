@@ -1,0 +1,81 @@
+import type { Project } from "~/types/projectHub";
+
+export interface OwnerSession {
+  // verifyProjectOwner 校验通过后返回的项目信息（已映射为前端 Project 类型），
+  // 管理页直接展示，避免重复请求公开接口（公开接口还会过滤掉非 APPROVED 的项目）。
+  project: Project;
+  // 项目控制密码明文。后端 /api/admin/project/object-items/{id}/verify 只做一次性校验、不签发 token，
+  // 后续所有 /api/admin/project/... 管理操作（修改 / 删除 / 改密 / 处理申请）都要求请求体带上
+  // controlPassword，所以前端必须在会话里留存明文。仅在当前标签页存活，关闭即清除（见 STORAGE_KEY）。
+  controlPassword: string;
+  // 登录时间，方便管理页展示「登录于 xx」与做超时提示
+  loginAt: string;
+}
+
+const STORAGE_KEY = "project-owner-session";
+
+// 模块级 ref：在 SPA 客户端导航（/admin 登录 → /admin/projects/:id 管理）期间直接可用；
+// sessionStorage 兜底：刷新管理页时仍能读到，避免因刷新把 controlPassword 丢掉而被踢回登录页。
+// SSR 时此 ref 永远是 null，且读写都加了 import.meta.client 守卫，不会污染服务端状态。
+// 实现思路与 useLastSubmission 保持一致。
+const pending = ref<OwnerSession | null>(null);
+
+const isClient = () => typeof window !== "undefined";
+
+export const useOwnerSession = () => {
+  const write = (session: OwnerSession) => {
+    pending.value = session;
+    if (isClient()) {
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+    }
+  };
+
+  const read = (): OwnerSession | null => {
+    if (pending.value) {
+      return pending.value;
+    }
+    if (isClient()) {
+      const raw = sessionStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        try {
+          const parsed = JSON.parse(raw) as OwnerSession;
+          pending.value = parsed;
+          return parsed;
+        } catch {
+          // 存储被外部污染时静默丢弃，避免把脏数据带到管理页
+          sessionStorage.removeItem(STORAGE_KEY);
+        }
+      }
+    }
+    return null;
+  };
+
+  // 仅替换 project 字段（编辑保存后回写最新详情，controlPassword / loginAt 保持不变）
+  const updateProject = (project: Project) => {
+    const current = pending.value;
+    if (!current) {
+      return;
+    }
+    const next: OwnerSession = { ...current, project };
+    write(next);
+  };
+
+  // 仅替换 controlPassword 字段（修改管理密码成功后回写新密码明文，
+  // 否则后续管理操作仍带旧密码会被后端拒收；project / loginAt 保持不变）
+  const updateControlPassword = (controlPassword: string) => {
+    const current = pending.value;
+    if (!current) {
+      return;
+    }
+    write({ ...current, controlPassword });
+  };
+
+  const clear = () => {
+    pending.value = null;
+    if (isClient()) {
+      sessionStorage.removeItem(STORAGE_KEY);
+    }
+  };
+
+  return { write, read, updateProject, updateControlPassword, clear };
+};

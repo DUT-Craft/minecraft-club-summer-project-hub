@@ -22,6 +22,24 @@
           </n-button>
         </n-card>
 
+        <n-alert
+          v-if="ownerCanManage"
+          :bordered="false"
+          type="success"
+          class="owner-banner"
+        >
+          <strong>你是本项目负责人。</strong>
+          <span class="owner-banner-note">可编辑项目信息、修改管理密码、处理加入申请。</span>
+          <n-button
+            text
+            type="primary"
+            class="owner-banner-link"
+            @click="navigateTo(`/admin/projects/${projectId}`)"
+          >
+            前往管理面板 →
+          </n-button>
+        </n-alert>
+
         <div class="layout">
           <n-card class="main-panel" title="项目介绍" :bordered="false">
             <p class="description">{{ project.description || project.summary || "项目发起者还没有填写项目介绍。" }}</p>
@@ -218,6 +236,7 @@ const HIDDEN_STATUSES = new Set(["PENDING", "REJECTED", "DELETED"]);
 const route = useRoute();
 const message = useMessage();
 const { loadProjectById, loadProjectUpdates, loadProjectComments, submitJoin, submitComment } = useProjectHubApi();
+const { read: readOwnerSession } = useOwnerSession();
 
 const loading = ref(true);
 const project = ref<Project | null>(null);
@@ -225,6 +244,8 @@ const updates = ref<ProjectUpdate[]>([]);
 const comments = ref<ProjectComment[]>([]);
 const submittingJoin = ref(false);
 const submittingComment = ref(false);
+// 当前访客若恰好是已登录的本项目负责人，展示一个跳转到管理面板的入口
+const ownerCanManage = ref(false);
 
 const joinForm = reactive({
   position: "",
@@ -276,6 +297,9 @@ onMounted(async () => {
   }
   updates.value = projectUpdates;
   comments.value = projectComments;
+  // 命中本项目负责人的会话时，开放管理面板入口（编辑信息 / 改密 / 处理申请）
+  const ownerSession = readOwnerSession();
+  ownerCanManage.value = !!ownerSession && String(ownerSession.project.id) === id;
   loading.value = false;
 });
 
@@ -413,6 +437,7 @@ const handleComment = async () => {
 }
 
 .detail-hero,
+.owner-banner,
 .layout,
 .comments-panel,
 .empty-space,
@@ -480,6 +505,23 @@ const handleComment = async () => {
 
 .contact strong {
   margin-right: 4px;
+}
+
+/* 负责人入口横幅：仅当前访客持有本项目 owner 会话时出现 */
+.owner-banner {
+  border: 2px solid #6b8f32 !important;
+  border-radius: 9px;
+  background: #f0f8d8;
+  margin-top: 16px;
+}
+
+.owner-banner-note {
+  margin: 0 6px;
+  color: #54712f;
+}
+
+.owner-banner-link {
+  font-weight: 900;
 }
 
 .need-skill {

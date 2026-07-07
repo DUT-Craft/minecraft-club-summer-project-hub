@@ -88,6 +88,7 @@
                 type="password"
                 show-password-on="click"
                 placeholder="投稿时设置的管理密码"
+                @keyup.enter="handleOwnerLogin"
               />
             </n-form-item>
             <n-button type="primary" attr-type="submit" block :loading="submitting">
@@ -154,7 +155,7 @@ const switchMode = (next: LoginMode) => {
   mode.value = next;
 };
 
-// 接口接入前的占位：只做表单校验 + 模拟一次请求，方便先把交互跑通
+// 管理员登录尚未接入：TODO 对接 POST /api/auth/login，写入 token 后进入全局管理面板
 const fakeRequest = (delay = 500) =>
   new Promise<void>((resolve) => setTimeout(resolve, delay));
 
@@ -166,9 +167,8 @@ const handleAdminLogin = async () => {
   }
   try {
     submitting.value = true;
-    // TODO: 接入 POST /api/auth/login { username, password }，成功后写入 token 并跳转后台首页
     await fakeRequest();
-    message.success("登录入口已就绪，等待接入后端鉴权接口");
+    message.info("管理员登录入口即将上线，敬请期待");
   } catch (error) {
     message.error(error instanceof Error ? error.message : "登录失败，请稍后再试");
   } finally {
@@ -176,19 +176,37 @@ const handleAdminLogin = async () => {
   }
 };
 
+const { verifyProjectOwner } = useProjectHubApi();
+const { write: writeOwnerSession } = useOwnerSession();
+
+// 项目方登录：POST /api/admin/project/object-items/{id}/verify（openapi.json）
+// 校验通过后把项目详情 + controlPassword 写入会话（后续管理操作每次都要带 controlPassword），
+// 随后跳转到该项目专属的管理页 /admin/projects/{id}
 const handleOwnerLogin = async () => {
   try {
     await ownerFormRef.value?.validate();
   } catch {
     return;
   }
+  const projectId = ownerForm.projectId.trim();
+  const controlPassword = ownerForm.controlPassword;
   try {
     submitting.value = true;
-    // TODO: 用 projectId + controlPassword 进入项目方管理视图（后端接口待定）
-    await fakeRequest();
-    message.success("登录入口已就绪，等待接入项目方鉴权接口");
+    const project = await verifyProjectOwner(projectId, controlPassword);
+    writeOwnerSession({
+      project,
+      controlPassword,
+      loginAt: new Date().toISOString(),
+    });
+    message.success(`欢迎，${project.ownerName || "项目方"}！正在进入管理面板...`);
+    // 校验接口已确认项目存在，统一以 verify 返回的 id 作为管理页路径，避免与输入大小写 / 空格漂移
+    await navigateTo(`/admin/projects/${project.id || projectId}`);
+    // 跳转后清空敏感字段，避免登录页 DOM 里残留密码
+    ownerForm.controlPassword = "";
   } catch (error) {
-    message.error(error instanceof Error ? error.message : "登录失败，请稍后再试");
+    message.error(error instanceof Error && error.message
+      ? error.message
+      : "项目 ID 或管理密码不正确，请重试");
   } finally {
     submitting.value = false;
   }

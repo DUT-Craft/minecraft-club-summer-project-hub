@@ -8,6 +8,7 @@ import type {
   SubmitIdeaPayload,
   SubmitJoinPayload,
   SubmitProjectPayload,
+  UpdateProjectPayload,
 } from "~/types/projectHub";
 
 type ApiEnvelope<T> = {
@@ -111,13 +112,14 @@ interface ObjectItemCommentResponse {
   updateTime?: string;
 }
 
-interface JoinApplicationResponse {
+export interface JoinApplicationResponse {
   id?: number | string;
   objectItemId?: number | string;
   nickName?: string;
   mcId?: string;
   contact?: string;
   reason?: string;
+  skill?: string;
   status?: string;
   createTime?: string;
   updateTime?: string;
@@ -191,7 +193,7 @@ export const useProjectHubApi = () => {
   };
 
   // openapi 接口通过统一 http 客户端调用（useHttp，baseURL 已含 /api）
-  const { get, post } = useHttp();
+  const { get, post, put, patch } = useHttp();
 
   const loadSnapshot = async (): Promise<DataSnapshot> => {
     try {
@@ -421,6 +423,105 @@ export const useProjectHubApi = () => {
       );
 
       return mapObjectItemCommentToProjectComment(item);
+    },
+    // 项目方登录（openapi.json）：POST /api/admin/project/object-items/{id}/verify
+    // 传入项目 ID（路径）+ 控制密码（请求体 controlPassword），校验通过后返回项目详情。
+    // 与普通用户登录不同：项目方没有 token，后续所有 /api/admin/project/... 操作都要求每次请求
+    // 带上 controlPassword，所以前端需要在会话里留存 controlPassword 明文（见 useOwnerSession）。
+    verifyProjectOwner: async (projectId: string | number, controlPassword: string): Promise<Project> => {
+      const item = await post<ObjectItemResponse>(
+        `/admin/project/object-items/${projectId}/verify`,
+        { controlPassword },
+        { payloadMode: "json" },
+      );
+
+      return normalizeProject(mapObjectItemToProject(item));
+    },
+    // 项目方编辑项目信息：PUT /api/admin/project/object-items/{id}（openapi.json）
+    // 与公开 POST 投稿不同，管理端更新请求体额外携带 controlPassword 做身份校验；
+    // 字段映射沿用 submitProject 的口径（ownerName→leader 等）。
+    // 不传 controlPassword 以外的敏感字段；status 仅在 4 个运营状态间切换。
+    updateProject: async (
+      projectId: string | number,
+      controlPassword: string,
+      body: UpdateProjectPayload,
+    ): Promise<Project> => {
+      const item = await put<ObjectItemResponse>(
+        `/admin/project/object-items/${projectId}`,
+        {
+          controlPassword,
+          title: body.title,
+          type: body.type,
+          introduction: body.introduction,
+          description: body.description,
+          status: body.status,
+          leader: body.ownerName,
+          leaderMcId: body.ownerMinecraftId,
+          contactInformation: body.publicContact,
+          needMembers: (body.recruitmentNeeds ?? []).map((need) => ({
+            skill: need.skill,
+            number: need.count,
+            context: need.work,
+          })),
+          tags: body.tags ?? [],
+        },
+        { payloadMode: "json" },
+      );
+
+      return normalizeProject(mapObjectItemToProject(item));
+    },
+    // 项目方修改管理密码：PATCH /api/admin/project/object-items/{id}/password（openapi.json）
+    // 校验当前 controlPassword 通过后替换为 newControlPassword；前端需同步更新会话里的明文密码。
+    changeControlPassword: async (
+      projectId: string | number,
+      controlPassword: string,
+      newControlPassword: string,
+    ): Promise<void> => {
+      await patch(
+        `/admin/project/object-items/${projectId}/password`,
+        { controlPassword, newControlPassword },
+        { payloadMode: "json" },
+      );
+    },
+    // 项目方查看加入申请列表：GET /api/admin/project/object-items/{id}/join-applications
+    // ⚠️ openapi.json 缺失此接口（见 api.json「缺失接口-必要」），按 api.json 约定调用：
+    // controlPassword / status 走 query（项目方无 token，GET 无法携带请求体）。
+    // 后端实现前此调用可能 404，调用方需自行兜底；返回全状态申请，前端可按 status 过滤。
+    loadJoinApplications: async (
+      projectId: string | number,
+      controlPassword: string,
+      status?: string,
+    ): Promise<JoinApplicationResponse[]> => {
+      const items = await get<JoinApplicationResponse[]>(
+        `/admin/project/object-items/${projectId}/join-applications`,
+        { controlPassword, ...(status ? { status } : {}) },
+      );
+      return normalizeArray<JoinApplicationResponse>(items);
+    },
+    // 项目方同意加入申请：POST .../join-applications/{applicationId}/accept（openapi.json）
+    // controlPassword 走请求体（与 accept/reject 两个接口的 openapi 定义一致）。
+    acceptJoinApplication: async (
+      projectId: string | number,
+      applicationId: string | number,
+      controlPassword: string,
+    ): Promise<void> => {
+      await post(
+        `/admin/project/object-items/${projectId}/join-applications/${applicationId}/accept`,
+        { controlPassword },
+        { payloadMode: "json" },
+      );
+    },
+    // 项目方拒绝加入申请：POST .../join-applications/{applicationId}/reject（openapi.json）
+    rejectJoinApplication: async (
+      projectId: string | number,
+      applicationId: string | number,
+      controlPassword: string,
+    ): Promise<void> => {
+      await post(
+        `/admin/project/object-items/${projectId}/join-applications/${applicationId}/reject`,
+        { controlPassword },
+        { payloadMode: "json" },
+      );
     },
   };
 };

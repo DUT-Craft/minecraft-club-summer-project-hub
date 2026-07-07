@@ -102,3 +102,20 @@ export interface SubmitCommentPayload {
   nickname: string;
   content: string;
 }
+
+// 项目方后台「编辑项目信息」表单：字段全部可选，只更新被改动的展示类属性。
+// 与 SubmitProjectPayload 的区别：投稿是全新创建（含 ownerPassword），编辑是增量修改已存在项目。
+export interface UpdateProjectPayload {
+  title?: string;
+  type?: string;
+  introduction?: string;
+  description?: string;
+  // 仅允许在 4 个运营状态间切换（PREPARING/RECRUITING/IN_PROGRESS/PAUSED）；
+  // 审核类状态（PENDING/APPROVED/REJECTED/DELETED）由管理员侧推进，前端不直接设置
+  status?: string;
+  ownerName?: string;
+  ownerMinecraftId?: string;
+  publicContact?: string;
+  tags?: string[];
+  recruitmentNeeds?: RecruitmentNeed[];
+}
