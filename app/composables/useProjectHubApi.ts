@@ -4,6 +4,8 @@ import type {
   Project,
   ProjectComment,
   ProjectUpdate,
+  ProjectUpdatePayload,
+  ReviewStatus,
   SubmitCommentPayload,
   SubmitIdeaPayload,
   SubmitJoinPayload,
@@ -126,6 +128,23 @@ export interface JoinApplicationResponse {
 }
 
 // 公开接口已按 status=APPROVED 过滤，能查到的都是已通过审核的内容
+// 后端英文枚举（PENDING/APPROVED/REJECTED/...）→ 前端 ReviewStatus 联合，供管理端按真实状态展示
+const mapReviewStatus = (status?: string): ReviewStatus => {
+  switch ((status || "").toUpperCase()) {
+    case "PENDING":
+      return "pending";
+    case "REJECTED":
+      return "rejected";
+    case "ACCEPTED":
+      return "accepted";
+    case "CONTACTED":
+      return "contacted";
+    case "APPROVED":
+    default:
+      return "approved";
+  }
+};
+
 const mapObjectItemToProject = (item: ObjectItemResponse): Project => ({
   id: String(item.id ?? ""),
   title: item.title ?? "",
@@ -165,7 +184,7 @@ const mapObjectItemUpdateToProjectUpdate = (item: ObjectItemUpdateResponse): Pro
   title: item.title ?? "",
   content: item.content ?? "",
   imageUrl: item.imageUrl,
-  reviewStatus: "approved",
+  reviewStatus: mapReviewStatus(item.status),
   createdAt: item.createTime ?? "",
 });
 
@@ -174,7 +193,7 @@ const mapObjectItemCommentToProjectComment = (item: ObjectItemCommentResponse): 
   projectId: String(item.objectItemId ?? ""),
   nickname: item.nickName ?? "",
   content: item.content ?? "",
-  reviewStatus: "approved",
+  reviewStatus: mapReviewStatus(item.status),
   createdAt: item.createTime ?? "",
   updatedAt: item.updateTime,
 });
@@ -193,7 +212,8 @@ export const useProjectHubApi = () => {
   };
 
   // openapi 接口通过统一 http 客户端调用（useHttp，baseURL 已含 /api）
-  const { get, post, put, patch } = useHttp();
+  // httpDelete 走 query；httpRequest 用于 DELETE /files 这类需要请求体的特殊场景。
+  const { get, post, put, patch, delete: httpDelete, request: httpRequest } = useHttp();
 
   const loadSnapshot = async (): Promise<DataSnapshot> => {
     try {
@@ -522,6 +542,136 @@ export const useProjectHubApi = () => {
         { controlPassword },
         { payloadMode: "json" },
       );
+    },
+    // 项目方软删除项目：DELETE /api/admin/project/object-items/{id}（openapi.json）
+    // 注意此接口的 controlPassword 走请求体（与 verify/update 一致），不是 query，
+    // 因此不能用走 query 的 httpDelete，改用 httpRequest 显式指定 method=DELETE + json body。
+    deleteProject: async (projectId: string | number, controlPassword: string): Promise<void> => {
+      await httpRequest<void>(
+        `/admin/project/object-items/${projectId}`,
+        { controlPassword },
+        { method: "DELETE", payloadMode: "json" },
+      );
+    },
+    // 项目方查看全状态动态列表：GET /api/admin/project/object-items/{id}/updates（openapi.json）
+    // 含 PENDING，供项目方管理（编辑 / 删除待审动态）。controlPassword / status 走 query。
+    loadProjectUpdatesAdmin: async (
+      projectId: string | number,
+      controlPassword: string,
+      status?: string,
+    ): Promise<ProjectUpdate[]> => {
+      const items = await get<ObjectItemUpdateResponse[]>(
+        `/admin/project/object-items/${projectId}/updates`,
+        { controlPassword, ...(status ? { status } : {}) },
+      );
+      return normalizeArray<ObjectItemUpdateResponse>(items)
+        .map(mapObjectItemUpdateToProjectUpdate)
+        .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+    },
+    // 项目方发布动态：POST /api/admin/project/object-items/{id}/updates（openapi.json）
+    // 项目方已通过 controlPassword 身份校验，发布即公开，前端固定 status=APPROVED。
+    createProjectUpdate: async (
+      projectId: string | number,
+      controlPassword: string,
+      body: ProjectUpdatePayload,
+    ): Promise<ProjectUpdate> => {
+      const item = await post<ObjectItemUpdateResponse>(
+        `/admin/project/object-items/${projectId}/updates`,
+        {
+          controlPassword,
+          title: body.title,
+          content: body.content,
+          imageUrl: body.imageUrl,
+          status: body.status ?? "APPROVED",
+        },
+        { payloadMode: "json" },
+      );
+      return mapObjectItemUpdateToProjectUpdate(item);
+    },
+    // 项目方修改动态：PUT /api/admin/project/object-items/{id}/updates/{updateId}（openapi.json）
+    // 空值字段表示不修改；编辑表单不传 status，避免误改可见性。
+    updateProjectUpdate: async (
+      projectId: string | number,
+      updateId: string | number,
+      controlPassword: string,
+      body: ProjectUpdatePayload,
+    ): Promise<ProjectUpdate> => {
+      const item = await put<ObjectItemUpdateResponse>(
+        `/admin/project/object-items/${projectId}/updates/${updateId}`,
+        {
+          controlPassword,
+          title: body.title,
+          content: body.content,
+          imageUrl: body.imageUrl,
+        },
+        { payloadMode: "json" },
+      );
+      return mapObjectItemUpdateToProjectUpdate(item);
+    },
+    // 项目方删除动态：DELETE /api/admin/project/object-items/{id}/updates/{updateId}（openapi.json）
+    // 此接口的 controlPassword 走 query（与「删除项目」走 body 不同），用 httpDelete。
+    deleteProjectUpdate: async (
+      projectId: string | number,
+      updateId: string | number,
+      controlPassword: string,
+    ): Promise<void> => {
+      await httpDelete(
+        `/admin/project/object-items/${projectId}/updates/${updateId}`,
+        { controlPassword },
+      );
+    },
+    // 项目方查看全状态评论列表：GET /api/admin/project/object-items/{id}/comments（openapi.json）
+    // 含 PENDING，供项目方审核。controlPassword / status 走 query。
+    loadProjectCommentsAdmin: async (
+      projectId: string | number,
+      controlPassword: string,
+      status?: string,
+    ): Promise<ProjectComment[]> => {
+      const items = await get<ObjectItemCommentResponse[]>(
+        `/admin/project/object-items/${projectId}/comments`,
+        { controlPassword, ...(status ? { status } : {}) },
+      );
+      return normalizeArray<ObjectItemCommentResponse>(items)
+        .map(mapObjectItemCommentToProjectComment)
+        .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+    },
+    // 项目方审核评论：PATCH /api/admin/project/object-items/{id}/comments/{commentId}/status（openapi.json）
+    // 把 PENDING 评论置为 APPROVED（公开）/ REJECTED / DELETED。controlPassword + status 走请求体。
+    moderateProjectComment: async (
+      projectId: string | number,
+      commentId: string | number,
+      controlPassword: string,
+      status: string,
+    ): Promise<void> => {
+      await patch(
+        `/admin/project/object-items/${projectId}/comments/${commentId}/status`,
+        { controlPassword, status },
+        { payloadMode: "json" },
+      );
+    },
+    // 通用文件上传：POST /api/files/upload（openapi.json，multipart/form-data）
+    // 返回可公开访问的下载地址；openapi 的 data 是泛型 object，这里兼容字符串 / { url } 等常见形态。
+    // 显式把 TPayload 声明为 FormData：useHttp 的 body 字段类型跟随 payload 泛型，
+    // 这样 FormData 能作为请求体直接传入，payloadMode=json 时由 requestBase 转成 body，ofetch 自动设置 multipart 头。
+    uploadFile: async (file: File): Promise<string> => {
+      const formData = new FormData();
+      formData.append("file", file);
+      const result = await post<unknown, FormData>("/files/upload", formData, {
+        payloadMode: "json",
+      });
+      if (typeof result === "string") {
+        return result;
+      }
+      if (result && typeof result === "object") {
+        const record = result as Record<string, unknown>;
+        for (const key of ["url", "link", "path", "fileUrl", "downloadUrl", "data"]) {
+          const picked = record[key];
+          if (typeof picked === "string") {
+            return picked;
+          }
+        }
+      }
+      return "";
     },
   };
 };

@@ -31,6 +31,11 @@
               <h2>项目管理面板</h2>
             </div>
           </template>
+          <template #header-extra>
+            <n-button size="small" :loading="refreshing" @click="handleRefresh">
+              {{ refreshing ? "同步中..." : "刷新" }}
+            </n-button>
+          </template>
 
           <n-alert :bordered="false" type="success" class="login-banner">
             <strong>已登录项目方后台。</strong>
@@ -221,6 +226,35 @@
           </div>
         </n-card>
 
+        <!-- 动态管理：发布 / 编辑 / 删除项目动态（自带图片上传） -->
+        <AdminProjectUpdates
+          :project-id="session.project.id"
+          :control-password="session.controlPassword"
+        />
+        <!-- 评论审核：通过 / 拒绝 / 删除待审核评论 -->
+        <AdminProjectComments
+          :project-id="session.project.id"
+          :control-password="session.controlPassword"
+        />
+
+        <n-card class="danger-zone" :bordered="false">
+          <template #header>
+            <div class="panel-head">
+              <span class="eyebrow danger-eyebrow">Danger Zone</span>
+              <h2>删除项目</h2>
+            </div>
+          </template>
+          <p class="danger-desc">
+            删除后项目将被标记为已删除，不再在项目广场公开展示。此操作在前端不可逆，仅能由后端恢复。
+          </p>
+          <n-popconfirm @positive-click="handleDeleteProject">
+            <template #trigger>
+              <n-button type="error" :loading="deleting">删除此项目</n-button>
+            </template>
+            确定删除本项目吗？删除后将立即退出管理后台。
+          </n-popconfirm>
+        </n-card>
+
         <!-- 编辑项目信息弹窗：字段较多，用 modal 收纳避免主面板过长 -->
         <n-modal
           v-model:show="showEditModal"
@@ -369,6 +403,8 @@ const {
   loadJoinApplications,
   acceptJoinApplication,
   rejectJoinApplication,
+  verifyProjectOwner,
+  deleteProject,
 } = useProjectHubApi();
 
 const loading = ref(true);
@@ -400,6 +436,52 @@ const handleLogout = () => {
   session.value = null;
   message.success("已退出项目方后台");
   navigateTo("/admin");
+};
+
+const refreshing = ref(false);
+const deleting = ref(false);
+
+// 刷新：用当前会话密码重新调 verify，拿到后端最新项目详情回写会话，
+// 避免管理页一直停留在登录时刻的快照（例如管理员改了状态后项目方还看到旧值）
+const handleRefresh = async () => {
+  const current = session.value;
+  if (!current) {
+    return;
+  }
+  try {
+    refreshing.value = true;
+    const latest = await verifyProjectOwner(current.project.id, current.controlPassword);
+    updateProjectSession(latest);
+    message.success("已同步最新项目信息");
+  } catch (error) {
+    message.error(error instanceof Error && error.message
+      ? error.message
+      : "刷新失败，控制密码可能已变更，请重新登录");
+  } finally {
+    refreshing.value = false;
+  }
+};
+
+// 软删除项目（后端置 DELETED，不再公开展示）；不可在前端恢复，需二次确认
+const handleDeleteProject = async () => {
+  const current = session.value;
+  if (!current) {
+    return;
+  }
+  try {
+    deleting.value = true;
+    await deleteProject(current.project.id, current.controlPassword);
+    clear();
+    session.value = null;
+    message.success("项目已删除");
+    navigateTo("/admin");
+  } catch (error) {
+    message.error(error instanceof Error && error.message
+      ? error.message
+      : "删除失败，请稍后再试");
+  } finally {
+    deleting.value = false;
+  }
 };
 
 /* ---------- 编辑项目信息 ---------- */
@@ -571,7 +653,8 @@ const applicationFilter = ref<string>("PENDING");
 
 const filterOptions = [
   { label: "待处理", value: "PENDING" },
-  { label: "已同意", value: "APPROVED" },
+  { label: "已同意", value: "ACCEPTED" },
+  { label: "已联系", value: "CONTACTED" },
   { label: "已拒绝", value: "REJECTED" },
   { label: "全部", value: "" },
 ];
@@ -657,17 +740,19 @@ const handleReject = async (app: JoinApplicationResponse) => {
 const applicationStatusLabel = (status?: string) => {
   switch ((status || "").toUpperCase()) {
     case "PENDING": return "待处理";
-    case "APPROVED": return "已同意";
+    case "ACCEPTED": return "已同意";
+    case "CONTACTED": return "已联系";
     case "REJECTED": return "已拒绝";
     case "DELETED": return "已删除";
     default: return status || "未知";
   }
 };
 
-const applicationTagType = (status?: string): "warning" | "success" | "error" | "default" => {
+const applicationTagType = (status?: string): "warning" | "success" | "info" | "error" | "default" => {
   switch ((status || "").toUpperCase()) {
     case "PENDING": return "warning";
-    case "APPROVED": return "success";
+    case "ACCEPTED": return "success";
+    case "CONTACTED": return "info";
     case "REJECTED": return "error";
     default: return "default";
   }
@@ -1031,6 +1116,24 @@ const applicationTagType = (status?: string): "warning" | "success" | "error" | 
 
 .empty-subtext {
   margin: 8px 0 16px;
+  color: #60462b;
+  line-height: 1.7;
+}
+
+/* 危险区：删除项目。用红石红强调不可逆操作。
+   danger-zone 类直接挂在 n-card 根元素上，作用域选择器特异性高于 :deep(.n-card)，可覆盖木边配色 */
+.danger-zone {
+  width: min(1080px, calc(100% - 28px));
+  margin: 16px auto 0;
+  border-color: #963c30;
+}
+
+.danger-eyebrow {
+  color: #963c30;
+}
+
+.danger-desc {
+  margin: 0 0 14px;
   color: #60462b;
   line-height: 1.7;
 }

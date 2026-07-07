@@ -119,3 +119,13 @@ export interface UpdateProjectPayload {
   tags?: string[];
   recruitmentNeeds?: RecruitmentNeed[];
 }
+
+// 项目方发布 / 编辑项目动态的请求体（对应后端 ObjectItemUpdateSaveRequest）。
+// 发布时 title / content 必填；编辑时空值字段表示不修改对应属性。
+export interface ProjectUpdatePayload {
+  title?: string;
+  content?: string;
+  imageUrl?: string;
+  // 动态状态：项目方发布时前端固定置 APPROVED（立即公开展示），编辑时不传 status 以免误改可见性。
+  status?: string;
+}
