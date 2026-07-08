@@ -32,9 +32,12 @@
             </div>
           </template>
           <template #header-extra>
-            <n-button size="small" :loading="refreshing" @click="handleRefresh">
-              {{ refreshing ? "同步中..." : "刷新" }}
-            </n-button>
+            <n-space :size="8" align="center">
+              <n-button size="small" type="primary" @click="openEditModal">编辑项目信息</n-button>
+              <n-button :loading="refreshing" size="small" @click="handleRefresh">
+                {{ refreshing ? "同步中..." : "刷新" }}
+              </n-button>
+            </n-space>
           </template>
 
           <n-alert :bordered="false" type="success" class="login-banner">
@@ -100,17 +103,6 @@
         </n-card>
 
         <div class="action-grid">
-          <n-card class="action-card" :bordered="false">
-            <template #header>
-              <div class="panel-head">
-                <span class="eyebrow">Edit Project</span>
-                <h3>编辑项目信息</h3>
-              </div>
-            </template>
-            <p class="action-desc">修改标题、类型、运营状态、简介、详细介绍、负责人、联系方式、标签与招工需求。</p>
-            <n-button type="primary" size="large" @click="openEditModal">编辑信息</n-button>
-          </n-card>
-
           <n-card class="action-card" :bordered="false">
             <template #header>
               <div class="panel-head">
@@ -377,10 +369,10 @@
 </template>
 
 <script setup lang="ts">
-import type { FormInst, FormRules } from "naive-ui";
-import type { OwnerSession } from "~/composables/useOwnerSession";
-import type { JoinApplicationResponse } from "~/composables/useProjectHubApi";
-import type { RecruitmentNeed } from "~/types/projectHub";
+import type {FormInst, FormRules} from "naive-ui";
+import type {OwnerSession} from "~/composables/useOwnerSession";
+import type {JoinApplicationResponse} from "~/composables/useProjectHubApi";
+import type {RecruitmentNeed} from "~/types/projectHub";
 
 
 definePageMeta({
@@ -787,7 +779,8 @@ const applicationTagType = (status?: string): "warning" | "success" | "info" | "
   width: min(1080px, calc(100% - 28px));
   margin: 16px auto 0;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  /* 编辑入口已上移到面板头部，这里只剩修改密码一张卡，单列全宽与上下面板对齐 */
+  grid-template-columns: 1fr;
   gap: 16px;
 }
 
@@ -992,6 +985,7 @@ const applicationTagType = (status?: string): "warning" | "success" | "info" | "
 .password-form {
   display: grid;
   gap: 4px;
+  max-width: 480px;
 }
 
 .password-form :deep(.n-form-item) {

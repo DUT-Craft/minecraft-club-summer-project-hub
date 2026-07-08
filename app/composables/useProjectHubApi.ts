@@ -38,6 +38,24 @@ const unwrap = <T>(response: T | ApiEnvelope<T>): T => {
 
 const normalizeArray = <T>(value: unknown): T[] => Array.isArray(value) ? value as T[] : [];
 
+// 管理员分页接口的 data 被 SpringDoc 泛型擦除为空 object，实际可能是：
+// ① 分页包装 { list: T[], total, page, size }；② 裸数组 T[]；③ 带其它键的对象。
+// 这里兼容解析，取 list / records / items / data 中第一个数组，否则直接当数组。
+const extractList = <T>(value: unknown): T[] => {
+    if (Array.isArray(value)) {
+        return value as T[];
+    }
+    if (value && typeof value === "object") {
+        const record = value as Record<string, unknown>;
+        for (const key of ["list", "records", "items", "data", "content"]) {
+            if (Array.isArray(record[key])) {
+                return record[key] as T[];
+            }
+        }
+    }
+    return [];
+};
+
 const normalizeProject = (project: Project): Project => ({
   ...project,
   status: project.status || project.projectStatus || "筹备中",
@@ -686,31 +704,29 @@ export const useProjectHubApi = () => {
       const name = String(record.username ?? userRecord.username ?? userRecord.nickname ?? username);
       return { token, username: name };
     },
-    // 管理员查询项目列表（全状态）：GET /api/project/object-items?status=（openapi.json）
-    // 该接口仅支持单个 status；status 为空时并行拉取全部 8 个状态后合并，让管理员看到含 PENDING 的全量。
-    // 复用公开 GET（管理员 token 使后端返回非公开状态）。
+      // 管理员查询项目列表（全状态）：GET /api/admin/object-items?statuses=（openapi.json）
+      // 后端已提供管理员专用分页接口：statuses[] 多状态过滤，一次请求即可拿到含 PENDING 的全量。
+      // data 是被泛型擦除的空 object，按分页包装 { list, total, page, size } 或裸数组两种形态兼容解析。
     listProjectsAdmin: async (status?: string): Promise<Project[]> => {
-      const fetchByStatus = (s: string) =>
-        get<ObjectItemResponse[]>("/project/object-items", { status: s }).catch(() => [] as ObjectItemResponse[]);
-      const groups = status
-        ? [await fetchByStatus(status)]
-        : await Promise.all(
-            ["PENDING", "APPROVED", "REJECTED", "DELETED", "PREPARING", "RECRUITING", "IN_PROGRESS", "PAUSED"].map(
-              fetchByStatus,
-            ),
-          );
-      return groups
-        .flatMap((items) => normalizeArray<ObjectItemResponse>(items))
-        .map(mapObjectItemToProject)
-        .map(normalizeProject);
+        const params = {...(status ? {statuses: [status]} : {}), size: 500};
+        const data = await get<unknown>("/admin/object-items", params).catch(() => null);
+        const items = extractList<ObjectItemResponse>(data);
+        return items.map(mapObjectItemToProject).map(normalizeProject);
     },
-    // 管理员批量更新项目状态：PUT /api/project/object-items/batch（openapi.json）
-    // 管理员走 JWT 鉴权（useHttp 自动带 Bearer），不涉及项目方的 controlPassword，items 只传 { id, status }。
+      // 管理员批量更新项目状态：PUT /api/admin/object-items/batch/status（openapi.json）
+      // 后端已提供专用接口：body 为 { ids, status }，JWT 鉴权，无需 controlPassword。
     updateProjectStatusBatch: async (items: { id: string | number; status: string }[]): Promise<void> => {
-      await put(
-        "/project/object-items/batch",
-        { items: items.map((it) => ({ id: it.id, status: it.status })) },
-        { payloadMode: "json" },
+        // 同一状态才能批量，按 status 分组各发一次请求
+        const groups = new Map<string, (string | number)[]>();
+        for (const it of items) {
+            const arr = groups.get(it.status) ?? [];
+            arr.push(it.id);
+            groups.set(it.status, arr);
+        }
+        await Promise.all(
+            [...groups.entries()].map(([status, ids]) =>
+                put("/admin/object-items/batch/status", {ids, status}, {payloadMode: "json"}),
+            ),
       );
     },
     // 管理员批量删除项目（软删除）：DELETE /api/project/object-items/batch，controlPassword 走请求体 { ids }。
@@ -745,14 +761,14 @@ export const useProjectHubApi = () => {
       );
       return normalizeProject(mapObjectItemToProject(item));
     },
-    // 管理员查询想法列表（全状态）：GET /api/project/minds（openapi.json）
-    // minds 的 GET 原生支持 statuses 数组参数，一次请求即可拉多状态；status 为空时拉全部 4 个状态。
+      // 管理员查询想法列表（全状态）：GET /api/admin/minds?statuses=（openapi.json）
+      // 后端已提供管理员专用分页接口：statuses[] 多状态过滤，一次请求拿全量。
+      // data 按分页包装 { list, ... } 或裸数组兼容解析。
     listIdeasAdmin: async (status?: string): Promise<Idea[]> => {
-      const statuses = status ? [status] : ["PENDING", "APPROVED", "REJECTED", "DELETED"];
-      const minds = await get<MindResponse[]>("/project/minds", { statuses });
-      return normalizeArray<MindResponse>(minds)
-        .map(mapMindToIdea)
-        .map(normalizeIdea);
+        const params = {...(status ? {statuses: [status]} : {}), size: 500};
+        const data = await get<unknown>("/admin/minds", params).catch(() => null);
+        const minds = extractList<MindResponse>(data);
+        return minds.map(mapMindToIdea).map(normalizeIdea);
     },
     // 管理员查询单个想法：GET /api/project/minds/{id}（openapi.json）
     getIdeaAdmin: async (id: string | number): Promise<Idea | null> => {
@@ -776,11 +792,43 @@ export const useProjectHubApi = () => {
       );
       return normalizeIdea(mapMindToIdea(mind));
     },
-    // 管理员批量更新想法状态：PUT /api/project/minds/batch（openapi.json），items 只传 { id, status }。
+      // 管理员批量更新想法状态：PUT /api/admin/minds/batch/status（openapi.json），body 为 { ids, status }，JWT 鉴权。
     updateIdeaStatusBatch: async (items: { id: string | number; status: string }[]): Promise<void> => {
-      await put(
-        "/project/minds/batch",
-        { items: items.map((it) => ({ id: it.id, status: it.status })) },
+        const groups = new Map<string, (string | number)[]>();
+        for (const it of items) {
+            const arr = groups.get(it.status) ?? [];
+            arr.push(it.id);
+            groups.set(it.status, arr);
+        }
+        await Promise.all(
+            [...groups.entries()].map(([status, ids]) =>
+                put("/admin/minds/batch/status", {ids, status}, {payloadMode: "json"}),
+            ),
+        );
+    },
+      // 管理员审核项目评论：PATCH /api/admin/object-items/{id}/comments/{commentId}/status（openapi.json）
+      // 后端已提供 JWT 版审核接口，body 只含 status（APPROVED/REJECTED/DELETED），无需 controlPassword。
+      moderateProjectCommentAdmin: async (
+          projectId: string | number,
+          commentId: string | number,
+          status: string,
+      ): Promise<void> => {
+          await patch(
+              `/admin/object-items/${projectId}/comments/${commentId}/status`,
+              {status},
+              {payloadMode: "json"},
+          );
+      },
+      // 管理员审核项目动态：PATCH /api/admin/object-items/{id}/updates/{updateId}/status（openapi.json）
+      // JWT 鉴权，body 只含 status（APPROVED/REJECTED/DELETED），无需 controlPassword。
+      moderateProjectUpdateAdmin: async (
+          projectId: string | number,
+          updateId: string | number,
+          status: string,
+      ): Promise<void> => {
+          await patch(
+              `/admin/object-items/${projectId}/updates/${updateId}/status`,
+              {status},
         { payloadMode: "json" },
       );
     },
