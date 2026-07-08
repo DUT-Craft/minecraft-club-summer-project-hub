@@ -155,10 +155,8 @@ const switchMode = (next: LoginMode) => {
   mode.value = next;
 };
 
-// 管理员登录尚未接入：TODO 对接 POST /api/auth/login，写入 token 后进入全局管理面板
-const fakeRequest = (delay = 500) =>
-  new Promise<void>((resolve) => setTimeout(resolve, delay));
-
+// 管理员登录：POST /api/auth/login（openapi.json）→ 拿 token 写入 chat_auth_token cookie
+// （useHttp 后续自动带 Bearer），会话快照存 sessionStorage，随后进入全局管理面板 /admin/manage
 const handleAdminLogin = async () => {
   try {
     await adminFormRef.value?.validate();
@@ -167,17 +165,29 @@ const handleAdminLogin = async () => {
   }
   try {
     submitting.value = true;
-    await fakeRequest();
-    message.info("管理员登录入口即将上线，敬请期待");
+    const { token, username } = await adminLogin(adminForm.username.trim(), adminForm.password);
+    if (!token) {
+      throw new Error("登录响应中未包含 token，请确认后端 /api/auth/login 返回格式");
+    }
+    writeAdminSession({
+      token,
+      username,
+      loginAt: new Date().toISOString(),
+    });
+    message.success(`欢迎，${username || "管理员"}！正在进入管理面板...`);
+    // 跳转后清空密码字段，避免登录页 DOM 残留
+    adminForm.password = "";
+    await navigateTo("/admin/manage");
   } catch (error) {
-    message.error(error instanceof Error ? error.message : "登录失败，请稍后再试");
+    message.error(error instanceof Error && error.message ? error.message : "账号或密码不正确，请重试");
   } finally {
     submitting.value = false;
   }
 };
 
-const { verifyProjectOwner } = useProjectHubApi();
+const { verifyProjectOwner, adminLogin } = useProjectHubApi();
 const { write: writeOwnerSession } = useOwnerSession();
+const { write: writeAdminSession } = useAdminAuth();
 
 // 项目方登录：POST /api/admin/project/object-items/{id}/verify（openapi.json）
 // 校验通过后把项目详情 + controlPassword 写入会话（后续管理操作每次都要带 controlPassword），
