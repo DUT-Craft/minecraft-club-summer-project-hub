@@ -22,7 +22,7 @@
 
     <n-empty
       v-if="!comments.length"
-      description="暂无评论，或点击「加载评论」拉取待审核列表。"
+      description="暂无待审核评论，点击右上角「刷新」可重新拉取。"
     />
     <div v-else class="comment-list">
       <article
@@ -113,6 +113,11 @@ watch(filter, () => {
   if (loaded.value) {
     load();
   }
+});
+
+// 进入页面自动拉取一次待审核评论，免去手动点「加载评论」
+onMounted(() => {
+  load();
 });
 
 const handleModerate = async (item: ProjectComment, status: "APPROVED" | "REJECTED" | "DELETED") => {

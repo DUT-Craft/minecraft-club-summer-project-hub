@@ -176,7 +176,7 @@
 
           <n-empty
             v-if="!applications.length"
-            description="暂无加入申请，或点击右上角「加载申请」拉取最新列表。"
+            description="暂无加入申请，点击右上角「刷新」可重新拉取。"
           />
           <div v-else class="application-list">
             <article
@@ -418,6 +418,8 @@ onMounted(() => {
   const current = read();
   if (current && String(current.project.id) === projectId.value) {
     session.value = current;
+    // 会话就绪后自动拉取一次加入申请，免去手动点「加载申请」
+    loadApplications();
   } else if (current && String(current.project.id) !== projectId.value) {
     // 路径 id 与会话不匹配：清掉脏会话，落到「未登录」空态让用户重登
     clear();

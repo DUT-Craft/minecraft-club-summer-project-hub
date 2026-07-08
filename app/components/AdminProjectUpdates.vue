@@ -168,6 +168,11 @@ watch(filter, () => {
   }
 });
 
+// 进入页面自动拉取一次动态列表，免去手动点「加载动态」
+onMounted(() => {
+  load();
+});
+
 /* ---------- 发布 / 编辑 ---------- */
 
 const formRef = ref<FormInst | null>(null);
