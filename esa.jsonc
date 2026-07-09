@@ -1,0 +1,6 @@
+{
+  "assets": {
+    "directory": ".output/public",
+    "notFoundStrategy": "404Page"
+  }
+}
