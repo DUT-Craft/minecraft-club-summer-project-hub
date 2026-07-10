@@ -105,7 +105,7 @@ const targetStatusOptions = [
 const message = useMessage();
 const { themeOverrides } = useMinecraftTheme();
 const { read, clear } = useAdminAuth();
-const { listIdeasAdmin, updateIdeaStatusBatch, deleteIdeaBatch } = useProjectHubApi();
+const { listIdeasAdmin, updateIdeaStatusBatch, deleteIdeaBatch, adminLogout } = useProjectHubApi();
 
 const loading = ref(true);
 const session = ref<AdminSession | null>(null);
@@ -196,11 +196,16 @@ const applyDeleteBatch = async () => {
 
 const goDetail = (id: string) => navigateTo(`/admin/manage/ideas/${id}`);
 
-const handleLogout = () => {
+const handleLogout = async () => {
+  try {
+    await adminLogout();
+  } catch {
+    // 忽略：token 可能已过期，继续清本地会话
+  }
   clear();
   session.value = null;
   message.success("已退出管理员控制台");
-  navigateTo("/admin");
+  await navigateTo("/admin");
 };
 
 const labelOf = (value: string) => filterOptions.find((opt) => opt.value === value)?.label ?? value;

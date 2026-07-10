@@ -1,4 +1,4 @@
-export type ReviewStatus = "pending" | "approved" | "rejected" | "contacted" | "accepted";
+export type ReviewStatus = "pending" | "approved" | "rejected" | "contacted" | "accepted" | "deleted";
 
 export interface RecruitmentNeed {
   id?: string;

@@ -61,6 +61,7 @@ definePageMeta({
 const message = useMessage();
 const { themeOverrides } = useMinecraftTheme();
 const { read, clear } = useAdminAuth();
+const { adminLogout } = useProjectHubApi();
 
 const loading = ref(true);
 const session = ref<AdminSession | null>(null);
@@ -76,11 +77,18 @@ onMounted(() => {
 
 const formatTime = (value?: string) => (value ? new Date(value).toLocaleString("zh-CN") : "未记录时间");
 
-const handleLogout = () => {
+// 登出：先通知后端作废 access token + 清 refresh cookie（token 已失效时 401，忽略不阻塞），
+// 再清前端会话快照并跳转回登录页
+const handleLogout = async () => {
+  try {
+    await adminLogout();
+  } catch {
+    // 忽略：token 可能已过期，继续清本地会话
+  }
   clear();
   session.value = null;
   message.success("已退出管理员控制台");
-  navigateTo("/admin");
+  await navigateTo("/admin");
 };
 </script>
 

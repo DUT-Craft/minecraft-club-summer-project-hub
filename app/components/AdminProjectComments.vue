@@ -39,26 +39,34 @@
         <span class="comment-time">{{ formatTime(item.createdAt) }}</span>
         <p class="comment-content">{{ item.content || "（空内容）" }}</p>
         <div class="comment-actions">
-          <template v-if="item.reviewStatus === 'pending'">
-            <n-button
-              size="small"
-              type="primary"
-              :loading="processingId === item.id"
-              @click="handleModerate(item, 'APPROVED')"
-            >
-              通过
-            </n-button>
-            <n-button
-              size="small"
-              :loading="processingId === item.id"
-              @click="handleModerate(item, 'REJECTED')"
-            >
-              拒绝
-            </n-button>
-          </template>
+          <n-button
+            size="small"
+            type="primary"
+            :disabled="item.reviewStatus === 'approved'"
+            :loading="processingId === item.id"
+            @click="handleModerate(item, 'APPROVED')"
+          >
+            通过
+          </n-button>
+          <n-button
+            size="small"
+            :disabled="item.reviewStatus === 'rejected'"
+            :loading="processingId === item.id"
+            @click="handleModerate(item, 'REJECTED')"
+          >
+            拒绝
+          </n-button>
           <n-popconfirm @positive-click="handleModerate(item, 'DELETED')">
             <template #trigger>
-              <n-button size="small" quaternary type="error" :loading="processingId === item.id">删除</n-button>
+              <n-button
+                size="small"
+                quaternary
+                type="error"
+                :disabled="item.reviewStatus === 'deleted'"
+                :loading="processingId === item.id"
+              >
+                删除
+              </n-button>
             </template>
             确定删除这条评论吗？
           </n-popconfirm>
@@ -83,8 +91,8 @@ const { loadProjectCommentsAdmin, moderateProjectComment } = useProjectHubApi();
 const comments = ref<ProjectComment[]>([]);
 const loading = ref(false);
 const loaded = ref(false);
-// 默认拉待审核：项目方最关心的就是等待处理的评论
-const filter = ref<string>("PENDING");
+// 默认拉全部评论；用户可按状态筛选待审核 / 已公开 / 未通过 / 已删除
+const filter = ref<string>("");
 // processingId 标记当前在 通过/拒绝/删除 的评论，给该行所有按钮置 loading
 const processingId = ref<string | null>(null);
 
@@ -92,6 +100,7 @@ const filterOptions = [
   { label: "待审核", value: "PENDING" },
   { label: "已公开", value: "APPROVED" },
   { label: "未通过", value: "REJECTED" },
+  { label: "已删除", value: "DELETED" },
   { label: "全部", value: "" },
 ];
 
@@ -126,7 +135,7 @@ const handleModerate = async (item: ProjectComment, status: "APPROVED" | "REJECT
     await moderateProjectComment(props.projectId, item.id, props.controlPassword, status);
     const action = status === "APPROVED" ? "已通过" : status === "REJECTED" ? "已拒绝" : "已删除";
     message.success(`评论${action}`);
-    // 通过/拒绝/删除后该条会离开「待审核」视图，重新加载保持列表与后端一致
+    // 状态变更后重新加载，保持列表与后端一致（停留在「待审核」视图时该条会离开列表）
     await load();
   } catch (error) {
     message.error(error instanceof Error && error.message ? error.message : "操作失败，请稍后再试");
@@ -142,6 +151,7 @@ const statusLabel = (status?: string) => {
     case "pending": return "待审核";
     case "approved": return "已公开";
     case "rejected": return "未通过";
+    case "deleted": return "已删除";
     default: return status || "未知";
   }
 };
@@ -151,6 +161,7 @@ const statusTagType = (status?: string): "warning" | "success" | "error" | "defa
     case "pending": return "warning";
     case "approved": return "success";
     case "rejected": return "error";
+    case "deleted": return "default";
     default: return "default";
   }
 };

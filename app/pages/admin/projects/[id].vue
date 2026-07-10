@@ -370,7 +370,6 @@
 
 <script setup lang="ts">
 import type {FormInst, FormRules} from "naive-ui";
-import type {OwnerSession} from "~/composables/useOwnerSession";
 import type {JoinApplicationResponse} from "~/composables/useProjectHubApi";
 import type {RecruitmentNeed} from "~/types/projectHub";
 
@@ -388,7 +387,9 @@ const OPERATIONAL_STATUSES = ["PREPARING", "RECRUITING", "IN_PROGRESS", "PAUSED"
 const route = useRoute();
 const message = useMessage();
 const { themeOverrides } = useMinecraftTheme();
-const { read, clear, updateProject: updateProjectSession, updateControlPassword } = useOwnerSession();
+// session 直接绑定 useOwnerSession 的共享 ref：updateProjectSession / updateControlPassword /
+// clear 回写后 hero 与 info 面板自动刷新，不再用本地副本（本地副本会断开响应式，导致「刷新」点完不更新）
+const { session, read, clear, updateProject: updateProjectSession, updateControlPassword } = useOwnerSession();
 const {
   updateProject: updateProjectApi,
   changeControlPassword,
@@ -400,7 +401,6 @@ const {
 } = useProjectHubApi();
 
 const loading = ref(true);
-const session = ref<OwnerSession | null>(null);
 
 const projectId = computed(() => String(route.params.id));
 
@@ -409,8 +409,7 @@ onMounted(() => {
   // 注意：会话里的 project.id 必须与当前路径 id 一致，避免登录 A 项目后手动跳到 B 的管理页
   const current = read();
   if (current && String(current.project.id) === projectId.value) {
-    session.value = current;
-    // 会话就绪后自动拉取一次加入申请，免去手动点「加载申请」
+    // read() 已把共享 session 恢复就绪，无需再赋值；直接拉取一次加入申请
     loadApplications();
   } else if (current && String(current.project.id) !== projectId.value) {
     // 路径 id 与会话不匹配：清掉脏会话，落到「未登录」空态让用户重登
@@ -426,8 +425,8 @@ const needs = computed<RecruitmentNeed[]>(() => session.value?.project.recruitme
 const formatTime = (value?: string) => (value ? new Date(value).toLocaleString("zh-CN") : "未记录时间");
 
 const handleLogout = () => {
+  // clear() 已把共享 session 置空，模板自动切回「未登录」空态
   clear();
-  session.value = null;
   message.success("已退出项目方后台");
   navigateTo("/admin");
 };
@@ -465,8 +464,8 @@ const handleDeleteProject = async () => {
   try {
     deleting.value = true;
     await deleteProject(current.project.id, current.controlPassword);
+    // clear() 已把共享 session 置空，模板自动切回「未登录」空态
     clear();
-    session.value = null;
     message.success("项目已删除");
     navigateTo("/admin");
   } catch (error) {
@@ -642,8 +641,8 @@ const loadingApplications = ref(false);
 const loadedApplications = ref(false);
 // processingId 标记当前正在 同意/拒绝 的申请，给对应行两个按钮同时置 loading
 const processingId = ref<string | number | null>(null);
-// 默认拉 PENDING（项目方最关心的待处理申请）；用户可切换查看已处理记录
-const applicationFilter = ref<string>("PENDING");
+// 默认拉全部申请；用户可按状态筛选待处理 / 已同意 / 已联系 / 已拒绝
+const applicationFilter = ref<string>("");
 
 const filterOptions = [
   { label: "待处理", value: "PENDING" },

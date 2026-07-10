@@ -157,6 +157,8 @@ const mapReviewStatus = (status?: string): ReviewStatus => {
       return "accepted";
     case "CONTACTED":
       return "contacted";
+    case "DELETED":
+      return "deleted";
     case "APPROVED":
     default:
       return "approved";
@@ -693,16 +695,25 @@ export const useProjectHubApi = () => {
     },
     /* ---------- 全局管理员（token 鉴权，管理全部项目 / 想法） ---------- */
     // 管理员登录：POST /api/auth/login（openapi.json，User-Agent 由浏览器自动带）
-    // 返回 token + 用户资料；data 是泛型 object，兼容 token / accessToken / authorization 等字段名。
+    // 后端返回 { accessToken, tokenType, expiresIn }；refreshToken 通过 HttpOnly Set-Cookie 下发，
+    // 浏览器在 useHttp 的 credentials:'include' 下自动保存，前端 JS 不可读。
+    // 响应不含 username，直接复用输入值（与后端签发 JWT 的 username claim 一致）。
     adminLogin: async (username: string, password: string): Promise<{ token: string; username: string }> => {
-      const data = await post<Record<string, unknown>>("/auth/login", { username, password }, { payloadMode: "json" });
-      const record = (data ?? {}) as Record<string, unknown>;
-      const userRecord = (record.user && typeof record.user === "object" ? record.user : {}) as Record<string, unknown>;
-      const token = String(
-        record.token ?? record.accessToken ?? record.access_token ?? record.authorization ?? "",
+      const data = await post<{ accessToken: string; tokenType: string; expiresIn: number }>(
+        "/auth/login",
+        { username, password },
+        { payloadMode: "json" },
       );
-      const name = String(record.username ?? userRecord.username ?? userRecord.nickname ?? username);
-      return { token, username: name };
+      return {
+        token: data?.accessToken ?? "",
+        username,
+      };
+    },
+    // 管理员登出：POST /api/auth/logout（JWT 鉴权，Authorization 头由 useHttp 自动带）
+    // 后端驱逐当前 access token 的 jti（Redis 白名单）并清除 refresh cookie（Set-Cookie Max-Age=0）。
+    // 调用方应捕获异常后继续清前端会话：token 已失效时此调用会 401，不应阻塞登出。
+    adminLogout: async (): Promise<void> => {
+      await post<void>("/auth/logout", undefined);
     },
       // 管理员查询项目列表（全状态）：GET /api/admin/object-items?statuses=（openapi.json）
       // 后端已提供管理员专用分页接口：statuses[] 多状态过滤，一次请求即可拿到含 PENDING 的全量。

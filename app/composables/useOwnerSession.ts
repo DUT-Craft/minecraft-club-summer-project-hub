@@ -77,5 +77,9 @@ export const useOwnerSession = () => {
     }
   };
 
-  return { write, read, updateProject, updateControlPassword, clear };
+  // session：暴露共享响应式 ref，组件直接绑定即可随 write / updateProject /
+  // updateControlPassword / clear 自动同步。切勿再用本地 ref 拷贝 read() 的返回值——
+  // update* 会把 pending.value 整体替换成新对象，本地副本仍指向旧对象，UI 不会刷新
+  // （admin/projects/[id].vue 的「刷新」按钮曾因此点完不更新）。
+  return { session: pending, write, read, updateProject, updateControlPassword, clear };
 };

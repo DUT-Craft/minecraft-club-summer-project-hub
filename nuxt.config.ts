@@ -5,6 +5,13 @@ import { NaiveUiResolver } from "unplugin-vue-components/resolvers";
 export default defineNuxtConfig({
   ssr: true,
   compatibilityDate: "2025-07-15",
+  // 运行时配置：后端 API 基址默认值写死在此，实际值由 NUXT_PUBLIC_API_BASE 自动覆盖
+  // （Nuxt 会把 NUXT_PUBLIC_* 映射到 public runtimeConfig），开发/生产在 .env / .env.production 切换。
+  runtimeConfig: {
+    public: {
+      apiBase: "http://localhost:8080/api",
+    },
+  },
   nitro: {
     prerender: {
       autoSubfolderIndex: false

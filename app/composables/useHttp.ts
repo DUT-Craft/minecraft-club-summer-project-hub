@@ -1,4 +1,4 @@
-import {createFetch, type FetchOptions} from "ofetch";
+import {createFetch, type FetchOptions, FetchError} from "ofetch";
 import type {ApiResult} from "~/types/http";
 
 type ParamMode = "query" | "json";
@@ -15,14 +15,16 @@ export interface HttpRequestOptions<T> extends Omit<FetchOptions<"json">, "baseU
 const SUCCESS_CODE = "200";
 const SUCCESS_CODE_ALTERNATE = "0";
 
-// 登录态失效：后端在 token 过期 / 无效 / 缺失时统一返回 status=401，
-// message 可能是「Token 过期」「Token 无效」「Unauthorized」等。
-// 只要 401 就意味着当前 token 无法继续鉴权，统一清掉本地凭据，避免带坏 token 重试继续失败。
+// 登录态失效：后端在 token 过期 / 无效 / 缺失时统一返回 HTTP 401（body 形如 {status:401,message,data}）。
 const UNAUTHORIZED_STATUS = 401;
 
 // 防止短时间内多个并发请求同时返回 401 时，重复清会话 / 反复跳转 / 弹多次提示。
 // 用模块级 flag 做一次性去重，首个命中的请求处理完毕后即释放。
 let unauthorizedHandling = false;
+
+// 单飞刷新：多个请求同时撞 401 时，只发起一次 /auth/refresh，其余共用同一个 Promise。
+// 模块级而非组件级——刷新是全局唯一的，跨组件实例也要共享。
+let refreshPromise: Promise<string | null> | null = null;
 
 function normalizeAuthorization(token?: string | null) {
     const rawToken = token?.trim();
@@ -114,20 +116,79 @@ function handleUnauthorized(message: string, authToken: Ref<string | null>, mess
 }
 
 export const useHttp = () => {
-    const authToken = useCookie<string | null>("chat_auth_token");
+    // access token：JS 可读的 cookie，useHttp 自动作为 Bearer 头带上。
+    // refresh token 在 HttpOnly cookie（后端 Set-Cookie 下发），JS 不可读，浏览器随请求自动携带。
+    // Cookie 选项与 useAdminAuth 保持一致（7 天）：刷新后写回的新 token 才不会退化成会话 Cookie，
+    // 否则首次刷新（约 2h）后浏览器一关闭 access token 就丢了，破坏「7 天内保持登录」。
+    const authToken = useCookie<string | null>("chat_auth_token", {
+        maxAge: 60 * 60 * 24 * 7,
+        sameSite: "lax",
+        path: "/",
+    });
     // 在 setup 阶段取一次 NaiveUI message 实例：401 处理发生在请求返回后的异步上下文，
     // 那时再调 useMessage 会拿不到注入的 provider，故提前取到闭包里复用。
     const messageApi = useMessage();
-    const apiBase = "http://192.168.1.35:8080/api";
+    // 后端 API 基址来自运行时配置（NUXT_PUBLIC_API_BASE），开发/生产通过 .env 切换。
+    const apiBase = useRuntimeConfig().public.apiBase;
 
     const http = createFetch({
         defaults: {
             baseURL: apiBase,
+            // 携带跨域 Cookie：刷新令牌走 HttpOnly Cookie，登录/刷新/登出与业务请求都要带上，
+            // 否则后端收不到 refresh cookie，也写不回新的。
+            credentials: "include",
             headers: {
                 Accept: "application/json",
             },
         },
     });
+
+    // 用 refresh cookie 换取新的 access token。走 $fetch 而非上面的 http 实例，
+    // 避免再次进入 requestBase 的 401 重试逻辑造成递归。失败（refresh 也 401）返回 null。
+    const refreshAccessToken = (): Promise<string | null> => {
+        if (refreshPromise) {
+            return refreshPromise;
+        }
+        refreshPromise = (async () => {
+            try {
+                const res = await $fetch<ApiResult<{ accessToken: string; tokenType: string; expiresIn: number }>>(
+                    "/auth/refresh",
+                    { baseURL: apiBase, method: "POST", credentials: "include" },
+                );
+                const token = res?.data?.accessToken;
+                if (token) {
+                    // 写回 access token cookie：后续请求（含本次重放）自动带上新令牌
+                    authToken.value = token;
+                    return token;
+                }
+                return null;
+            } catch {
+                return null;
+            } finally {
+                refreshPromise = null;
+            }
+        })();
+        return refreshPromise;
+    };
+
+    // 把 ofetch 抛出的 FetchError 转成统一的 createError，并在 401 时触发 handleUnauthorized。
+    // 返回 never，便于上层 catch 中「调用即抛出」的控制流推断。
+    const handleFailure = (err: unknown): never => {
+        if (err instanceof FetchError) {
+            const body = err.data as ApiResult<unknown> | undefined;
+            const status = err.response?.status ?? body?.status ?? 500;
+            const message = body?.message ?? err.message ?? "Request failed";
+            if (status === UNAUTHORIZED_STATUS) {
+                handleUnauthorized(message, authToken, messageApi);
+            }
+            throw createError({
+                statusCode: Number(status) || 500,
+                statusMessage: message,
+                data: body ?? { status, message },
+            });
+        }
+        throw err;
+    };
 
     const requestBase = async <TResponse, TPayload = Record<string, unknown>>(
         url: string,
@@ -141,23 +202,49 @@ export const useHttp = () => {
         const requestBody = payloadMode === "json"
             ? ((body ?? payload) as JsonBody)
             : undefined;
-        const requestHeaders = new Headers(fetchOptions.headers as HeadersInit | undefined);
-        const authorization = normalizeAuthorization(authToken.value);
-        if (authorization && !requestHeaders.has("Authorization")) {
-            requestHeaders.set("Authorization", authorization);
-        }
 
-        const response = await http<ApiResult<TResponse>>(url, {
+        // 每次发送都重新读 token：刷新成功后重放时能拿到新令牌
+        const buildHeaders = () => {
+            const requestHeaders = new Headers(fetchOptions.headers as HeadersInit | undefined);
+            const authorization = normalizeAuthorization(authToken.value);
+            if (authorization && !requestHeaders.has("Authorization")) {
+                requestHeaders.set("Authorization", authorization);
+            }
+            return requestHeaders;
+        };
+
+        const send = () => http<ApiResult<TResponse>>(url, {
             method,
             ...fetchOptions,
             query,
-            headers: requestHeaders,
+            headers: buildHeaders(),
             body: requestBody,
+        });
+
+        // 先发请求；若命中 HTTP 401（access token 过期/失效），用 refresh cookie 换新令牌后重放一次。
+        // 用 .catch 处理器集中处理错误：handleFailure 返回 never（内部必抛），各分支 return 它即可。
+        const response = await send().catch(async (err: unknown): Promise<ApiResult<TResponse>> => {
+            // 非 401 错误直接转 createError 抛出
+            if (!(err instanceof FetchError) || err.response?.status !== UNAUTHORIZED_STATUS) {
+                return handleFailure(err);
+            }
+            // HTTP 401：access token 过期 / 失效，尝试用 refresh cookie 换新令牌后重放一次
+            const newToken = await refreshAccessToken();
+            if (!newToken) {
+                // refresh 也失败（refresh cookie 不存在 / 过期）→ 清会话 + 跳登录页
+                return handleFailure(err);
+            }
+            try {
+                return await send();
+            } catch (retryErr) {
+                // 重放仍失败：按真实错误抛出，不再二次刷新
+                return handleFailure(retryErr);
+            }
         });
 
         const responseCode = getResponseCode(response);
         if (responseCode !== SUCCESS_CODE && responseCode !== SUCCESS_CODE_ALTERNATE) {
-            // 401 鉴权失败单独处理：清凭据 + （管理端）跳登录页，避免带坏 token 重试继续失败
+            // 兜底：极少数情况下 HTTP 为 2xx 但 body.status 标记失败（含 401）的情况
             if (isUnauthorized(response)) {
                 handleUnauthorized(getResponseMessage(response), authToken, messageApi);
             }

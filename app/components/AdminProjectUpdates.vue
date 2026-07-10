@@ -287,6 +287,7 @@ const statusLabel = (status?: string) => {
     case "pending": return "待审核";
     case "approved": return "已公开";
     case "rejected": return "未通过";
+    case "deleted": return "已删除";
     default: return status || "未知";
   }
 };
@@ -296,6 +297,7 @@ const statusTagType = (status?: string): "warning" | "success" | "error" | "defa
     case "pending": return "warning";
     case "approved": return "success";
     case "rejected": return "error";
+    case "deleted": return "default";
     default: return "default";
   }
 };
