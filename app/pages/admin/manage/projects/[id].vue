@@ -20,6 +20,9 @@
           </div>
           <div class="hero-actions">
             <n-button size="large" @click="navigateTo('/admin/manage/projects')">返回列表</n-button>
+            <n-button size="large" :loading="refreshing" @click="handleRefresh">
+              {{ refreshing ? "同步中..." : "刷新" }}
+            </n-button>
             <n-button size="large" type="primary" @click="openEditModal">编辑项目</n-button>
           </div>
         </n-card>
@@ -93,6 +96,91 @@
             </n-popconfirm>
           </div>
         </n-card>
+
+        <!-- 加入申请管理：管理员可同意 / 拒绝本项目收到的加入申请（JWT 鉴权） -->
+        <n-card class="applications-panel" :bordered="false">
+          <template #header>
+            <div class="panel-head">
+              <span class="eyebrow">Join Applications</span>
+              <h2>加入申请管理</h2>
+            </div>
+          </template>
+          <template #header-extra>
+            <n-space :size="8" align="center" wrap>
+              <n-select
+                v-model:value="applicationFilter"
+                :options="applicationFilterOptions"
+                size="small"
+                class="filter-select"
+              />
+              <n-button size="small" :loading="loadingApplications" @click="loadApplications">
+                {{ applications.length || loadedApplications ? "刷新" : "加载申请" }}
+              </n-button>
+            </n-space>
+          </template>
+
+          <n-empty
+            v-if="!applications.length"
+            description="暂无加入申请，点击右上角「刷新」可重新拉取。"
+          />
+          <div v-else class="application-list">
+            <article
+              v-for="app in applications"
+              :key="app.id"
+              class="application-card"
+            >
+              <div class="application-head">
+                <span class="application-name">{{ app.nickName || "匿名申请人" }}</span>
+                <n-tag :bordered="false" size="small" round :type="applicationTagType(app.status)">
+                  {{ applicationStatusLabel(app.status) }}
+                </n-tag>
+              </div>
+              <dl class="application-meta">
+                <div>
+                  <dt>Minecraft ID</dt>
+                  <dd>{{ app.mcId || "——" }}</dd>
+                </div>
+                <div>
+                  <dt>联系方式</dt>
+                  <dd>{{ app.contact || "——" }}</dd>
+                </div>
+                <div>
+                  <dt>申请时间</dt>
+                  <dd>{{ formatTime(app.createTime) }}</dd>
+                </div>
+              </dl>
+              <p v-if="app.reason" class="application-reason">{{ app.reason }}</p>
+              <div v-if="(app.status || '').toUpperCase() === 'PENDING'" class="application-actions">
+                <n-button
+                  type="primary"
+                  size="small"
+                  :loading="processingId === app.id"
+                  @click="handleAcceptApplication(app)"
+                >
+                  同意
+                </n-button>
+                <n-button
+                  size="small"
+                  :loading="processingId === app.id"
+                  @click="handleRejectApplication(app)"
+                >
+                  拒绝
+                </n-button>
+              </div>
+            </article>
+          </div>
+        </n-card>
+
+        <!-- 动态管理：发布 / 编辑 / 删除项目动态（JWT 鉴权，无需项目控制密码） -->
+        <AdminProjectUpdates
+          :project-id="projectId"
+          mode="admin"
+        />
+        <!-- 评论审核：通过 / 拒绝 / 删除待审核评论（JWT 鉴权） -->
+        <AdminProjectComments
+          :project-id="projectId"
+          mode="admin"
+        />
 
         <!-- 编辑项目：管理员可改任意字段，含状态（覆盖全部 8 个状态，含审核态） -->
         <n-modal
@@ -190,6 +278,7 @@
 <script setup lang="ts">
 import type { FormInst, FormRules } from "naive-ui";
 import type { AdminSession } from "~/composables/useAdminAuth";
+import type { JoinApplicationResponse } from "~/composables/useProjectHubApi";
 import type { Project } from "~/types/projectHub";
 
 definePageMeta({
@@ -213,7 +302,14 @@ const route = useRoute();
 const message = useMessage();
 const { themeOverrides } = useMinecraftTheme();
 const { read } = useAdminAuth();
-const { loadProjectById, updateProjectAdmin, deleteProjectBatch } = useProjectHubApi();
+const {
+  loadProjectById,
+  updateProjectAdmin,
+  deleteProjectBatch,
+  listJoinApplicationsAdmin,
+  acceptJoinApplicationAdmin,
+  rejectJoinApplicationAdmin,
+} = useProjectHubApi();
 
 const loading = ref(true);
 const session = ref<AdminSession | null>(null);
@@ -230,6 +326,8 @@ onMounted(async () => {
   }
   project.value = await loadProjectById(projectId.value);
   loading.value = false;
+  // 预加载加入申请；动态 / 评论面板各自组件 onMounted 自动拉取
+  loadApplications();
 });
 
 const needs = computed(() => project.value?.recruitmentNeeds ?? []);
@@ -245,6 +343,28 @@ const statusTagType = (status?: string): "warning" | "success" | "error" | "info
     case "DELETED": return "error";
     case "RECRUITING": return "info";
     default: return "default";
+  }
+};
+
+/* ---------- 刷新 ---------- */
+
+const refreshing = ref(false);
+
+// 重新拉取项目详情回写本地 project，避免页面停留在进入时的快照
+// （例如其它管理员改了状态后，这里仍显示旧值）。loadProjectById 内部已吞异常返回 null，
+// 因此用返回值判断成功与否，不依赖 catch。
+const handleRefresh = async () => {
+  refreshing.value = true;
+  try {
+    const latest = await loadProjectById(projectId.value);
+    if (latest) {
+      project.value = latest;
+      message.success("已同步最新项目信息");
+    } else {
+      message.warning("未能拉取到项目信息，项目可能已被删除");
+    }
+  } finally {
+    refreshing.value = false;
   }
 };
 
@@ -339,6 +459,101 @@ const handleDelete = async () => {
     message.error(error instanceof Error && error.message ? error.message : "删除失败，请稍后再试");
   }
 };
+
+/* ---------- 加入申请管理（管理员 JWT，对标项目方后台） ---------- */
+
+const applications = ref<JoinApplicationResponse[]>([]);
+const loadingApplications = ref(false);
+const loadedApplications = ref(false);
+// processingId 标记当前正在 同意/拒绝 的申请，给对应行两个按钮同时置 loading
+const processingId = ref<string | number | null>(null);
+// 默认拉全部申请；用户可按状态筛选待处理 / 已同意 / 已联系 / 已拒绝
+const applicationFilter = ref<string>("");
+
+const applicationFilterOptions = [
+  { label: "待处理", value: "PENDING" },
+  { label: "已同意", value: "ACCEPTED" },
+  { label: "已联系", value: "CONTACTED" },
+  { label: "已拒绝", value: "REJECTED" },
+  { label: "全部", value: "" },
+];
+
+const loadApplications = async () => {
+  try {
+    loadingApplications.value = true;
+    const list = await listJoinApplicationsAdmin(projectId.value, applicationFilter.value || undefined);
+    // 按 createTime 倒序，最新的申请排在最前
+    applications.value = list.sort(
+      (a, b) => Date.parse(b.createTime ?? "") - Date.parse(a.createTime ?? ""),
+    );
+    loadedApplications.value = true;
+  } catch (error) {
+    message.error(error instanceof Error && error.message ? error.message : "加载申请列表失败");
+    applications.value = [];
+  } finally {
+    loadingApplications.value = false;
+  }
+};
+
+// 切换筛选时若已加载过，自动刷新；未加载过不打扰用户
+watch(applicationFilter, () => {
+  if (loadedApplications.value) {
+    loadApplications();
+  }
+});
+
+const handleAcceptApplication = async (app: JoinApplicationResponse) => {
+  if (app.id == null) {
+    return;
+  }
+  try {
+    processingId.value = app.id;
+    await acceptJoinApplicationAdmin(projectId.value, app.id);
+    message.success(`已同意 ${app.nickName || "申请人"} 的加入申请`);
+    await loadApplications();
+  } catch (error) {
+    message.error(error instanceof Error && error.message ? error.message : "操作失败，请稍后再试");
+  } finally {
+    processingId.value = null;
+  }
+};
+
+const handleRejectApplication = async (app: JoinApplicationResponse) => {
+  if (app.id == null) {
+    return;
+  }
+  try {
+    processingId.value = app.id;
+    await rejectJoinApplicationAdmin(projectId.value, app.id);
+    message.success(`已拒绝 ${app.nickName || "申请人"} 的加入申请`);
+    await loadApplications();
+  } catch (error) {
+    message.error(error instanceof Error && error.message ? error.message : "操作失败，请稍后再试");
+  } finally {
+    processingId.value = null;
+  }
+};
+
+const applicationStatusLabel = (status?: string) => {
+  switch ((status || "").toUpperCase()) {
+    case "PENDING": return "待处理";
+    case "ACCEPTED": return "已同意";
+    case "CONTACTED": return "已联系";
+    case "REJECTED": return "已拒绝";
+    case "DELETED": return "已删除";
+    default: return status || "未知";
+  }
+};
+
+const applicationTagType = (status?: string): "warning" | "success" | "info" | "error" | "default" => {
+  switch ((status || "").toUpperCase()) {
+    case "PENDING": return "warning";
+    case "ACCEPTED": return "success";
+    case "CONTACTED": return "info";
+    case "REJECTED": return "error";
+    default: return "default";
+  }
+};
 </script>
 
 <style scoped>
@@ -356,6 +571,7 @@ const handleDelete = async () => {
 
 .detail-hero,
 .info-panel,
+.applications-panel,
 .empty-state,
 .loading-state {
   width: min(1080px, calc(100% - 28px));
@@ -541,6 +757,93 @@ const handleDelete = async () => {
   margin-top: 18px;
 }
 
+.filter-select {
+  width: 130px;
+}
+
+/* 加入申请列表：复用项目方管理页的左绿条羊皮纸卡片风格 */
+.application-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.application-card {
+  position: relative;
+  padding: 14px 16px 14px 20px;
+  border: 2px solid #8b6a3d;
+  border-radius: 10px;
+  background: #fff8df;
+  box-shadow: 0 3px 0 rgba(90, 58, 33, 0.18);
+  overflow: hidden;
+}
+
+.application-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 5px;
+  background: #6b8f32;
+}
+
+.application-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.application-name {
+  font-weight: 900;
+  color: #2d2418;
+  font-size: 16px;
+  word-break: break-word;
+}
+
+.application-meta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0 0 8px;
+}
+
+.application-meta div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.application-meta dt {
+  color: #795b36;
+  font-weight: 800;
+  font-size: 12px;
+}
+
+.application-meta dd {
+  margin: 0;
+  color: #2d2418;
+  font-weight: 700;
+  word-break: break-word;
+}
+
+.application-reason {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.5);
+  color: #4f3924;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.application-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
 .edit-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -582,7 +885,8 @@ const handleDelete = async () => {
     align-items: flex-start;
   }
 
-  .info-list {
+  .info-list,
+  .application-meta {
     grid-template-columns: 1fr;
   }
 

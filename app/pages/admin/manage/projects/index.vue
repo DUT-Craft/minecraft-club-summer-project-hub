@@ -137,8 +137,8 @@ const session = ref<AdminSession | null>(null);
 
 const projects = ref<Project[]>([]);
 const loadingList = ref(false);
-// 默认看待审核队列（管理员最常做的事就是放行 PENDING 项目）
-const filter = ref<string>("PENDING");
+// 默认展示全部项目，覆盖所有状态
+const filter = ref<string>("");
 
 const selectedIds = ref<string[]>([]);
 const targetStatus = ref<string>("APPROVED");

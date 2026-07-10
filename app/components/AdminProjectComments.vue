@@ -79,14 +79,27 @@
 <script setup lang="ts">
 import type { ProjectComment } from "~/types/projectHub";
 
-// 由父级（项目方管理页）传入：项目 ID + 当前会话的控制密码明文
-const props = defineProps<{
+// 由父级传入：项目 ID。
+// - mode="owner"（默认，项目方后台）：还需传 controlPassword，走 controlPassword 鉴权接口
+// - mode="admin"（管理员后台）：走 JWT 鉴权接口，无需 controlPassword
+const props = withDefaults(defineProps<{
   projectId: string | number;
-  controlPassword: string;
-}>();
+  controlPassword?: string;
+  mode?: "owner" | "admin";
+}>(), {
+  controlPassword: "",
+  mode: "owner",
+});
 
 const message = useMessage();
-const { loadProjectCommentsAdmin, moderateProjectComment } = useProjectHubApi();
+const {
+  loadProjectCommentsAdmin,
+  moderateProjectComment,
+  listProjectCommentsAdmin,
+  moderateProjectCommentAdmin,
+} = useProjectHubApi();
+
+const isAdmin = computed(() => props.mode === "admin");
 
 const comments = ref<ProjectComment[]>([]);
 const loading = ref(false);
@@ -107,7 +120,9 @@ const filterOptions = [
 const load = async () => {
   try {
     loading.value = true;
-    const list = await loadProjectCommentsAdmin(props.projectId, props.controlPassword, filter.value || undefined);
+    const list = isAdmin.value
+      ? await listProjectCommentsAdmin(props.projectId, filter.value || undefined)
+      : await loadProjectCommentsAdmin(props.projectId, props.controlPassword, filter.value || undefined);
     comments.value = list;
     loaded.value = true;
   } catch (error) {
@@ -132,7 +147,11 @@ onMounted(() => {
 const handleModerate = async (item: ProjectComment, status: "APPROVED" | "REJECTED" | "DELETED") => {
   try {
     processingId.value = item.id;
-    await moderateProjectComment(props.projectId, item.id, props.controlPassword, status);
+    if (isAdmin.value) {
+      await moderateProjectCommentAdmin(props.projectId, item.id, status);
+    } else {
+      await moderateProjectComment(props.projectId, item.id, props.controlPassword, status);
+    }
     const action = status === "APPROVED" ? "已通过" : status === "REJECTED" ? "已拒绝" : "已删除";
     message.success(`评论${action}`);
     // 状态变更后重新加载，保持列表与后端一致（停留在「待审核」视图时该条会离开列表）

@@ -119,11 +119,17 @@
 import type { FormInst, FormRules, UploadCustomRequestOptions } from "naive-ui";
 import type { ProjectUpdate } from "~/types/projectHub";
 
-// 由父级（项目方管理页）传入：项目 ID + 当前会话的控制密码明文
-const props = defineProps<{
+// 由父级传入：项目 ID。
+// - mode="owner"（默认，项目方后台）：还需传 controlPassword，走 controlPassword 鉴权接口
+// - mode="admin"（管理员后台）：走 JWT 鉴权接口，无需 controlPassword
+const props = withDefaults(defineProps<{
   projectId: string | number;
-  controlPassword: string;
-}>();
+  controlPassword?: string;
+  mode?: "owner" | "admin";
+}>(), {
+  controlPassword: "",
+  mode: "owner",
+});
 
 const message = useMessage();
 const {
@@ -131,8 +137,14 @@ const {
   createProjectUpdate,
   updateProjectUpdate,
   deleteProjectUpdate,
+  listProjectUpdatesAdmin,
+  createProjectUpdateAdmin,
+  updateProjectUpdateAdmin,
+  deleteProjectUpdateAdmin,
   uploadFile,
 } = useProjectHubApi();
+
+const isAdmin = computed(() => props.mode === "admin");
 
 const updates = ref<ProjectUpdate[]>([]);
 const loading = ref(false);
@@ -150,7 +162,9 @@ const filterOptions = [
 const load = async () => {
   try {
     loading.value = true;
-    const list = await loadProjectUpdatesAdmin(props.projectId, props.controlPassword, filter.value || undefined);
+    const list = isAdmin.value
+      ? await listProjectUpdatesAdmin(props.projectId, filter.value || undefined)
+      : await loadProjectUpdatesAdmin(props.projectId, props.controlPassword, filter.value || undefined);
     updates.value = list;
     loaded.value = true;
   } catch (error) {
@@ -221,19 +235,24 @@ const handleSubmit = async () => {
   }
   try {
     submitting.value = true;
+    const payload = {
+      title: form.title.trim(),
+      content: form.content.trim(),
+      imageUrl: form.imageUrl.trim(),
+    };
     if (editingId.value) {
-      await updateProjectUpdate(props.projectId, editingId.value, props.controlPassword, {
-        title: form.title.trim(),
-        content: form.content.trim(),
-        imageUrl: form.imageUrl.trim(),
-      });
+      if (isAdmin.value) {
+        await updateProjectUpdateAdmin(props.projectId, editingId.value, payload);
+      } else {
+        await updateProjectUpdate(props.projectId, editingId.value, props.controlPassword, payload);
+      }
       message.success("动态已更新");
     } else {
-      await createProjectUpdate(props.projectId, props.controlPassword, {
-        title: form.title.trim(),
-        content: form.content.trim(),
-        imageUrl: form.imageUrl.trim(),
-      });
+      if (isAdmin.value) {
+        await createProjectUpdateAdmin(props.projectId, payload);
+      } else {
+        await createProjectUpdate(props.projectId, props.controlPassword, payload);
+      }
       message.success("动态已发布");
     }
     showModal.value = false;
@@ -247,7 +266,11 @@ const handleSubmit = async () => {
 
 const handleDelete = async (item: ProjectUpdate) => {
   try {
-    await deleteProjectUpdate(props.projectId, item.id, props.controlPassword);
+    if (isAdmin.value) {
+      await deleteProjectUpdateAdmin(props.projectId, item.id);
+    } else {
+      await deleteProjectUpdate(props.projectId, item.id, props.controlPassword);
+    }
     message.success("动态已删除");
     await load();
   } catch (error) {

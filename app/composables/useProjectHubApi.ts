@@ -843,6 +843,109 @@ export const useProjectHubApi = () => {
         { payloadMode: "json" },
       );
     },
+    /* ---------- 管理员「单个项目维护」（JWT 鉴权，无需项目控制密码，对标项目方自服务） ----------
+       命名约定区分两套同形接口：
+        - list*Admin / *Admin  = 管理员（JWT）专用接口，走 /api/admin/object-items/{id}/...
+        - load*Admin / 同名    = 项目方（controlPassword）接口，走 /api/admin/project/object-items/{id}/... */
+    // 管理员查看加入申请：GET /api/admin/object-items/{id}/join-applications?status=（JWT 鉴权，返回全状态）
+    listJoinApplicationsAdmin: async (
+      projectId: string | number,
+      status?: string,
+    ): Promise<JoinApplicationResponse[]> => {
+      const items = await get<JoinApplicationResponse[]>(
+        `/admin/object-items/${projectId}/join-applications`,
+        status ? { status } : undefined,
+      );
+      return normalizeArray<JoinApplicationResponse>(items);
+    },
+    // 管理员同意加入申请：POST /api/admin/object-items/{id}/join-applications/{applicationId}/accept
+    acceptJoinApplicationAdmin: async (
+      projectId: string | number,
+      applicationId: string | number,
+    ): Promise<void> => {
+      await post(`/admin/object-items/${projectId}/join-applications/${applicationId}/accept`, undefined, {
+        payloadMode: "json",
+      });
+    },
+    // 管理员拒绝加入申请：POST .../reject，请求体可携带 rejectReason（可选）
+    rejectJoinApplicationAdmin: async (
+      projectId: string | number,
+      applicationId: string | number,
+      rejectReason?: string,
+    ): Promise<void> => {
+      await post(
+        `/admin/object-items/${projectId}/join-applications/${applicationId}/reject`,
+        rejectReason ? { rejectReason } : undefined,
+        { payloadMode: "json" },
+      );
+    },
+    // 管理员查看项目动态：GET /api/admin/object-items/{id}/updates?status=（JWT 鉴权，返回全状态）
+    listProjectUpdatesAdmin: async (
+      projectId: string | number,
+      status?: string,
+    ): Promise<ProjectUpdate[]> => {
+      const items = await get<ObjectItemUpdateResponse[]>(
+        `/admin/object-items/${projectId}/updates`,
+        status ? { status } : undefined,
+      );
+      return normalizeArray<ObjectItemUpdateResponse>(items)
+        .map(mapObjectItemUpdateToProjectUpdate)
+        .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+    },
+    // 管理员发布项目动态：POST /api/admin/object-items/{id}/updates（管理员发布默认 APPROVED 立即公开）
+    createProjectUpdateAdmin: async (
+      projectId: string | number,
+      body: ProjectUpdatePayload,
+    ): Promise<ProjectUpdate> => {
+      const item = await post<ObjectItemUpdateResponse>(
+        `/admin/object-items/${projectId}/updates`,
+        {
+          title: body.title,
+          content: body.content,
+          imageUrl: body.imageUrl,
+          status: body.status ?? "APPROVED",
+        },
+        { payloadMode: "json" },
+      );
+      return mapObjectItemUpdateToProjectUpdate(item);
+    },
+    // 管理员修改项目动态：PUT /api/admin/object-items/{id}/updates/{updateId}（空值字段不修改）
+    updateProjectUpdateAdmin: async (
+      projectId: string | number,
+      updateId: string | number,
+      body: ProjectUpdatePayload,
+    ): Promise<ProjectUpdate> => {
+      const item = await put<ObjectItemUpdateResponse>(
+        `/admin/object-items/${projectId}/updates/${updateId}`,
+        {
+          title: body.title,
+          content: body.content,
+          imageUrl: body.imageUrl,
+        },
+        { payloadMode: "json" },
+      );
+      return mapObjectItemUpdateToProjectUpdate(item);
+    },
+    // 管理员删除项目动态：DELETE /api/admin/object-items/{id}/updates/{updateId}
+    deleteProjectUpdateAdmin: async (
+      projectId: string | number,
+      updateId: string | number,
+    ): Promise<void> => {
+      await httpDelete(`/admin/object-items/${projectId}/updates/${updateId}`);
+    },
+    // 管理员查看项目评论：GET /api/admin/object-items/{id}/comments?status=（JWT 鉴权，返回全状态）
+    listProjectCommentsAdmin: async (
+      projectId: string | number,
+      status?: string,
+    ): Promise<ProjectComment[]> => {
+      const items = await get<ObjectItemCommentResponse[]>(
+        `/admin/object-items/${projectId}/comments`,
+        status ? { status } : undefined,
+      );
+      return normalizeArray<ObjectItemCommentResponse>(items)
+        .map(mapObjectItemCommentToProjectComment)
+        .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+    },
     // 管理员批量删除想法：DELETE /api/project/minds/batch，请求体 { ids }。
     deleteIdeaBatch: async (ids: (string | number)[]): Promise<void> => {
       await httpRequest("/project/minds/batch", { ids }, { method: "DELETE", payloadMode: "json" });
