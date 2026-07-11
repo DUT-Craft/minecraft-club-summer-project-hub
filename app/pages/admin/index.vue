@@ -101,6 +101,11 @@
           项目方登录仅能管理自己提交的项目；管理员可管理全部项目、想法与审核。
         </p>
 
+        <p class="register-link">
+          收到总管理邀请码？
+          <n-button text type="primary" @click="navigateTo('/register')">前往项目管理注册</n-button>
+        </p>
+
         <div class="back">
           <n-button text @click="navigateTo('/')">← 返回首页</n-button>
         </div>
@@ -110,7 +115,7 @@
 </template>
 
 <script setup lang="ts">
-import type { FormInst, FormRules } from "naive-ui";
+import type {FormInst, FormRules} from "naive-ui";
 
 
 definePageMeta({
@@ -169,11 +174,16 @@ const handleAdminLogin = async () => {
     if (!token) {
       throw new Error("登录响应中未包含 token，请确认后端 /api/auth/login 返回格式");
     }
-    writeAdminSession({
-      token,
-      username,
-      loginAt: new Date().toISOString(),
-    });
+    // 先写入 token（cookie 随之设置），再取 /auth/me 拿角色一并写入会话，
+    // 供管理面板按角色显隐总管理专属入口（邀请码 / 项目分配）。
+    writeAdminSession({token, username, loginAt: new Date().toISOString()});
+    let role: "SUPER_ADMIN" | "PROJECT_MANAGER" | undefined;
+    try {
+      role = (await adminMe()).role;
+    } catch {
+      // 取角色失败不阻塞登录，按项目管理兜底（最小权限）
+    }
+    writeAdminSession({token, username, role, loginAt: new Date().toISOString()});
     message.success(`欢迎，${username || "管理员"}！正在进入管理面板...`);
     // 跳转后清空密码字段，避免登录页 DOM 残留
     adminForm.password = "";
@@ -185,7 +195,7 @@ const handleAdminLogin = async () => {
   }
 };
 
-const { verifyProjectOwner, adminLogin } = useProjectHubApi();
+const {verifyProjectOwner, adminLogin, adminMe} = useProjectHubApi();
 const { write: writeOwnerSession } = useOwnerSession();
 const { write: writeAdminSession } = useAdminAuth();
 
@@ -347,6 +357,14 @@ const handleOwnerLogin = async () => {
   font-size: 13px;
   line-height: 1.7;
   text-align: center;
+}
+
+.register-link {
+  margin: 6px 0 0;
+  text-align: center;
+  color: #60462b;
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .back {

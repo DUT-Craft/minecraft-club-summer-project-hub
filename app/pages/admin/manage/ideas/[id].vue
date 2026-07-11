@@ -124,9 +124,9 @@
 </template>
 
 <script setup lang="ts">
-import type { FormInst, FormRules } from "naive-ui";
-import type { AdminSession } from "~/composables/useAdminAuth";
-import type { Idea } from "~/types/projectHub";
+import type {FormInst, FormRules} from "naive-ui";
+import type {AdminSession} from "~/composables/useAdminAuth";
+import type {Idea} from "~/types/projectHub";
 
 definePageMeta({
   layout: false,
@@ -157,6 +157,13 @@ onMounted(async () => {
   if (!session.value) {
     loading.value = false;
     navigateTo("/admin");
+    return;
+  }
+  // 想法为全局内容，仅总管理可管理；项目管理重定向回控制台
+  if (session.value.role === "PROJECT_MANAGER") {
+    loading.value = false;
+    message.warning("仅总管理可管理想法");
+    navigateTo("/admin/manage");
     return;
   }
   idea.value = await getIdeaAdmin(ideaId.value);

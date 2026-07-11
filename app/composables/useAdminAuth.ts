@@ -4,9 +4,14 @@
 // token 写入 chat_auth_token cookie：useHttp 会自动把它作为 Bearer 头带上，
 // 这样所有走 useHttp 的管理端请求都自动鉴权，无需每个调用手动传 token。
 // 会话快照（username / loginAt）另存 sessionStorage，刷新后仍能恢复管理页 UI 状态。
+export type AdminRole = "SUPER_ADMIN" | "PROJECT_MANAGER";
+
 export interface AdminSession {
   token: string;
   username: string;
+    // 由 /auth/me 拉取，驱动总管理专属入口（邀请码生成 / 项目分配）的显隐；
+    // 登录时拉取失败或旧会话缺失时为 undefined，按「项目管理」权限兜底（最小权限）。
+    role?: AdminRole;
   loginAt: string;
 }
 

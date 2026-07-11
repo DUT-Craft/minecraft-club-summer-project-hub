@@ -1,10 +1,12 @@
 import type {
   DataSnapshot,
   Idea,
+  ManagerSummary,
   Project,
   ProjectComment,
   ProjectUpdate,
   ProjectUpdatePayload,
+  RegisterManagerPayload,
   ReviewStatus,
   SubmitCommentPayload,
   SubmitIdeaPayload,
@@ -94,6 +96,7 @@ interface ObjectItemResponse {
   needMembers?: ObjectItemNeedMember[];
   tags?: string[];
   contactInformation?: string;
+    ownerId?: number | string | null;
   createTime?: string;
   updateTime?: string;
 }
@@ -175,6 +178,7 @@ const mapObjectItemToProject = (item: ObjectItemResponse): Project => ({
   projectStatus: item.status,
   ownerName: item.leader ?? "",
   ownerMinecraftId: item.leaderMcId,
+    managerId: item.ownerId ?? null,
   skills: item.tags ? [...item.tags] : undefined,
   publicContact: item.contactInformation,
   recruitmentNeeds: normalizeArray<ObjectItemNeedMember>(item.needMembers).map((need) => ({
@@ -950,5 +954,47 @@ export const useProjectHubApi = () => {
     deleteIdeaBatch: async (ids: (string | number)[]): Promise<void> => {
       await httpRequest("/project/minds/batch", { ids }, { method: "DELETE", payloadMode: "json" });
     },
+      /* ---------- 账号等级：角色 / 邀请码 / 项目分配 ---------- */
+      // 当前管理员信息：GET /api/auth/me（JWT 鉴权）。登录后取角色（总管理 / 项目管理），
+      // 驱动总管理专属入口（邀请码生成、项目分配）的显隐。
+      adminMe: async (): Promise<{
+          id: number | string;
+          username: string;
+          role: "SUPER_ADMIN" | "PROJECT_MANAGER"
+      }> => {
+          return get("/auth/me");
+      },
+      // 项目管理注册（公开，凭一次性邀请码）：POST /api/auth/register/manager
+      registerManager: async (body: RegisterManagerPayload): Promise<{
+          id: number | string;
+          username: string;
+          role: string
+      }> => {
+          return post("/auth/register/manager", {
+              inviteCode: body.inviteCode,
+              username: body.username,
+              password: body.password,
+              email: body.email,
+          }, {payloadMode: "json"});
+      },
+      // 总管理生成项目管理邀请码：POST /api/admin/invites（仅总管理），返回一次性明文码。
+      generateInviteCode: async (): Promise<string> => {
+          const data = await post<{ inviteCode: string }>("/admin/invites", undefined, {payloadMode: "json"});
+          return data?.inviteCode ?? "";
+      },
+      // 总管理列出项目管理账号（分配项目下拉用）：GET /api/admin/users/managers（仅总管理）
+      listManagers: async (): Promise<ManagerSummary[]> => {
+          const data = await get<unknown>("/admin/users/managers").catch(() => null);
+          return extractList<ManagerSummary>(data);
+      },
+      // 总管理把项目分配给项目管理（ownerId=null 收回为未分配）：PUT /api/admin/object-items/{id}/owner
+      assignProjectOwner: async (projectId: string | number, ownerId: number | string | null): Promise<Project> => {
+          const item = await put<ObjectItemResponse>(
+              `/admin/object-items/${projectId}/owner`,
+              {ownerId},
+              {payloadMode: "json"},
+          );
+          return normalizeProject(mapObjectItemToProject(item));
+      },
   };
 };

@@ -10,9 +10,15 @@
       <template v-else-if="session">
         <n-card class="manage-hero" :bordered="false">
           <div class="hero-info">
-            <p class="eyebrow">Global Admin</p>
-            <h1>管理员控制台</h1>
-            <span>{{ session.username || "管理员" }} · 登录于 {{ formatTime(session.loginAt) }}</span>
+            <p class="eyebrow">{{ isSuperAdmin ? "Super Admin" : "Project Manager" }}</p>
+            <h1>{{ isSuperAdmin ? "总管理控制台" : "项目管理控制台" }}</h1>
+            <span>
+              {{ session.username || "管理员" }}
+              <n-tag :bordered="false" :type="isSuperAdmin ? 'success' : 'info'" class="role-tag" round size="small">
+                {{ isSuperAdmin ? "总管理" : "项目管理" }}
+              </n-tag>
+              · 登录于 {{ formatTime(session.loginAt) }}
+            </span>
           </div>
           <div class="hero-actions">
             <n-button size="large" @click="navigateTo('/')">返回站点</n-button>
@@ -20,17 +26,66 @@
           </div>
         </n-card>
 
+        <!-- 总管理专属：邀请码生成 + 项目分配 -->
+        <div v-if="isSuperAdmin" class="super-grid">
+          <n-card :bordered="false" class="entry-card" hoverable>
+            <div class="entry-head">
+              <span class="eyebrow">Invite</span>
+              <h2>项目管理邀请码</h2>
+            </div>
+            <p class="entry-desc">生成一次性邀请码，发给项目管理用于注册账号。</p>
+            <n-space :size="10" align="center" wrap>
+              <n-button :loading="generatingInvite" type="primary" @click="handleGenerateInvite">
+                {{ inviteCode ? "重新生成" : "生成邀请码" }}
+              </n-button>
+              <n-input v-if="inviteCode" :value="inviteCode" class="invite-code" readonly/>
+              <n-button v-if="inviteCode" text type="primary" @click="copyInvite">复制</n-button>
+            </n-space>
+          </n-card>
+
+          <n-card :bordered="false" class="entry-card" hoverable>
+            <div class="entry-head">
+              <span class="eyebrow">Assign</span>
+              <h2>项目分配</h2>
+            </div>
+            <p class="entry-desc">把项目分配给项目管理（每个项目管理名下上限 10 个），或收回为未分配。</p>
+            <n-space :size="10" align="center" wrap>
+              <n-select
+                  v-model:value="assignProjectId"
+                  :options="assignProjectOptions"
+                  class="assign-select"
+                  filterable
+                  placeholder="选择项目"
+              />
+              <n-select
+                  v-model:value="assignManagerId"
+                  :options="assignManagerOptions"
+                  class="assign-select"
+                  filterable
+                  placeholder="选择项目管理"
+              />
+              <n-button :disabled="assignProjectId == null" :loading="assigning" type="primary" @click="handleAssign">
+                {{ assignManagerId == null ? "收回" : "分配" }}
+              </n-button>
+            </n-space>
+          </n-card>
+        </div>
+
         <div class="entry-grid">
           <n-card class="entry-card" :bordered="false" hoverable>
             <div class="entry-head">
               <span class="eyebrow">Projects</span>
               <h2>项目管理</h2>
             </div>
-            <p class="entry-desc">审核、批量改状态、进入单个项目更新信息与状态。</p>
+            <p class="entry-desc">
+              {{
+                isSuperAdmin ? "审核、批量改状态、分配项目，进入单个项目维护。" : "管理名下项目：审核加入申请、发布动态、审核评论。"
+              }}
+            </p>
             <n-button type="primary" size="large" @click="navigateTo('/admin/manage/projects')">进入项目管理</n-button>
           </n-card>
 
-          <n-card class="entry-card" :bordered="false" hoverable>
+          <n-card v-if="isSuperAdmin" :bordered="false" class="entry-card" hoverable>
             <div class="entry-head">
               <span class="eyebrow">Ideas</span>
               <h2>想法管理</h2>
@@ -39,6 +94,10 @@
             <n-button type="primary" size="large" @click="navigateTo('/admin/manage/ideas')">进入想法管理</n-button>
           </n-card>
         </div>
+
+        <p v-if="!isSuperAdmin" class="scope-hint">
+          项目管理仅能管理分配给自己的项目；如需管理全部项目或想法，请联系总管理。
+        </p>
       </template>
 
       <n-empty v-else class="empty-state" description="尚未登录管理员账号">
@@ -52,7 +111,8 @@
 </template>
 
 <script setup lang="ts">
-import type { AdminSession } from "~/composables/useAdminAuth";
+import type {AdminSession} from "~/composables/useAdminAuth";
+import type {ManagerSummary, Project} from "~/types/projectHub";
 
 definePageMeta({
   layout: false,
@@ -60,25 +120,119 @@ definePageMeta({
 
 const message = useMessage();
 const { themeOverrides } = useMinecraftTheme();
-const { read, clear } = useAdminAuth();
-const { adminLogout } = useProjectHubApi();
+const {read, clear, write} = useAdminAuth();
+const {
+  adminLogout,
+  adminMe,
+  generateInviteCode,
+  listProjectsAdmin,
+  listManagers,
+  assignProjectOwner
+} = useProjectHubApi();
 
 const loading = ref(true);
 const session = ref<AdminSession | null>(null);
 
-// 与项目方管理页一致：onMounted（仅客户端）恢复会话，避免 SSR 阶段误判未登录而重定向
-onMounted(() => {
-  session.value = read();
-  loading.value = false;
-  if (!session.value) {
+const isSuperAdmin = computed(() => session.value?.role === "SUPER_ADMIN");
+
+// 恢复会话后立刻拉一次 /auth/me 同步角色：登录时可能取角色失败 / 旧会话缺角色，
+// 这里以保证「总管理专属入口」显隐正确（取不到角色按项目管理兜底）。
+onMounted(async () => {
+  const existing = read();
+  session.value = existing;
+  if (!existing) {
+    loading.value = false;
     navigateTo("/admin");
+    return;
+  }
+  try {
+    const me = await adminMe();
+    const updated = {...existing, role: me.role};
+    session.value = updated;
+    write(updated);
+  } catch {
+    // token 失效等：useHttp 已处理清会话 + 跳转，这里不阻塞渲染
+  }
+  loading.value = false;
+  if (session.value?.role === "SUPER_ADMIN") {
+    void loadAssignData();
   }
 });
 
 const formatTime = (value?: string) => (value ? new Date(value).toLocaleString("zh-CN") : "未记录时间");
 
-// 登出：先通知后端作废 access token + 清 refresh cookie（token 已失效时 401，忽略不阻塞），
-// 再清前端会话快照并跳转回登录页
+/* ---------- 邀请码 ---------- */
+const inviteCode = ref("");
+const generatingInvite = ref(false);
+
+const handleGenerateInvite = async () => {
+  try {
+    generatingInvite.value = true;
+    inviteCode.value = await generateInviteCode();
+    message.success("邀请码已生成，请复制后发给项目管理（仅一次有效）");
+  } catch (error) {
+    message.error(error instanceof Error && error.message ? error.message : "生成邀请码失败");
+  } finally {
+    generatingInvite.value = false;
+  }
+};
+
+const copyInvite = async () => {
+  if (!inviteCode.value) {
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(inviteCode.value);
+    message.success("邀请码已复制");
+  } catch {
+    message.warning("复制失败，请手动选中复制");
+  }
+};
+
+/* ---------- 项目分配 ---------- */
+const assignProjects = ref<Project[]>([]);
+const assignManagers = ref<ManagerSummary[]>([]);
+const assignProjectId = ref<string | number | null>(null);
+const assignManagerId = ref<string | number | null>(null);
+const assigning = ref(false);
+
+const assignProjectOptions = computed(() =>
+    assignProjects.value.map((p) => ({label: `#${p.id} ${p.title || "未命名项目"}`, value: p.id})),
+);
+// 首项「未分配」用于收回项目（ownerId=null）；其余为项目管理账号。
+const assignManagerOptions = computed(() => [
+  {label: "（未分配）", value: null},
+  ...assignManagers.value.map((m) => ({label: `${m.nickname}（${m.username}）`, value: m.id})),
+]);
+
+const loadAssignData = async () => {
+  try {
+    const [projects, managers] = await Promise.all([listProjectsAdmin(), listManagers()]);
+    assignProjects.value = projects;
+    assignManagers.value = managers;
+  } catch {
+    // 下拉数据缺失时用户可稍后重试（进入页面时不阻塞）
+  }
+};
+
+const handleAssign = async () => {
+  if (assignProjectId.value == null) {
+    message.warning("请先选择要分配的项目");
+    return;
+  }
+  try {
+    assigning.value = true;
+    await assignProjectOwner(assignProjectId.value, assignManagerId.value);
+    message.success(assignManagerId.value == null ? "已收回项目（未分配）" : "项目已分配给所选项目管理");
+    assignProjectId.value = null;
+    assignManagerId.value = null;
+  } catch (error) {
+    message.error(error instanceof Error && error.message ? error.message : "分配失败，请稍后再试");
+  } finally {
+    assigning.value = false;
+  }
+};
+
 const handleLogout = async () => {
   try {
     await adminLogout();
@@ -106,7 +260,9 @@ const handleLogout = async () => {
 }
 
 .manage-hero,
+.super-grid,
 .entry-grid,
+.scope-hint,
 .empty-state,
 .loading-state {
   width: min(1080px, calc(100% - 28px));
@@ -157,12 +313,18 @@ const handleLogout = async () => {
   font-weight: 800;
 }
 
+.role-tag {
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
 .hero-actions {
   flex: 0 0 auto;
   display: flex;
   gap: 10px;
 }
 
+.super-grid,
 .entry-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -187,6 +349,24 @@ const handleLogout = async () => {
   line-height: 1.7;
 }
 
+.invite-code {
+  max-width: 280px;
+  font-family: monospace;
+}
+
+.assign-select {
+  min-width: 220px;
+}
+
+.scope-hint {
+  margin-top: 16px;
+  padding: 0 6px;
+  color: #795b36;
+  font-size: 13px;
+  line-height: 1.7;
+  text-align: center;
+}
+
 .empty-state {
   width: min(560px, calc(100% - 28px));
   margin: 80px auto 0;
@@ -204,6 +384,7 @@ const handleLogout = async () => {
     align-items: flex-start;
   }
 
+  .super-grid,
   .entry-grid {
     grid-template-columns: 1fr;
   }

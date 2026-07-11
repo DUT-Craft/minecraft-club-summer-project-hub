@@ -39,6 +39,8 @@ export interface Project {
   ownerName: string;
   ownerMinecraftId?: string;
   submitterMinecraftId?: string;
+    // 后端 ObjectItem.ownerId：负责该项目的「项目管理」账号 id（由总管理分配），未分配为 null/undefined。
+    managerId?: number | string | null;
   neededMembers?: number;
   skills?: string[];
   description: string;
@@ -128,4 +130,19 @@ export interface ProjectUpdatePayload {
   imageUrl?: string;
   // 动态状态：项目方发布时前端固定置 APPROVED（立即公开展示），编辑时不传 status 以免误改可见性。
   status?: string;
+}
+
+// 总管理分配项目时下拉用的项目管理账号摘要（GET /api/admin/users/managers）。
+export interface ManagerSummary {
+    id: number | string;
+    username: string;
+    nickname: string;
+}
+
+// 项目管理凭一次性邀请码注册的请求体（POST /api/auth/register/manager）。
+export interface RegisterManagerPayload {
+    inviteCode: string;
+    username: string;
+    password: string;
+    email: string;
 }

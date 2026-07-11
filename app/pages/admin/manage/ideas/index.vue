@@ -83,8 +83,8 @@
 </template>
 
 <script setup lang="ts">
-import type { AdminSession } from "~/composables/useAdminAuth";
-import type { Idea } from "~/types/projectHub";
+import type {AdminSession} from "~/composables/useAdminAuth";
+import type {Idea} from "~/types/projectHub";
 
 definePageMeta({ layout: false });
 
@@ -124,6 +124,12 @@ onMounted(async () => {
   loading.value = false;
   if (!session.value) {
     navigateTo("/admin");
+    return;
+  }
+  // 想法为全局内容，仅总管理可管理；项目管理重定向回控制台
+  if (session.value.role === "PROJECT_MANAGER") {
+    message.warning("仅总管理可管理想法");
+    navigateTo("/admin/manage");
     return;
   }
   await load();
