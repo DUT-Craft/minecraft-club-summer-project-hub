@@ -5,9 +5,9 @@
     <n-config-provider :theme="null" :theme-overrides="themeOverrides">
       <section class="login-shell">
         <header class="login-head">
-          <p class="eyebrow">Project Manager</p>
-          <h1>项目管理注册</h1>
-          <p class="sub">凭总管理发放的一次性邀请码注册项目管理账号</p>
+          <p class="eyebrow">Reset Password</p>
+          <h1>找回密码</h1>
+          <p class="sub">通过邮箱验证码重置账号密码</p>
         </header>
 
         <n-card :bordered="false" class="panel">
@@ -20,51 +20,37 @@
               size="large"
               @submit.prevent="handleSubmit"
           >
-            <n-form-item label="邀请码" path="inviteCode">
-              <n-input
-                  v-model:value="form.inviteCode"
-                  clearable
-                  placeholder="总管理生成的一次性邀请码"
-              />
-            </n-form-item>
-            <n-form-item label="账号" path="username">
-              <n-input
-                  v-model:value="form.username"
-                  clearable
-                  placeholder="设置登录账号"
-              />
-            </n-form-item>
-            <n-form-item label="密码" path="password">
-              <n-input
-                  v-model:value="form.password"
-                  placeholder="设置登录密码"
-                  show-password-on="click"
-                  type="password"
-              />
-            </n-form-item>
-            <n-form-item label="邮箱" path="email">
+            <n-form-item label="注册邮箱" path="email">
               <n-input
                   v-model:value="form.email"
                   clearable
-                  placeholder="用于找回与通知"
+                  placeholder="输入注册时使用的邮箱"
               />
             </n-form-item>
             <n-form-item label="邮箱验证码" path="emailCode">
               <VerificationCodeInput
                   :code="form.emailCode"
                   :email="form.email"
-                  scene="REGISTER"
+                  scene="RESET_PASSWORD"
                   @update:code="form.emailCode = $event"
               />
             </n-form-item>
+            <n-form-item label="新密码" path="newPassword">
+              <n-input
+                  v-model:value="form.newPassword"
+                  placeholder="设置新的登录密码"
+                  show-password-on="click"
+                  type="password"
+              />
+            </n-form-item>
             <n-button :loading="submitting" attr-type="submit" block type="primary">
-              {{ submitting ? "注册中..." : "注册并登录" }}
+              {{ submitting ? "重置中..." : "重置密码" }}
             </n-button>
           </n-form>
         </n-card>
 
         <p class="hint">
-          邀请码仅可使用一次，注册成功后即可登录后台管理名下项目。没有邀请码请联系总管理获取。
+          重置成功后，该账号的所有登录会话将失效，请用新密码重新登录。
         </p>
 
         <div class="back">
@@ -84,24 +70,18 @@ definePageMeta({
 
 const message = useMessage();
 const {themeOverrides} = useMinecraftTheme();
-const {registerManager} = useProjectHubApi();
+const {resetPassword} = useProjectHubApi();
 
 const formRef = ref<FormInst | null>(null);
 const submitting = ref(false);
 
 const form = reactive({
-  inviteCode: "",
-  username: "",
-  password: "",
   email: "",
   emailCode: "",
+  newPassword: "",
 });
 
 const rules: FormRules = {
-  inviteCode: {required: true, message: "请输入邀请码", trigger: ["blur", "input"]},
-  username: {required: true, message: "请输入账号", trigger: ["blur", "input"]},
-  password: {required: true, message: "请输入密码", trigger: ["blur", "input"]},
-  emailCode: {required: true, message: "请输入邮箱验证码", trigger: ["blur", "input"]},
   email: {
     required: true,
     trigger: ["blur", "input"],
@@ -115,10 +95,11 @@ const rules: FormRules = {
       return true;
     },
   },
+  emailCode: {required: true, message: "请输入邮箱验证码", trigger: ["blur", "input"]},
+  newPassword: {required: true, message: "请输入新密码", trigger: ["blur", "input"]},
 };
 
-// 项目管理注册：POST /api/auth/register/manager（公开，凭一次性邀请码）
-// 邀请码由后端原子消费（一码一次）；注册成功后跳转登录页，用刚注册的账号登录。
+// 找回密码：POST /api/auth/reset-password（匿名，凭邮箱验证码重置）
 const handleSubmit = async () => {
   try {
     await formRef.value?.validate();
@@ -127,20 +108,15 @@ const handleSubmit = async () => {
   }
   try {
     submitting.value = true;
-    const result = await registerManager({
-      inviteCode: form.inviteCode.trim(),
-      username: form.username.trim(),
-      password: form.password,
+    await resetPassword({
       email: form.email.trim(),
       emailCode: form.emailCode.trim(),
+      newPassword: form.newPassword,
     });
-    message.success(`注册成功：${result.username}，请登录`);
-    form.password = "";
-    form.inviteCode = "";
-    form.emailCode = "";
+    message.success("密码已重置，请用新密码登录");
     await navigateTo("/admin");
   } catch (error) {
-    message.error(error instanceof Error && error.message ? error.message : "注册失败，请检查邀请码或稍后再试");
+    message.error(error instanceof Error && error.message ? error.message : "重置失败，请稍后再试");
   } finally {
     submitting.value = false;
   }

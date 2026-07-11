@@ -1,5 +1,7 @@
 import type {
+  ChangePasswordPayload,
   DataSnapshot,
+  EmailLoginPayload,
   FileItem,
   FilePage,
   Idea,
@@ -10,7 +12,9 @@ import type {
   ProjectUpdate,
   ProjectUpdatePayload,
   RegisterManagerPayload,
+  ResetPasswordPayload,
   ReviewStatus,
+  SendCodePayload,
   SubmitCommentPayload,
   SubmitIdeaPayload,
   SubmitJoinPayload,
@@ -724,6 +728,32 @@ export const useProjectHubApi = () => {
         username,
       };
     },
+    // 邮箱验证登录：POST /api/auth/login/email（账号 + 密码 + 邮箱 + 邮箱验证码）
+    // User-Agent 由浏览器自动带，后端按 email+UA 绑定校验验证码。返回结构与普通登录一致。
+    emailLogin: async (body: EmailLoginPayload): Promise<{ token: string; username: string }> => {
+      const data = await post<{ accessToken: string; tokenType: string; expiresIn: number }>(
+          "/auth/login/email",
+          body,
+          {payloadMode: "json"},
+      );
+      return {
+        token: data?.accessToken ?? "",
+        username: body.account,
+      };
+    },
+    // 发送邮箱验证码：POST /api/auth/verification-code（公开，User-Agent 浏览器自动带）
+    // 后端按 scene+email(+userId)+UA 绑定存 Redis，60s 间隔 + 每日 10 次限流。
+    sendVerificationCode: async (body: SendCodePayload): Promise<void> => {
+      await post<void>("/auth/verification-code", body, {payloadMode: "json"});
+    },
+    // 修改密码（已登录）：POST /api/auth/change-password（旧密码 + 新密码 + 邮箱 + 验证码）
+    changePassword: async (body: ChangePasswordPayload): Promise<void> => {
+      await post<void>("/auth/change-password", body, {payloadMode: "json"});
+    },
+    // 找回密码（匿名）：POST /api/auth/reset-password（邮箱 + 验证码 + 新密码）
+    resetPassword: async (body: ResetPasswordPayload): Promise<void> => {
+      await post<void>("/auth/reset-password", body, {payloadMode: "json"});
+    },
     // 管理员登出：POST /api/auth/logout（JWT 鉴权，Authorization 头由 useHttp 自动带）
     // 后端驱逐当前 access token 的 jti（Redis 白名单）并清除 refresh cookie（Set-Cookie Max-Age=0）。
     // 调用方应捕获异常后继续清前端会话：token 已失效时此调用会 401，不应阻塞登出。
@@ -994,6 +1024,7 @@ export const useProjectHubApi = () => {
         username: body.username,
         password: body.password,
         email: body.email,
+        emailCode: body.emailCode,
       }, {payloadMode: "json"});
     },
     // 总管理生成项目管理邀请码：POST /api/admin/invites（仅总管理），返回一次性明文码。

@@ -226,6 +226,14 @@
               <n-input v-model:value="form.description" :rows="4" placeholder="详细说明" type="textarea"/>
             </n-form-item>
 
+            <n-form-item label="项目封面图" path="coverImageUrl">
+              <ImageUploader
+                  :url="form.coverImageUrl"
+                  button-text="上传封面图"
+                  @update:url="form.coverImageUrl = $event"
+              />
+            </n-form-item>
+
             <div class="edit-grid">
               <n-form-item label="负责人" path="ownerName">
                 <n-input v-model:value="form.ownerName" placeholder="负责人昵称"/>
@@ -391,6 +399,7 @@ const form = reactive({
   status: "PENDING",
   introduction: "",
   description: "",
+  coverImageUrl: "",
   ownerName: "",
   ownerMinecraftId: "",
   publicContact: "",
@@ -417,6 +426,7 @@ const openEditModal = () => {
   form.status = current.status ?? "PENDING";
   form.introduction = current.summary ?? "";
   form.description = current.description ?? "";
+  form.coverImageUrl = current.coverImageUrl ?? "";
   form.ownerName = current.ownerName ?? "";
   form.ownerMinecraftId = current.ownerMinecraftId ?? "";
   form.publicContact = current.publicContact ?? "";
@@ -443,6 +453,7 @@ const handleEditSubmit = async () => {
       status: form.status,
       introduction: form.introduction.trim(),
       description: form.description,
+      coverImageUrl: form.coverImageUrl || undefined,
       ownerName: form.ownerName.trim(),
       ownerMinecraftId: form.ownerMinecraftId.trim(),
       publicContact: form.publicContact.trim(),

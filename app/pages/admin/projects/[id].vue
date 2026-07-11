@@ -300,6 +300,14 @@
               />
             </n-form-item>
 
+            <n-form-item label="项目封面图" path="coverImageUrl">
+              <ImageUploader
+                  :url="editForm.coverImageUrl"
+                  button-text="上传封面图"
+                  @update:url="editForm.coverImageUrl = $event"
+              />
+            </n-form-item>
+
             <div class="edit-grid">
               <n-form-item label="负责人" path="ownerName">
                 <n-input v-model:value="editForm.ownerName" placeholder="负责人昵称"/>
@@ -490,6 +498,7 @@ const editForm = reactive({
   status: "PREPARING" as string,
   introduction: "",
   description: "",
+  coverImageUrl: "",
   ownerName: "",
   ownerMinecraftId: "",
   publicContact: "",
@@ -524,6 +533,7 @@ const openEditModal = () => {
       : "PREPARING";
   editForm.introduction = project.summary ?? "";
   editForm.description = project.description ?? "";
+  editForm.coverImageUrl = project.coverImageUrl ?? "";
   editForm.ownerName = project.ownerName ?? "";
   editForm.ownerMinecraftId = project.ownerMinecraftId ?? "";
   editForm.publicContact = project.publicContact ?? "";
@@ -554,6 +564,7 @@ const handleEditSubmit = async () => {
       status: editForm.status,
       introduction: editForm.introduction.trim(),
       description: editForm.description,
+      coverImageUrl: editForm.coverImageUrl || undefined,
       ownerName: editForm.ownerName.trim(),
       ownerMinecraftId: editForm.ownerMinecraftId.trim(),
       publicContact: editForm.publicContact.trim(),

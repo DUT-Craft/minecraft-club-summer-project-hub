@@ -22,6 +22,7 @@
           </div>
           <div class="hero-actions">
             <n-button size="large" @click="navigateTo('/')">返回站点</n-button>
+            <n-button size="large" @click="showPasswordModal = true">修改密码</n-button>
             <n-button size="large" type="primary" @click="handleLogout">退出登录</n-button>
           </div>
         </n-card>
@@ -126,12 +127,67 @@
           <n-button type="primary" @click="navigateTo('/admin')">前往登录</n-button>
         </template>
       </n-empty>
+
+      <!-- 修改密码：已登录，需旧密码 + 邮箱验证码确认 -->
+      <n-modal
+          v-model:show="showPasswordModal"
+          :bordered="false"
+          :mask-closable="false"
+          preset="card"
+          style="width: min(480px, calc(100% - 28px))"
+          title="修改密码"
+      >
+        <n-form
+            ref="passwordFormRef"
+            :model="passwordForm"
+            :rules="passwordRules"
+            :show-require-mark="false"
+            label-placement="top"
+            @submit.prevent="handleChangePassword"
+        >
+          <n-form-item label="当前密码" path="oldPassword">
+            <n-input
+                v-model:value="passwordForm.oldPassword"
+                placeholder="输入当前登录密码"
+                show-password-on="click"
+                type="password"
+            />
+          </n-form-item>
+          <n-form-item label="注册邮箱" path="email">
+            <n-input v-model:value="passwordForm.email" clearable placeholder="输入账号注册邮箱"/>
+          </n-form-item>
+          <n-form-item label="邮箱验证码" path="emailCode">
+            <VerificationCodeInput
+                :code="passwordForm.emailCode"
+                :email="passwordForm.email"
+                :user-id="session?.id"
+                scene="CHANGE_PASSWORD"
+                @update:code="passwordForm.emailCode = $event"
+            />
+          </n-form-item>
+          <n-form-item label="新密码" path="newPassword">
+            <n-input
+                v-model:value="passwordForm.newPassword"
+                placeholder="设置新的登录密码"
+                show-password-on="click"
+                type="password"
+            />
+          </n-form-item>
+          <div class="modal-footer">
+            <n-button @click="showPasswordModal = false">取消</n-button>
+            <n-button :loading="changingPassword" type="primary" @click="handleChangePassword">
+              {{ changingPassword ? "保存中..." : "确认修改" }}
+            </n-button>
+          </div>
+        </n-form>
+      </n-modal>
     </n-config-provider>
   </main>
 </template>
 
 <script lang="ts" setup>
 import type {AdminSession} from "~/composables/useAdminAuth";
+import type {FormInst, FormRules} from "naive-ui";
 import type {InviteHistoryItem, ManagerSummary, Project} from "~/types/projectHub";
 
 definePageMeta({
@@ -148,7 +204,8 @@ const {
   listInviteCodes,
   listProjectsAdmin,
   listManagers,
-  assignProjectOwner
+  assignProjectOwner,
+  changePassword
 } = useProjectHubApi();
 
 const loading = ref(true);
@@ -303,6 +360,68 @@ const handleLogout = async () => {
   session.value = null;
   message.success("已退出管理员控制台");
   await navigateTo("/admin");
+};
+
+/* ---------- 修改密码（已登录，需旧密码 + 邮箱验证码确认） ---------- */
+const showPasswordModal = ref(false);
+const changingPassword = ref(false);
+const passwordFormRef = ref<FormInst | null>(null);
+const passwordForm = reactive({
+  oldPassword: "",
+  email: "",
+  emailCode: "",
+  newPassword: "",
+});
+const passwordRules: FormRules = {
+  oldPassword: {required: true, message: "请输入当前密码", trigger: ["blur", "input"]},
+  email: {
+    required: true,
+    trigger: ["blur", "input"],
+    validator: (_rule, value) => {
+      if (!value) {
+        return new Error("请输入邮箱");
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value))) {
+        return new Error("邮箱格式不正确");
+      }
+      return true;
+    },
+  },
+  emailCode: {required: true, message: "请输入邮箱验证码", trigger: ["blur", "input"]},
+  newPassword: {required: true, message: "请输入新密码", trigger: ["blur", "input"]},
+};
+
+// 修改密码：POST /api/auth/change-password（JWT 鉴权，后端按 userId+UA 绑定验证码）
+// 修改成功后后端踢掉所有会话，前端需清会话并跳回登录页。
+const handleChangePassword = async () => {
+  if (!session.value?.id) {
+    message.warning("会话信息缺失，请重新登录后再试");
+    return;
+  }
+  try {
+    await passwordFormRef.value?.validate();
+  } catch {
+    return;
+  }
+  try {
+    changingPassword.value = true;
+    await changePassword({
+      oldPassword: passwordForm.oldPassword,
+      newPassword: passwordForm.newPassword,
+      email: passwordForm.email.trim(),
+      emailCode: passwordForm.emailCode.trim(),
+    });
+    message.success("密码已修改，请用新密码重新登录");
+    showPasswordModal.value = false;
+    // 后端已踢掉所有会话，前端清会话后跳回登录页
+    clear();
+    session.value = null;
+    await navigateTo("/admin");
+  } catch (error) {
+    message.error(error instanceof Error && error.message ? error.message : "修改失败，请稍后再试");
+  } finally {
+    changingPassword.value = false;
+  }
 };
 </script>
 
@@ -493,5 +612,11 @@ const handleLogout = async () => {
   .entry-grid {
     grid-template-columns: 1fr;
   }
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
 }
 </style>

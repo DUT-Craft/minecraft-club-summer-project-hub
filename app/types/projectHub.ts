@@ -148,6 +148,40 @@ export interface RegisterManagerPayload {
     username: string;
     password: string;
     email: string;
+    emailCode: string;
+}
+
+// 邮箱验证码场景（与后端 VerificationCodeService.Scene 枚举一致）。
+export type VerificationScene = "REGISTER" | "CHANGE_PASSWORD" | "RESET_PASSWORD" | "EMAIL_LOGIN";
+
+// 发送邮箱验证码请求（POST /api/auth/verification-code）。
+export interface SendCodePayload {
+    email: string;
+    scene: VerificationScene;
+    userId?: number | string | null;
+}
+
+// 邮箱验证登录请求（POST /api/auth/login/email）：账号 + 密码 + 邮箱 + 邮箱验证码。
+export interface EmailLoginPayload {
+    account: string;
+    password: string;
+    email: string;
+    emailCode: string;
+}
+
+// 修改密码请求（POST /api/auth/change-password，已登录）：旧密码 + 新密码 + 邮箱 + 验证码。
+export interface ChangePasswordPayload {
+    oldPassword: string;
+    newPassword: string;
+    email: string;
+    emailCode: string;
+}
+
+// 找回密码请求（POST /api/auth/reset-password，匿名）：邮箱 + 验证码 + 新密码。
+export interface ResetPasswordPayload {
+    email: string;
+    emailCode: string;
+    newPassword: string;
 }
 
 // 总管理历史邀请码记录（GET /api/admin/invites）。status 为后端枚举：UNUSED / USED / EXPIRED。

@@ -59,6 +59,26 @@
                   type="password"
               />
             </n-form-item>
+            <n-checkbox v-model:checked="adminForm.useEmailLogin" class="email-toggle">
+              使用邮箱验证登录
+            </n-checkbox>
+            <template v-if="adminForm.useEmailLogin">
+              <n-form-item label="邮箱" path="email">
+                <n-input
+                    v-model:value="adminForm.email"
+                    clearable
+                    placeholder="输入注册邮箱"
+                />
+              </n-form-item>
+              <n-form-item label="邮箱验证码" path="emailCode">
+                <VerificationCodeInput
+                    :code="adminForm.emailCode"
+                    :email="adminForm.email"
+                    scene="EMAIL_LOGIN"
+                    @update:code="adminForm.emailCode = $event"
+                />
+              </n-form-item>
+            </template>
             <n-button :loading="submitting" attr-type="submit" block type="primary">
               {{ submitting ? "登录中..." : "登录后台" }}
             </n-button>
@@ -106,6 +126,11 @@
           <n-button text type="primary" @click="navigateTo('/register')">前往项目管理注册</n-button>
         </p>
 
+        <p class="register-link">
+          忘记密码？
+          <n-button text type="primary" @click="navigateTo('/forget')">邮箱找回密码</n-button>
+        </p>
+
         <div class="back">
           <n-button text @click="navigateTo('/')">← 返回首页</n-button>
         </div>
@@ -136,6 +161,9 @@ const ownerFormRef = ref<FormInst | null>(null);
 const adminForm = reactive({
   username: "",
   password: "",
+  useEmailLogin: false,
+  email: "",
+  emailCode: "",
 });
 
 const ownerForm = reactive({
@@ -143,10 +171,30 @@ const ownerForm = reactive({
   controlPassword: "",
 });
 
-const adminRules: FormRules = {
-  username: {required: true, message: "请输入账号", trigger: ["blur", "input"]},
-  password: {required: true, message: "请输入密码", trigger: ["blur", "input"]},
-};
+// 管理员登录校验：邮箱验证登录模式下额外要求邮箱 + 验证码
+const adminRules = computed<FormRules>(() => {
+  const rules: FormRules = {
+    username: {required: true, message: "请输入账号", trigger: ["blur", "input"]},
+    password: {required: true, message: "请输入密码", trigger: ["blur", "input"]},
+  };
+  if (adminForm.useEmailLogin) {
+    rules.email = {
+      required: true,
+      trigger: ["blur", "input"],
+      validator: (_rule, value) => {
+        if (!value) {
+          return new Error("请输入邮箱");
+        }
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value))) {
+          return new Error("邮箱格式不正确");
+        }
+        return true;
+      },
+    };
+    rules.emailCode = {required: true, message: "请输入邮箱验证码", trigger: ["blur", "input"]};
+  }
+  return rules;
+});
 
 const ownerRules: FormRules = {
   projectId: {required: true, message: "请输入项目 ID", trigger: ["blur", "input"]},
@@ -160,8 +208,29 @@ const switchMode = (next: LoginMode) => {
   mode.value = next;
 };
 
-// 管理员登录：POST /api/auth/login（openapi.json）→ 拿 token 写入 chat_auth_token cookie
-// （useHttp 后续自动带 Bearer），会话快照存 sessionStorage，随后进入全局管理面板 /admin/manage
+// 管理员登录：两种形态共用会话写入 + 跳转逻辑
+//  - 普通登录：POST /api/auth/login（账号 + 密码）
+//  - 邮箱验证登录：POST /api/auth/login/email（账号 + 密码 + 邮箱 + 验证码）
+// 两者都把 token 写入 chat_auth_token cookie，再取 /auth/me 拿角色，进入 /admin/manage
+const enterAdminPanel = async (token: string, username: string) => {
+  if (!token) {
+    throw new Error("登录响应中未包含 token，请确认后端返回格式");
+  }
+  writeAdminSession({token, username, loginAt: new Date().toISOString()});
+  let role: "SUPER_ADMIN" | "PROJECT_MANAGER" | undefined;
+  let id: number | string | undefined;
+  try {
+    const me = await adminMe();
+    role = me.role;
+    id = me.id;
+  } catch {
+    // 取角色失败不阻塞登录，按项目管理兜底（最小权限）
+  }
+  writeAdminSession({token, username, role, id, loginAt: new Date().toISOString()});
+  message.success(`欢迎，${username || "管理员"}！正在进入管理面板...`);
+  await navigateTo("/admin/manage");
+};
+
 const handleAdminLogin = async () => {
   try {
     await adminFormRef.value?.validate();
@@ -170,24 +239,22 @@ const handleAdminLogin = async () => {
   }
   try {
     submitting.value = true;
-    const {token, username} = await adminLogin(adminForm.username.trim(), adminForm.password);
-    if (!token) {
-      throw new Error("登录响应中未包含 token，请确认后端 /api/auth/login 返回格式");
+    let token = "";
+    let username = "";
+    if (adminForm.useEmailLogin) {
+      ({token, username} = await emailLogin({
+        account: adminForm.username.trim(),
+        password: adminForm.password,
+        email: adminForm.email.trim(),
+        emailCode: adminForm.emailCode.trim(),
+      }));
+      adminForm.emailCode = "";
+    } else {
+      ({token, username} = await adminLogin(adminForm.username.trim(), adminForm.password));
     }
-    // 先写入 token（cookie 随之设置），再取 /auth/me 拿角色一并写入会话，
-    // 供管理面板按角色显隐总管理专属入口（邀请码 / 项目分配）。
-    writeAdminSession({token, username, loginAt: new Date().toISOString()});
-    let role: "SUPER_ADMIN" | "PROJECT_MANAGER" | undefined;
-    try {
-      role = (await adminMe()).role;
-    } catch {
-      // 取角色失败不阻塞登录，按项目管理兜底（最小权限）
-    }
-    writeAdminSession({token, username, role, loginAt: new Date().toISOString()});
-    message.success(`欢迎，${username || "管理员"}！正在进入管理面板...`);
+    await enterAdminPanel(token, adminForm.username.trim() || username);
     // 跳转后清空密码字段，避免登录页 DOM 残留
     adminForm.password = "";
-    await navigateTo("/admin/manage");
   } catch (error) {
     message.error(error instanceof Error && error.message ? error.message : "账号或密码不正确，请重试");
   } finally {
@@ -195,7 +262,7 @@ const handleAdminLogin = async () => {
   }
 };
 
-const {verifyProjectOwner, adminLogin, adminMe} = useProjectHubApi();
+const {verifyProjectOwner, adminLogin, adminMe, emailLogin} = useProjectHubApi();
 const {write: writeOwnerSession} = useOwnerSession();
 const {write: writeAdminSession} = useAdminAuth();
 
@@ -364,6 +431,12 @@ const handleOwnerLogin = async () => {
   color: #60462b;
   font-size: 13px;
   font-weight: 700;
+}
+
+.email-toggle {
+  align-self: flex-start;
+  font-weight: 700;
+  color: #60462b;
 }
 
 .back {

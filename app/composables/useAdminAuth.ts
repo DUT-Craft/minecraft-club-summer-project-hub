@@ -9,6 +9,9 @@ export type AdminRole = "SUPER_ADMIN" | "PROJECT_MANAGER";
 export interface AdminSession {
   token: string;
   username: string;
+    // 账号 id（由 /auth/me 拉取）：修改密码等需绑定 userId 的验证码场景要带上。
+    // 登录时拉取失败则为 undefined，此时此类场景前端需提示用户重新登录补全。
+    id?: number | string;
     // 由 /auth/me 拉取，驱动总管理专属入口（邀请码生成 / 项目分配）的显隐；
     // 登录时拉取失败或旧会话缺失时为 undefined，按「项目管理」权限兜底（最小权限）。
     role?: AdminRole;
