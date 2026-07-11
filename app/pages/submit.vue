@@ -42,6 +42,14 @@
               <n-input v-model:value="projectForm.introduction" placeholder="一句话概括这个项目"/>
             </n-form-item>
 
+            <n-form-item label="项目封面图">
+              <ImageUploader
+                  :url="projectForm.coverImageUrl"
+                  button-text="上传封面图"
+                  @update:url="projectForm.coverImageUrl = $event"
+              />
+            </n-form-item>
+
             <n-form-item label="负责人昵称" path="ownerName">
               <n-input v-model:value="projectForm.ownerName" placeholder="你的社团昵称"/>
             </n-form-item>
@@ -163,6 +171,7 @@ const projectForm = reactive({
   type: "",
   tagsText: "",
   introduction: "",
+  coverImageUrl: "",
   ownerName: "",
   ownerMinecraftId: "",
   description: "",
@@ -218,6 +227,7 @@ const resetProject = () => {
     type: "",
     tagsText: "",
     introduction: "",
+    coverImageUrl: "",
     ownerName: "",
     ownerMinecraftId: "",
     description: "",
@@ -251,6 +261,7 @@ const handleSubmitProject = async () => {
       description: projectForm.description,
       publicContact: projectForm.publicContact,
       ownerPassword: projectForm.ownerPassword,
+      coverImageUrl: projectForm.coverImageUrl || undefined,
       recruitmentNeeds: projectForm.recruitmentNeeds.map((need) => ({
         ...need,
         count: Number(need.count) || 1,

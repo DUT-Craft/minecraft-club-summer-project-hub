@@ -1,5 +1,7 @@
 import type {
   DataSnapshot,
+  FileItem,
+  FilePage,
   Idea,
   InviteHistoryItem,
   ManagerSummary,
@@ -97,6 +99,7 @@ interface ObjectItemResponse {
   needMembers?: ObjectItemNeedMember[];
   tags?: string[];
   contactInformation?: string;
+  coverImageUrl?: string;
     ownerId?: number | string | null;
   createTime?: string;
   updateTime?: string;
@@ -182,6 +185,7 @@ const mapObjectItemToProject = (item: ObjectItemResponse): Project => ({
     managerId: item.ownerId ?? null,
   skills: item.tags ? [...item.tags] : undefined,
   publicContact: item.contactInformation,
+  coverImageUrl: item.coverImageUrl,
   recruitmentNeeds: normalizeArray<ObjectItemNeedMember>(item.needMembers).map((need) => ({
     skill: need.skill ?? "",
     count: need.number ?? 0,
@@ -415,6 +419,7 @@ export const useProjectHubApi = () => {
         leader: body.ownerName,
         leaderMcId: body.ownerMinecraftId,
         contactInformation: body.publicContact,
+        coverImageUrl: body.coverImageUrl,
         controlPassword: body.ownerPassword,
         needMembers: (body.recruitmentNeeds ?? []).map((need) => ({
           skill: need.skill,
@@ -503,6 +508,7 @@ export const useProjectHubApi = () => {
             leader: body.ownerName,
             leaderMcId: body.ownerMinecraftId,
             contactInformation: body.publicContact,
+            coverImageUrl: body.coverImageUrl,
             needMembers: (body.recruitmentNeeds ?? []).map((need) => ({
               skill: need.skill,
               number: need.count,
@@ -674,29 +680,33 @@ export const useProjectHubApi = () => {
           {payloadMode: "json"},
       );
     },
-    // 通用文件上传：POST /api/files/upload（openapi.json，multipart/form-data）
-    // 返回可公开访问的下载地址；openapi 的 data 是泛型 object，这里兼容字符串 / { url } 等常见形态。
+    // 通用文件上传：POST /api/files（multipart/form-data）。
+    // 字段：file（二进制）+ type（IMAGE|DOCUMENT）+ 可选 objectItemId（关联项目）。
+    // 需 JWT（匿名投稿场景由后端按 uploaderId 为空处理）；返回完整 FileItem（含 url/storedName）。
     // 显式把 TPayload 声明为 FormData：useHttp 的 body 字段类型跟随 payload 泛型，
     // 这样 FormData 能作为请求体直接传入，payloadMode=json 时由 requestBase 转成 body，ofetch 自动设置 multipart 头。
-    uploadFile: async (file: File): Promise<string> => {
+    uploadFile: async (
+        file: File,
+        type: "IMAGE" | "DOCUMENT" = "IMAGE",
+        objectItemId?: number | string,
+    ): Promise<FileItem> => {
       const formData = new FormData();
       formData.append("file", file);
-      const result = await post<unknown, FormData>("/files/upload", formData, {
+      formData.append("type", type);
+      if (objectItemId !== undefined && objectItemId !== null && objectItemId !== "") {
+        formData.append("objectItemId", String(objectItemId));
+      }
+      return post<FileItem, FormData>("/files", formData, {
         payloadMode: "json",
       });
-      if (typeof result === "string") {
-        return result;
-      }
-      if (result && typeof result === "object") {
-        const record = result as Record<string, unknown>;
-        for (const key of ["url", "link", "path", "fileUrl", "downloadUrl", "data"]) {
-          const picked = record[key];
-          if (typeof picked === "string") {
-            return picked;
-          }
-        }
-      }
-      return "";
+    },
+    // 我的文件列表：GET /api/files/mine（JWT 鉴权，按上传时间倒序分页）。
+    listMyFiles: async (page = 0, size = 20): Promise<FilePage> => {
+      return get<FilePage>("/files/mine", {page, size});
+    },
+    // 删除文件：DELETE /api/files/{storedName}（JWT 鉴权，仅上传者本人或总管理）。
+    deleteFile: async (storedName: string): Promise<void> => {
+      await httpDelete(`/files/${storedName}`);
     },
     /* ---------- 全局管理员（token 鉴权，管理全部项目 / 想法） ---------- */
     // 管理员登录：POST /api/auth/login（openapi.json，User-Agent 由浏览器自动带）
@@ -766,6 +776,7 @@ export const useProjectHubApi = () => {
             leader: body.ownerName,
             leaderMcId: body.ownerMinecraftId,
             contactInformation: body.publicContact,
+            coverImageUrl: body.coverImageUrl,
             needMembers: (body.recruitmentNeeds ?? []).map((need) => ({
               skill: need.skill,
               number: need.count,

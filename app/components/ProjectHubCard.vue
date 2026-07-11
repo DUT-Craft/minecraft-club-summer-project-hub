@@ -5,6 +5,12 @@
       <span class="chip muted">{{ formatProjectStatus(project.status) }}</span>
     </div>
     <h3>{{ project.title }}</h3>
+    <img
+        v-if="project.coverImageUrl"
+        :alt="project.title"
+        :src="project.coverImageUrl"
+        class="cover"
+    />
     <p class="desc">{{ intro }}</p>
     <div class="meta">
       <span>负责人：{{ project.ownerName || "未填写" }}</span>
@@ -82,6 +88,14 @@ h3 {
   color: #2d2418;
   font-size: 22px;
   line-height: 1.25;
+}
+
+.cover {
+  width: 100%;
+  height: 150px;
+  object-fit: cover;
+  border: 2px solid #5a3a21;
+  border-radius: 8px;
 }
 
 .desc {

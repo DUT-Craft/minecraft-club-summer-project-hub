@@ -46,6 +46,7 @@ export interface Project {
   description: string;
   publicContact?: string;
   privateContact?: string;
+    coverImageUrl?: string;
   reviewStatus: ReviewStatus;
   recruitmentNeeds?: RecruitmentNeed[];
   createdAt: string;
@@ -80,6 +81,7 @@ export interface SubmitProjectPayload {
   description: string;
   publicContact: string;
   ownerPassword: string;
+    coverImageUrl?: string;
   recruitmentNeeds: RecruitmentNeed[];
 }
 
@@ -118,6 +120,7 @@ export interface UpdateProjectPayload {
   ownerName?: string;
   ownerMinecraftId?: string;
   publicContact?: string;
+    coverImageUrl?: string;
   tags?: string[];
   recruitmentNeeds?: RecruitmentNeed[];
 }
@@ -158,4 +161,28 @@ export interface InviteHistoryItem {
   usedBy?: string | null;
   usedAt?: string | null;
   expiresAt: string;
+}
+
+// 文件分类（与后端 FileCategory 枚举一致）：图片 / 文档。
+export type FileCategory = "IMAGE" | "DOCUMENT";
+
+// 单个已上传文件的元数据（POST /api/files 返回 / 我的文件列表项）。
+export interface FileItem {
+    id?: number;
+    storedName: string;
+    originalName: string;
+    mimeType?: string;
+    size?: number;
+    category: FileCategory;
+    url: string;
+    createTime?: string;
+}
+
+// 我的文件分页结果（GET /api/files/mine）。
+export interface FilePage {
+    content: FileItem[];
+    totalElements: number;
+    totalPages: number;
+    page: number;
+    size: number;
 }

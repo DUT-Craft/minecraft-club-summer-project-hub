@@ -82,24 +82,11 @@
           />
         </n-form-item>
         <n-form-item label="配图" path="imageUrl">
-          <n-space :size="8" class="image-block" vertical>
-            <n-space :size="8" align="center">
-              <n-upload
-                  :custom-request="handleUpload"
-                  :show-file-list="false"
-                  accept="image/*"
-              >
-                <n-button :loading="uploadingImage">{{ uploadingImage ? "上传中..." : "上传图片" }}</n-button>
-              </n-upload>
-              <n-input
-                  v-model:value="form.imageUrl"
-                  class="image-url-input"
-                  clearable
-                  placeholder="或直接粘贴图片地址"
-              />
-            </n-space>
-            <img v-if="form.imageUrl" :src="form.imageUrl" alt="动态配图预览" class="image-preview"/>
-          </n-space>
+          <ImageUploader
+              :url="form.imageUrl"
+              button-text="上传配图"
+              @update:url="form.imageUrl = $event"
+          />
         </n-form-item>
       </n-form>
 
@@ -116,7 +103,7 @@
 </template>
 
 <script lang="ts" setup>
-import type {FormInst, FormRules, UploadCustomRequestOptions} from "naive-ui";
+import type {FormInst, FormRules} from "naive-ui";
 import type {ProjectUpdate} from "~/types/projectHub";
 
 // 由父级传入：项目 ID。
@@ -141,7 +128,6 @@ const {
   createProjectUpdateAdmin,
   updateProjectUpdateAdmin,
   deleteProjectUpdateAdmin,
-  uploadFile,
 } = useProjectHubApi();
 
 const isAdmin = computed(() => props.mode === "admin");
@@ -192,7 +178,6 @@ onMounted(() => {
 const formRef = ref<FormInst | null>(null);
 const showModal = ref(false);
 const submitting = ref(false);
-const uploadingImage = ref(false);
 // editingId 为 null 表示新建；有值表示编辑对应 updateId
 const editingId = ref<string | null>(null);
 
@@ -275,30 +260,6 @@ const handleDelete = async (item: ProjectUpdate) => {
     await load();
   } catch (error) {
     message.error(error instanceof Error && error.message ? error.message : "删除失败，请稍后再试");
-  }
-};
-
-const handleUpload = async ({file, onFinish, onError}: UploadCustomRequestOptions) => {
-  try {
-    uploadingImage.value = true;
-    const raw = file.file;
-    if (!raw) {
-      onError();
-      return;
-    }
-    const url = await uploadFile(raw);
-    if (url) {
-      form.imageUrl = url;
-      onFinish();
-    } else {
-      message.error("上传成功但未解析到图片地址");
-      onError();
-    }
-  } catch (error) {
-    message.error(error instanceof Error && error.message ? error.message : "图片上传失败");
-    onError();
-  } finally {
-    uploadingImage.value = false;
   }
 };
 
@@ -438,22 +399,6 @@ const statusTagType = (status?: string): "warning" | "success" | "error" | "defa
   display: flex;
   gap: 8px;
   margin-top: 10px;
-}
-
-.image-block {
-  width: 100%;
-}
-
-.image-url-input {
-  min-width: 220px;
-}
-
-.image-preview {
-  width: 100%;
-  max-height: 200px;
-  object-fit: cover;
-  border: 2px solid #5a3a21;
-  border-radius: 8px;
 }
 
 .modal-footer {

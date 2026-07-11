@@ -18,6 +18,7 @@
       <n-button class="nav-button" secondary @click="navigateTo('/mall')">全部公开项目</n-button>
       <n-button class="nav-button" secondary @click="navigateTo('/ideas')">想法墙</n-button>
       <n-button class="nav-button" secondary @click="navigateTo('/submit')">投稿</n-button>
+      <n-button class="nav-button" secondary @click="navigateTo('/files')">我的文件</n-button>
       <n-button class="nav-button" secondary @click="navigateTo('/admin')">项目管理后台</n-button>
     </nav>
   </n-card>

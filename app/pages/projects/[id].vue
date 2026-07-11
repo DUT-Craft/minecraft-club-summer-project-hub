@@ -42,6 +42,12 @@
 
         <div class="layout">
           <n-card :bordered="false" class="main-panel" title="项目介绍">
+            <img
+                v-if="project.coverImageUrl"
+                :alt="project.title"
+                :src="project.coverImageUrl"
+                class="cover-image"
+            />
             <p class="description">{{ project.description || project.summary || "项目发起者还没有填写项目介绍。" }}</p>
             <n-alert v-if="project.publicContact" :bordered="false" class="contact" type="info">
               <strong>联系方式：</strong>{{ project.publicContact }}
@@ -494,6 +500,15 @@ const handleComment = async () => {
   font-size: 17px;
   line-height: 1.85;
   white-space: pre-wrap;
+}
+
+.cover-image {
+  width: 100%;
+  max-height: 360px;
+  margin-bottom: 14px;
+  object-fit: cover;
+  border: 2px solid #5a3a21;
+  border-radius: 10px;
 }
 
 .contact {
