@@ -1,6 +1,7 @@
 import type {
   DataSnapshot,
   Idea,
+  InviteHistoryItem,
   ManagerSummary,
   Project,
   ProjectComment,
@@ -988,6 +989,11 @@ export const useProjectHubApi = () => {
     generateInviteCode: async (): Promise<string> => {
       const data = await post<{ inviteCode: string }>("/admin/invites", undefined, {payloadMode: "json"});
       return data?.inviteCode ?? "";
+    },
+    // 总管理查看历史邀请码（含状态 / 创建者 / 消费者）：GET /api/admin/invites
+    listInviteCodes: async (): Promise<InviteHistoryItem[]> => {
+      const data = await get<unknown>("/admin/invites").catch(() => null);
+      return extractList<InviteHistoryItem>(data);
     },
     // 总管理列出项目管理账号（分配项目下拉用）：GET /api/admin/users/managers（仅总管理）
     listManagers: async (): Promise<ManagerSummary[]> => {

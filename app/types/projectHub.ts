@@ -146,3 +146,16 @@ export interface RegisterManagerPayload {
     password: string;
     email: string;
 }
+
+// 总管理历史邀请码记录（GET /api/admin/invites）。status 为后端枚举：UNUSED / USED / EXPIRED。
+export interface InviteHistoryItem {
+  code: string;
+  status: "UNUSED" | "USED" | "EXPIRED";
+  createdById: number;
+  createdBy: string;
+  createdAt: string;
+  usedById?: number | null;
+  usedBy?: string | null;
+  usedAt?: string | null;
+  expiresAt: string;
+}
