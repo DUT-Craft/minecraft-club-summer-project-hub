@@ -99,10 +99,12 @@ const uploading = ref(false);
 
 const IMAGE_EXTS = ["jpg", "jpeg", "png", "gif", "webp", "bmp", "svg"];
 
-const extOf = (item: FileItem) => {
-  const idx = item.originalName.lastIndexOf(".");
-  return idx >= 0 ? item.originalName.slice(idx + 1).toUpperCase() : "";
+// 从文件名提取扩展名（大写返回，无扩展名返回空串）。纯函数，供 extOf 与上传判类型复用。
+const extOfName = (name: string): string => {
+  const idx = name.lastIndexOf(".");
+  return idx >= 0 ? name.slice(idx + 1).toUpperCase() : "";
 };
+const extOf = (item: FileItem): string => extOfName(item.originalName);
 const isImage = (item: FileItem) =>
     item.category === "IMAGE" || (item.mimeType ?? "").startsWith("image/");
 // 图片可匿名 inline 预览；下载用后端返回的 url（attachment）
@@ -134,7 +136,7 @@ const handleUpload = async ({file, onFinish, onError}: UploadCustomRequestOption
     onError();
     return;
   }
-  const ext = extOf({originalName: raw.name} as FileItem).toLowerCase();
+  const ext = extOfName(raw.name).toLowerCase();
   const type = IMAGE_EXTS.includes(ext) ? "IMAGE" : "DOCUMENT";
   try {
     uploading.value = true;

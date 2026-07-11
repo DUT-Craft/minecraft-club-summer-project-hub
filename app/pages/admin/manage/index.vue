@@ -160,7 +160,6 @@
             <VerificationCodeInput
                 :code="passwordForm.emailCode"
                 :email="passwordForm.email"
-                :user-id="session?.id"
                 scene="CHANGE_PASSWORD"
                 @update:code="passwordForm.emailCode = $event"
             />
