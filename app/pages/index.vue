@@ -1,12 +1,12 @@
 <template>
   <main class="hub-page">
-    <MinecraftSiteHeader />
+    <MinecraftSiteHeader/>
 
     <n-config-provider :theme="null" :theme-overrides="themeOverrides">
       <section class="grid-paper">
         <div class="wide-shell hero-shell">
           <section class="hero-copy">
-            <n-tag class="hero-chip" type="info" :bordered="false">
+            <n-tag :bordered="false" class="hero-chip" type="info">
               暑假共创 / 审核后公开展示
             </n-tag>
 
@@ -15,12 +15,12 @@
               集中展示社团项目、收集玩法灵感、处理加入申请。公开内容由管理员审核后展示。
             </p>
 
-            <div class="tag-row" :aria-label="hotTags.length ? '公开项目标签' : '站点入口'">
+            <div :aria-label="hotTags.length ? '公开项目标签' : '站点入口'" class="tag-row">
               <n-tag
-                v-for="tag in heroTags"
-                :key="tag"
-                type="success"
-                size="small"
+                  v-for="tag in heroTags"
+                  :key="tag"
+                  size="small"
+                  type="success"
               >
                 {{ tag }}
               </n-tag>
@@ -28,11 +28,11 @@
 
             <div class="actions">
               <n-button
-                v-for="action in heroActions"
-                :key="action.to"
-                :type="action.primary ? 'primary' : 'default'"
-                size="large"
-                @click="navigateTo(action.to)"
+                  v-for="action in heroActions"
+                  :key="action.to"
+                  :type="action.primary ? 'primary' : 'default'"
+                  size="large"
+                  @click="navigateTo(action.to)"
               >
                 {{ action.label }}
               </n-button>
@@ -40,7 +40,7 @@
 
             <div class="stats-grid">
               <n-card v-for="stat in stats" :key="stat.label" class="stat" size="small">
-                <n-statistic :label="stat.label" :value="stat.value" />
+                <n-statistic :label="stat.label" :value="stat.value"/>
               </n-card>
             </div>
           </section>
@@ -48,10 +48,10 @@
           <section class="hero-art-wrap">
             <figure class="hero-art">
               <n-image
-                preview-disabled
-                class="hero-image"
-                src="/assets/catgirl-concepts/catgirl-sky-island.png"
-                alt="像素方块风格的猫娘社成员在空岛基地整理项目计划"
+                  alt="像素方块风格的猫娘社成员在空岛基地整理项目计划"
+                  class="hero-image"
+                  preview-disabled
+                  src="/assets/catgirl-concepts/catgirl-sky-island.png"
               />
               <figcaption>
                 空岛基地已开工 · 暑假共创招募中
@@ -74,25 +74,25 @@
         <div class="wide-shell portal-section">
           <section class="portal-grid">
             <NuxtLink
-              v-for="entry in portalEntries"
-              :key="entry.to"
-              :to="entry.to"
-              class="portal-card-link"
+                v-for="entry in portalEntries"
+                :key="entry.to"
+                :to="entry.to"
+                class="portal-card-link"
             >
-              <n-card class="portal-card" size="small" :content-style="'padding: 0;'">
+              <n-card :content-style="'padding: 0;'" class="portal-card" size="small">
                 <span class="portal-image">
-                  <n-image preview-disabled :src="entry.image" :alt="entry.title" />
-                  <n-tag class="portal-kicker" type="warning" size="small">{{ entry.kicker }}</n-tag>
+                  <n-image :alt="entry.title" :src="entry.image" preview-disabled/>
+                  <n-tag class="portal-kicker" size="small" type="warning">{{ entry.kicker }}</n-tag>
                 </span>
                 <span class="portal-body">
                   <span class="portal-head">
                     <strong>{{ entry.title }}</strong>
-                    <n-tag class="portal-icon" size="small" round>
+                    <n-tag class="portal-icon" round size="small">
                       {{ entry.action }}
                     </n-tag>
                   </span>
                   <span class="portal-text">{{ entry.text }}</span>
-                  <n-button text type="primary" class="portal-action">{{ entry.action }}</n-button>
+                  <n-button class="portal-action" text type="primary">{{ entry.action }}</n-button>
                 </span>
               </n-card>
             </NuxtLink>
@@ -100,14 +100,14 @@
 
           <section class="future-panel">
             <n-image
-              preview-disabled
-              class="future-image"
-              src="/assets/catgirl-concepts/catgirl-cave-adventure.png"
-              alt="像素方块风格的猫娘社成员在洞穴中探索矿物和新路线"
+                alt="像素方块风格的猫娘社成员在洞穴中探索矿物和新路线"
+                class="future-image"
+                preview-disabled
+                src="/assets/catgirl-concepts/catgirl-cave-adventure.png"
             />
-            <div class="future-overlay" />
+            <div class="future-overlay"/>
             <div class="future-copy">
-              <n-tag class="future-chip" type="warning" size="small">
+              <n-tag class="future-chip" size="small" type="warning">
                 下一步扩展
               </n-tag>
               <h2>后续可以把每周活动、长期组队和服务器玩法继续接进来</h2>
@@ -121,13 +121,13 @@
           </section>
         </div>
 
-        <div class="grass-strip" />
+        <div class="grass-strip"/>
       </section>
     </n-config-provider>
   </main>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 
 import type {Project} from "~/types/projectHub";
 
@@ -137,14 +137,14 @@ definePageMeta({
 
 // Minecraft 暖色主题（草地绿主色 + 羊皮纸卡片 + 木边输入），见 useMinecraftTheme。
 // app.vue 是全局暗色主题，这里用局部 n-config-provider 切回浅色，与 mall / submit 等页一致。
-const { themeOverrides } = useMinecraftTheme();
+const {themeOverrides} = useMinecraftTheme();
 
 // 数据源对应 openapi.json：
 // - 公开项目列表：GET /api/project/object-items?status=IN_PROGRESS（用于汇总标签和招募岗位）
 // - 公开项目总数：GET /api/project/object-items/count/in-progress
 // - 公开想法总数：GET /api/project/minds/count/approved
 // - openapi 没有评论 / 建议接口，原"公开建议"统计改为"招募岗位"（needMembers.number 合计）
-const { loadPublicProjects, loadApprovedProjectCount, loadApprovedIdeaCount } = useProjectHubApi();
+const {loadPublicProjects, loadApprovedProjectCount, loadApprovedIdeaCount} = useProjectHubApi();
 
 // 接口层已按状态过滤，这里保存的就是可直接公开展示的数据
 const approvedProjects = ref<Project[]>([]);
@@ -154,10 +154,10 @@ const approvedIdeaCount = ref(0);
 
 // 首页入口按钮：label 与路由集中维护，避免模板里散落多个 navigateTo
 const heroActions = [
-  { label: "浏览项目", to: "/mall", primary: true },
-  { label: "投稿项目", to: "/submit", primary: true },
-  { label: "提交想法", to: "/submit", primary: false },
-  { label: "查看想法", to: "/ideas", primary: false },
+  {label: "浏览项目", to: "/mall", primary: true},
+  {label: "投稿项目", to: "/submit", primary: true},
+  {label: "提交想法", to: "/submit", primary: false},
+  {label: "查看想法", to: "/ideas", primary: false},
 ];
 
 const portalEntries = [
@@ -202,28 +202,28 @@ onMounted(async () => {
 
 // 招募岗位 = 所有公开项目 recruitmentNeeds.count 之和（由 needMembers.number 映射）
 const openPositions = computed(() =>
-  approvedProjects.value
-    .flatMap((project) => project.recruitmentNeeds ?? [])
-    .reduce((total, need) => total + (need.count || 0), 0),
+    approvedProjects.value
+        .flatMap((project) => project.recruitmentNeeds ?? [])
+        .reduce((total, need) => total + (need.count || 0), 0),
 );
 
 // 汇总项目类型 + 标签（skills 由 object-items 的 tags 映射而来），取出现次数最多的 4 个
 const hotTags = computed(() => buildHotTags(approvedProjects.value));
 const heroTags = computed(() =>
-  hotTags.value.length ? hotTags.value : ["项目投稿", "想法收集", "制作中项目", "招募岗位"],
+    hotTags.value.length ? hotTags.value : ["项目投稿", "想法收集", "制作中项目", "招募岗位"],
 );
 
 const projectCountHint = computed(() =>
-  approvedProjectCount.value
-    ? `已有 ${approvedProjectCount.value} 个项目通过审核`
-    : "暂无公开项目，投稿后会先进入后台审核",
+    approvedProjectCount.value
+        ? `已有 ${approvedProjectCount.value} 个项目通过审核`
+        : "暂无公开项目，投稿后会先进入后台审核",
 );
 
 // 顶部三张统计卡：标签与取值放在一起，模板直接 v-for 渲染
 const stats = computed(() => [
-  { label: "公开项目", value: approvedProjectCount.value },
-  { label: "公开想法", value: approvedIdeaCount.value },
-  { label: "招募岗位", value: openPositions.value },
+  {label: "公开项目", value: approvedProjectCount.value},
+  {label: "公开想法", value: approvedIdeaCount.value},
+  {label: "招募岗位", value: openPositions.value},
 ]);
 
 function buildHotTags(projects: Project[]) {
@@ -238,9 +238,9 @@ function buildHotTags(projects: Project[]) {
   }
 
   return Array.from(counts.entries())
-    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "zh-CN"))
-    .map(([tag]) => tag)
-    .slice(0, 4);
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "zh-CN"))
+      .map(([tag]) => tag)
+      .slice(0, 4);
 }
 </script>
 
@@ -250,11 +250,10 @@ function buildHotTags(projects: Project[]) {
   min-height: 100dvh;
   padding-bottom: 24px;
   color: #4f3924;
-  background:
-    radial-gradient(circle at 80% 8%, rgba(255, 215, 101, 0.44), transparent 21%),
-    linear-gradient(rgba(97, 153, 202, 0.17) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(97, 153, 202, 0.17) 1px, transparent 1px),
-    #dff0ff;
+  background: radial-gradient(circle at 80% 8%, rgba(255, 215, 101, 0.44), transparent 21%),
+  linear-gradient(rgba(97, 153, 202, 0.17) 1px, transparent 1px),
+  linear-gradient(90deg, rgba(97, 153, 202, 0.17) 1px, transparent 1px),
+  #dff0ff;
   background-size: auto, 26px 26px, 26px 26px, auto;
 }
 

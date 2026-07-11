@@ -71,5 +71,5 @@ export const useAdminAuth = () => {
     }
   };
 
-  return { write, read, clear };
+  return {write, read, clear};
 };

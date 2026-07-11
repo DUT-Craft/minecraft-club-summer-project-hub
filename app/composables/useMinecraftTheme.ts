@@ -1,4 +1,4 @@
-import type { GlobalThemeOverrides } from "naive-ui";
+import type {GlobalThemeOverrides} from "naive-ui";
 
 /**
  * 公开页面共用的 Minecraft 暖色主题。
@@ -12,51 +12,51 @@ export const minecraftPrimaryGreen = "#65a844";
 
 // 输入框共用样式：羊皮纸底 + 木边 + 草地绿聚焦边。Input 与 InputNumber 的内层 Input 共享。
 const inputTheme: GlobalThemeOverrides["Input"] = {
-  color: "#fff8df",
-  border: "2px solid #5a3a21",
-  borderHover: `2px solid ${minecraftPrimaryGreen}`,
-  borderFocus: `2px solid ${minecraftPrimaryGreen}`,
-  borderRadius: "8px",
-  textColor: "#2d2418",
-  placeholderColor: "#795b36",
+    color: "#fff8df",
+    border: "2px solid #5a3a21",
+    borderHover: `2px solid ${minecraftPrimaryGreen}`,
+    borderFocus: `2px solid ${minecraftPrimaryGreen}`,
+    borderRadius: "8px",
+    textColor: "#2d2418",
+    placeholderColor: "#795b36",
 };
 
 const panelThemeOverrides: GlobalThemeOverrides = {
-  common: {
-    primaryColor: minecraftPrimaryGreen,
-    primaryColorHover: "#76b850",
-    primaryColorPressed: "#54903a",
-    primaryColorSuppl: minecraftPrimaryGreen,
-  },
-  Card: {
-    color: "rgba(255, 245, 207, 0.94)",
-    titleTextColor: "#2d2418",
-    textColor: "#4f3924",
-    borderRadius: "10px",
-  },
-  Input: inputTheme,
-  InputNumber: {
-    peers: {
-      Input: inputTheme,
+    common: {
+        primaryColor: minecraftPrimaryGreen,
+        primaryColorHover: "#76b850",
+        primaryColorPressed: "#54903a",
+        primaryColorSuppl: minecraftPrimaryGreen,
     },
-  },
-  Select: {
-    peers: {
-      InternalSelection: {
-        color: "#fff8df",
-        colorActive: "#fff8df",
-        border: "2px solid #5a3a21",
-        borderHover: `2px solid ${minecraftPrimaryGreen}`,
-        borderActive: `2px solid ${minecraftPrimaryGreen}`,
-        borderFocus: `2px solid ${minecraftPrimaryGreen}`,
-        borderRadius: "8px",
-        textColor: "#2d2418",
-      },
+    Card: {
+        color: "rgba(255, 245, 207, 0.94)",
+        titleTextColor: "#2d2418",
+        textColor: "#4f3924",
+        borderRadius: "10px",
     },
-  },
+    Input: inputTheme,
+    InputNumber: {
+        peers: {
+            Input: inputTheme,
+        },
+    },
+    Select: {
+        peers: {
+            InternalSelection: {
+                color: "#fff8df",
+                colorActive: "#fff8df",
+                border: "2px solid #5a3a21",
+                borderHover: `2px solid ${minecraftPrimaryGreen}`,
+                borderActive: `2px solid ${minecraftPrimaryGreen}`,
+                borderFocus: `2px solid ${minecraftPrimaryGreen}`,
+                borderRadius: "8px",
+                textColor: "#2d2418",
+            },
+        },
+    },
 };
 
 export const useMinecraftTheme = () => ({
-  themeOverrides: panelThemeOverrides,
-  primaryGreen: minecraftPrimaryGreen,
+    themeOverrides: panelThemeOverrides,
+    primaryGreen: minecraftPrimaryGreen,
 });

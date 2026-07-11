@@ -1,5 +1,5 @@
 <template>
-  <n-card class="manager-card" :bordered="false">
+  <n-card :bordered="false" class="manager-card">
     <template #header>
       <div class="panel-head">
         <span class="eyebrow">Project Updates</span>
@@ -9,12 +9,12 @@
     <template #header-extra>
       <n-space :size="8" align="center" wrap>
         <n-select
-          v-model:value="filter"
-          :options="filterOptions"
-          size="small"
-          class="filter-select"
+            v-model:value="filter"
+            :options="filterOptions"
+            class="filter-select"
+            size="small"
         />
-        <n-button size="small" :loading="loading" @click="load">
+        <n-button :loading="loading" size="small" @click="load">
           {{ updates.length || loaded ? "刷新" : "加载动态" }}
         </n-button>
         <n-button size="small" type="primary" @click="openCreate">发布动态</n-button>
@@ -22,29 +22,29 @@
     </template>
 
     <n-empty
-      v-if="!updates.length"
-      description="暂无动态，点击「发布动态」向关注者同步项目进展。"
+        v-if="!updates.length"
+        description="暂无动态，点击「发布动态」向关注者同步项目进展。"
     />
     <div v-else class="update-list">
       <article
-        v-for="item in updates"
-        :key="item.id"
-        class="update-card"
+          v-for="item in updates"
+          :key="item.id"
+          class="update-card"
       >
         <div class="update-head">
           <span class="update-title">{{ item.title || "（未命名动态）" }}</span>
-          <n-tag :bordered="false" size="small" round :type="statusTagType(item.reviewStatus)">
+          <n-tag :bordered="false" :type="statusTagType(item.reviewStatus)" round size="small">
             {{ statusLabel(item.reviewStatus) }}
           </n-tag>
         </div>
         <span class="update-time">{{ formatTime(item.createdAt) }}</span>
-        <img v-if="item.imageUrl" :src="item.imageUrl" :alt="item.title" class="update-image" />
+        <img v-if="item.imageUrl" :alt="item.title" :src="item.imageUrl" class="update-image"/>
         <p v-if="item.content" class="update-content">{{ item.content }}</p>
         <div class="update-actions">
           <n-button size="small" @click="openEdit(item)">编辑</n-button>
           <n-popconfirm @positive-click="handleDelete(item)">
             <template #trigger>
-              <n-button size="small" quaternary type="error">删除</n-button>
+              <n-button quaternary size="small" type="error">删除</n-button>
             </template>
             确定删除这条动态吗？删除后将不再公开展示。
           </n-popconfirm>
@@ -54,51 +54,51 @@
 
     <!-- 发布 / 编辑动态：同一个弹窗，editingId 为空=新建，有值=编辑 -->
     <n-modal
-      v-model:show="showModal"
-      preset="card"
-      :title="editingId ? '编辑动态' : '发布动态'"
-      :bordered="false"
-      style="width: min(640px, calc(100% - 28px))"
-      :mask-closable="false"
+        v-model:show="showModal"
+        :bordered="false"
+        :mask-closable="false"
+        :title="editingId ? '编辑动态' : '发布动态'"
+        preset="card"
+        style="width: min(640px, calc(100% - 28px))"
     >
       <n-form
-        ref="formRef"
-        :model="form"
-        :rules="rules"
-        label-placement="top"
-        :show-require-mark="false"
-        size="medium"
-        @submit.prevent="handleSubmit"
+          ref="formRef"
+          :model="form"
+          :rules="rules"
+          :show-require-mark="false"
+          label-placement="top"
+          size="medium"
+          @submit.prevent="handleSubmit"
       >
         <n-form-item label="动态标题" path="title">
-          <n-input v-model:value="form.title" placeholder="例如：第一周开发进展" />
+          <n-input v-model:value="form.title" placeholder="例如：第一周开发进展"/>
         </n-form-item>
         <n-form-item label="正文" path="content">
           <n-input
-            v-model:value="form.content"
-            type="textarea"
-            :rows="5"
-            placeholder="向关注者同步本阶段的进展、成果或调整"
+              v-model:value="form.content"
+              :rows="5"
+              placeholder="向关注者同步本阶段的进展、成果或调整"
+              type="textarea"
           />
         </n-form-item>
         <n-form-item label="配图" path="imageUrl">
-          <n-space vertical :size="8" class="image-block">
+          <n-space :size="8" class="image-block" vertical>
             <n-space :size="8" align="center">
               <n-upload
-                :custom-request="handleUpload"
-                :show-file-list="false"
-                accept="image/*"
+                  :custom-request="handleUpload"
+                  :show-file-list="false"
+                  accept="image/*"
               >
                 <n-button :loading="uploadingImage">{{ uploadingImage ? "上传中..." : "上传图片" }}</n-button>
               </n-upload>
               <n-input
-                v-model:value="form.imageUrl"
-                placeholder="或直接粘贴图片地址"
-                clearable
-                class="image-url-input"
+                  v-model:value="form.imageUrl"
+                  class="image-url-input"
+                  clearable
+                  placeholder="或直接粘贴图片地址"
               />
             </n-space>
-            <img v-if="form.imageUrl" :src="form.imageUrl" alt="动态配图预览" class="image-preview" />
+            <img v-if="form.imageUrl" :src="form.imageUrl" alt="动态配图预览" class="image-preview"/>
           </n-space>
         </n-form-item>
       </n-form>
@@ -106,7 +106,7 @@
       <template #footer>
         <div class="modal-footer">
           <n-button @click="showModal = false">取消</n-button>
-          <n-button type="primary" :loading="submitting" @click="handleSubmit">
+          <n-button :loading="submitting" type="primary" @click="handleSubmit">
             {{ submitting ? "保存中..." : (editingId ? "保存修改" : "立即发布") }}
           </n-button>
         </div>
@@ -115,9 +115,9 @@
   </n-card>
 </template>
 
-<script setup lang="ts">
-import type { FormInst, FormRules, UploadCustomRequestOptions } from "naive-ui";
-import type { ProjectUpdate } from "~/types/projectHub";
+<script lang="ts" setup>
+import type {FormInst, FormRules, UploadCustomRequestOptions} from "naive-ui";
+import type {ProjectUpdate} from "~/types/projectHub";
 
 // 由父级传入：项目 ID。
 // - mode="owner"（默认，项目方后台）：还需传 controlPassword，走 controlPassword 鉴权接口
@@ -153,18 +153,18 @@ const loaded = ref(false);
 const filter = ref<string>("");
 
 const filterOptions = [
-  { label: "全部", value: "" },
-  { label: "待审核", value: "PENDING" },
-  { label: "已公开", value: "APPROVED" },
-  { label: "未通过", value: "REJECTED" },
+  {label: "全部", value: ""},
+  {label: "待审核", value: "PENDING"},
+  {label: "已公开", value: "APPROVED"},
+  {label: "未通过", value: "REJECTED"},
 ];
 
 const load = async () => {
   try {
     loading.value = true;
     const list = isAdmin.value
-      ? await listProjectUpdatesAdmin(props.projectId, filter.value || undefined)
-      : await loadProjectUpdatesAdmin(props.projectId, props.controlPassword, filter.value || undefined);
+        ? await listProjectUpdatesAdmin(props.projectId, filter.value || undefined)
+        : await loadProjectUpdatesAdmin(props.projectId, props.controlPassword, filter.value || undefined);
     updates.value = list;
     loaded.value = true;
   } catch (error) {
@@ -203,8 +203,8 @@ const form = reactive({
 });
 
 const rules: FormRules = {
-  title: { required: true, message: "请填写动态标题", trigger: ["blur", "input"] },
-  content: { required: true, message: "请填写动态正文", trigger: ["blur", "input"] },
+  title: {required: true, message: "请填写动态标题", trigger: ["blur", "input"]},
+  content: {required: true, message: "请填写动态正文", trigger: ["blur", "input"]},
 };
 
 const resetForm = () => {
@@ -278,7 +278,7 @@ const handleDelete = async (item: ProjectUpdate) => {
   }
 };
 
-const handleUpload = async ({ file, onFinish, onError }: UploadCustomRequestOptions) => {
+const handleUpload = async ({file, onFinish, onError}: UploadCustomRequestOptions) => {
   try {
     uploadingImage.value = true;
     const raw = file.file;
@@ -307,21 +307,31 @@ const formatTime = (value?: string) => (value ? new Date(value).toLocaleString("
 // reviewStatus 是前端 ReviewStatus 联合（pending/approved/...），这里映射为动态展示文案与配色
 const statusLabel = (status?: string) => {
   switch (status) {
-    case "pending": return "待审核";
-    case "approved": return "已公开";
-    case "rejected": return "未通过";
-    case "deleted": return "已删除";
-    default: return status || "未知";
+    case "pending":
+      return "待审核";
+    case "approved":
+      return "已公开";
+    case "rejected":
+      return "未通过";
+    case "deleted":
+      return "已删除";
+    default:
+      return status || "未知";
   }
 };
 
 const statusTagType = (status?: string): "warning" | "success" | "error" | "default" => {
   switch (status) {
-    case "pending": return "warning";
-    case "approved": return "success";
-    case "rejected": return "error";
-    case "deleted": return "default";
-    default: return "default";
+    case "pending":
+      return "warning";
+    case "approved":
+      return "success";
+    case "rejected":
+      return "error";
+    case "deleted":
+      return "default";
+    default:
+      return "default";
   }
 };
 </script>

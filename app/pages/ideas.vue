@@ -1,9 +1,9 @@
 <template>
   <main class="mc-page">
-    <MinecraftSiteHeader />
+    <MinecraftSiteHeader/>
 
     <n-config-provider :theme="null" :theme-overrides="themeOverrides">
-      <n-card class="page-head" :bordered="false">
+      <n-card :bordered="false" class="page-head">
         <div class="head-info">
           <span class="head-eyebrow">Idea Wall</span>
           <h1>想法墙</h1>
@@ -15,7 +15,7 @@
       </n-card>
 
       <div v-if="ideas.length" class="idea-grid">
-        <n-card v-for="idea in ideas" :key="idea.id" class="idea-card" :bordered="false">
+        <n-card v-for="idea in ideas" :key="idea.id" :bordered="false" class="idea-card">
           <span class="idea-date">{{ formatDate(idea.createdAt) }}</span>
           <h2 class="idea-title">{{ idea.title }}</h2>
           <p class="idea-content">{{ idea.content }}</p>
@@ -27,9 +27,9 @@
       </div>
 
       <n-empty
-        v-else
-        class="empty-space"
-        description="想法墙还没有公开内容"
+          v-else
+          class="empty-space"
+          description="想法墙还没有公开内容"
       >
         <template #extra>
           <n-button type="primary" @click="navigateTo('/submit#idea')">提交想法</n-button>
@@ -39,8 +39,8 @@
   </main>
 </template>
 
-<script setup lang="ts">
-import type { Idea } from "~/types/projectHub";
+<script lang="ts" setup>
+import type {Idea} from "~/types/projectHub";
 
 
 definePageMeta({
@@ -50,7 +50,7 @@ definePageMeta({
 // 数据源（openapi.json）：
 // - 想法列表：GET /api/project/minds?status=APPROVED（已按 APPROVED 过滤，组合式函数内按创建时间倒序）
 // - 想法总数：GET /api/project/minds/count/approved（用于头部统计）
-const { loadPublicIdeas, loadApprovedIdeaCount } = useProjectHubApi();
+const {loadPublicIdeas, loadApprovedIdeaCount} = useProjectHubApi();
 const ideas = ref<Idea[]>([]);
 const approvedIdeaCount = ref(0);
 
@@ -65,7 +65,7 @@ onMounted(async () => {
 });
 
 // Minecraft 暖色主题（草地绿主色 + 羊皮纸卡片），见 useMinecraftTheme
-const { themeOverrides } = useMinecraftTheme();
+const {themeOverrides} = useMinecraftTheme();
 
 const formatDate = (value: string) => value ? new Date(value).toLocaleDateString("zh-CN") : "未记录日期";
 </script>
@@ -75,11 +75,10 @@ const formatDate = (value: string) => value ? new Date(value).toLocaleDateString
   min-height: 100dvh;
   padding-bottom: 42px;
   color: #2d2418;
-  background:
-    radial-gradient(circle at 80% 8%, rgba(255, 215, 101, 0.44), transparent 21%),
-    linear-gradient(rgba(97, 153, 202, 0.17) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(97, 153, 202, 0.17) 1px, transparent 1px),
-    #dff0ff;
+  background: radial-gradient(circle at 80% 8%, rgba(255, 215, 101, 0.44), transparent 21%),
+  linear-gradient(rgba(97, 153, 202, 0.17) 1px, transparent 1px),
+  linear-gradient(90deg, rgba(97, 153, 202, 0.17) 1px, transparent 1px),
+  #dff0ff;
   background-size: auto, 26px 26px, 26px 26px, auto;
 }
 

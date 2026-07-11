@@ -1,6 +1,6 @@
 <template>
   <main class="mc-page">
-    <MinecraftSiteHeader />
+    <MinecraftSiteHeader/>
 
     <n-config-provider :theme="null" :theme-overrides="themeOverrides">
       <section class="login-shell">
@@ -12,86 +12,86 @@
 
         <div class="tabs" role="tablist">
           <button
-            type="button"
-            role="tab"
-            :aria-selected="mode === 'admin'"
-            :class="['tab', { active: mode === 'admin' }]"
-            @click="switchMode('admin')"
+              :aria-selected="mode === 'admin'"
+              :class="['tab', { active: mode === 'admin' }]"
+              role="tab"
+              type="button"
+              @click="switchMode('admin')"
           >
             <span class="tab-title">管理员登录</span>
             <span class="tab-sub">账号 + 密码</span>
           </button>
           <button
-            type="button"
-            role="tab"
-            :aria-selected="mode === 'owner'"
-            :class="['tab', { active: mode === 'owner' }]"
-            @click="switchMode('owner')"
+              :aria-selected="mode === 'owner'"
+              :class="['tab', { active: mode === 'owner' }]"
+              role="tab"
+              type="button"
+              @click="switchMode('owner')"
           >
             <span class="tab-title">项目方登录</span>
             <span class="tab-sub">项目 ID + 管理密码</span>
           </button>
         </div>
 
-        <n-card class="panel" :bordered="false">
+        <n-card :bordered="false" class="panel">
           <n-form
-            v-if="mode === 'admin'"
-            ref="adminFormRef"
-            :model="adminForm"
-            :rules="adminRules"
-            label-placement="top"
-            :show-require-mark="false"
-            size="large"
-            @submit.prevent="handleAdminLogin"
+              v-if="mode === 'admin'"
+              ref="adminFormRef"
+              :model="adminForm"
+              :rules="adminRules"
+              :show-require-mark="false"
+              label-placement="top"
+              size="large"
+              @submit.prevent="handleAdminLogin"
           >
             <n-form-item label="账号" path="username">
               <n-input
-                v-model:value="adminForm.username"
-                placeholder="输入管理员账号"
-                clearable
+                  v-model:value="adminForm.username"
+                  clearable
+                  placeholder="输入管理员账号"
               />
             </n-form-item>
             <n-form-item label="密码" path="password">
               <n-input
-                v-model:value="adminForm.password"
-                type="password"
-                show-password-on="click"
-                placeholder="输入管理员密码"
+                  v-model:value="adminForm.password"
+                  placeholder="输入管理员密码"
+                  show-password-on="click"
+                  type="password"
               />
             </n-form-item>
-            <n-button type="primary" attr-type="submit" block :loading="submitting">
+            <n-button :loading="submitting" attr-type="submit" block type="primary">
               {{ submitting ? "登录中..." : "登录后台" }}
             </n-button>
           </n-form>
 
           <n-form
-            v-else
-            ref="ownerFormRef"
-            :model="ownerForm"
-            :rules="ownerRules"
-            label-placement="top"
-            :show-require-mark="false"
-            size="large"
-            @submit.prevent="handleOwnerLogin"
+              v-else
+              ref="ownerFormRef"
+              :model="ownerForm"
+              :rules="ownerRules"
+              :show-require-mark="false"
+              label-placement="top"
+              size="large"
+              @submit.prevent="handleOwnerLogin"
           >
             <n-form-item label="项目 ID" path="projectId">
               <n-input
-                v-model:value="ownerForm.projectId"
-                placeholder="例如：12"
-                :input-props="{ inputmode: 'numeric' }"
-                clearable
+                  v-model:value="ownerForm.projectId"
+                  :input-props="{ inputmode: 'numeric' }"
+                  clearable
+                  placeholder="例如：12"
               />
             </n-form-item>
             <n-form-item label="项目管理密码" path="controlPassword">
               <n-input
-                v-model:value="ownerForm.controlPassword"
-                type="password"
-                show-password-on="click"
-                placeholder="投稿时设置的管理密码"
-                @keyup.enter="handleOwnerLogin"
+                  v-model:value="ownerForm.controlPassword"
+                  placeholder="投稿时设置的管理密码"
+                  show-password-on="click"
+                  type="password"
+                  @keyup.enter="handleOwnerLogin"
               />
             </n-form-item>
-            <n-button type="primary" attr-type="submit" block :loading="submitting">
+            <n-button :loading="submitting" attr-type="submit" block type="primary">
               {{ submitting ? "登录中..." : "登录后台" }}
             </n-button>
           </n-form>
@@ -114,7 +114,7 @@
   </main>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import type {FormInst, FormRules} from "naive-ui";
 
 
@@ -125,7 +125,7 @@ definePageMeta({
 type LoginMode = "admin" | "owner";
 
 const message = useMessage();
-const { themeOverrides } = useMinecraftTheme();
+const {themeOverrides} = useMinecraftTheme();
 
 const mode = ref<LoginMode>("admin");
 const submitting = ref(false);
@@ -144,13 +144,13 @@ const ownerForm = reactive({
 });
 
 const adminRules: FormRules = {
-  username: { required: true, message: "请输入账号", trigger: ["blur", "input"] },
-  password: { required: true, message: "请输入密码", trigger: ["blur", "input"] },
+  username: {required: true, message: "请输入账号", trigger: ["blur", "input"]},
+  password: {required: true, message: "请输入密码", trigger: ["blur", "input"]},
 };
 
 const ownerRules: FormRules = {
-  projectId: { required: true, message: "请输入项目 ID", trigger: ["blur", "input"] },
-  controlPassword: { required: true, message: "请输入项目管理密码", trigger: ["blur", "input"] },
+  projectId: {required: true, message: "请输入项目 ID", trigger: ["blur", "input"]},
+  controlPassword: {required: true, message: "请输入项目管理密码", trigger: ["blur", "input"]},
 };
 
 const switchMode = (next: LoginMode) => {
@@ -170,7 +170,7 @@ const handleAdminLogin = async () => {
   }
   try {
     submitting.value = true;
-    const { token, username } = await adminLogin(adminForm.username.trim(), adminForm.password);
+    const {token, username} = await adminLogin(adminForm.username.trim(), adminForm.password);
     if (!token) {
       throw new Error("登录响应中未包含 token，请确认后端 /api/auth/login 返回格式");
     }
@@ -196,8 +196,8 @@ const handleAdminLogin = async () => {
 };
 
 const {verifyProjectOwner, adminLogin, adminMe} = useProjectHubApi();
-const { write: writeOwnerSession } = useOwnerSession();
-const { write: writeAdminSession } = useAdminAuth();
+const {write: writeOwnerSession} = useOwnerSession();
+const {write: writeAdminSession} = useAdminAuth();
 
 // 项目方登录：POST /api/admin/project/object-items/{id}/verify（openapi.json）
 // 校验通过后把项目详情 + controlPassword 写入会话（后续管理操作每次都要带 controlPassword），
@@ -225,8 +225,8 @@ const handleOwnerLogin = async () => {
     ownerForm.controlPassword = "";
   } catch (error) {
     message.error(error instanceof Error && error.message
-      ? error.message
-      : "项目 ID 或管理密码不正确，请重试");
+        ? error.message
+        : "项目 ID 或管理密码不正确，请重试");
   } finally {
     submitting.value = false;
   }
@@ -238,11 +238,10 @@ const handleOwnerLogin = async () => {
   min-height: 100dvh;
   padding-bottom: 42px;
   color: #2d2418;
-  background:
-    radial-gradient(circle at 80% 8%, rgba(255, 215, 101, 0.44), transparent 21%),
-    linear-gradient(rgba(97, 153, 202, 0.17) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(97, 153, 202, 0.17) 1px, transparent 1px),
-    #dff0ff;
+  background: radial-gradient(circle at 80% 8%, rgba(255, 215, 101, 0.44), transparent 21%),
+  linear-gradient(rgba(97, 153, 202, 0.17) 1px, transparent 1px),
+  linear-gradient(90deg, rgba(97, 153, 202, 0.17) 1px, transparent 1px),
+  #dff0ff;
   background-size: auto, 26px 26px, 26px 26px, auto;
 }
 

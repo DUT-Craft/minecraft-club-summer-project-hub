@@ -1,14 +1,14 @@
 <template>
   <main class="mc-page">
-    <MinecraftSiteHeader />
+    <MinecraftSiteHeader/>
 
     <n-config-provider :theme="null" :theme-overrides="themeOverrides">
       <div v-if="loading" class="loading-state">
-        <n-spin size="large" />
+        <n-spin size="large"/>
       </div>
 
       <template v-else-if="session">
-        <n-card class="manage-hero" :bordered="false">
+        <n-card :bordered="false" class="manage-hero">
           <div class="hero-info">
             <p class="eyebrow">Ideas · Batch</p>
             <h1>想法管理</h1>
@@ -20,9 +20,9 @@
           </div>
         </n-card>
 
-        <n-card class="toolbar" :bordered="false">
+        <n-card :bordered="false" class="toolbar">
           <n-space :size="10" align="center" wrap>
-            <n-select v-model:value="filter" :options="filterOptions" class="filter-select" />
+            <n-select v-model:value="filter" :options="filterOptions" class="filter-select"/>
             <n-button :loading="loadingList" @click="load">刷新</n-button>
             <span class="toolbar-count">共 {{ ideas.length }} 条</span>
           </n-space>
@@ -31,33 +31,33 @@
             <span class="batch-count">已选 {{ selectedIds.length }} 条</span>
             <n-space :size="8" align="center" wrap>
               <span class="batch-label">设为</span>
-              <n-select v-model:value="targetStatus" :options="targetStatusOptions" size="small" class="target-select" />
-              <n-button size="small" type="primary" :loading="applying" @click="applyStatusBatch">应用</n-button>
+              <n-select v-model:value="targetStatus" :options="targetStatusOptions" class="target-select" size="small"/>
+              <n-button :loading="applying" size="small" type="primary" @click="applyStatusBatch">应用</n-button>
               <n-popconfirm @positive-click="applyDeleteBatch">
                 <template #trigger>
-                  <n-button size="small" type="error" ghost :loading="deleting">批量删除</n-button>
+                  <n-button :loading="deleting" ghost size="small" type="error">批量删除</n-button>
                 </template>
                 确定删除选中的 {{ selectedIds.length }} 条想法吗？
               </n-popconfirm>
-              <n-button size="small" quaternary @click="clearSelection">取消选择</n-button>
+              <n-button quaternary size="small" @click="clearSelection">取消选择</n-button>
             </n-space>
           </div>
         </n-card>
 
-        <n-empty v-if="!loadingList && !ideas.length" description="该状态下暂无想法。" />
+        <n-empty v-if="!loadingList && !ideas.length" description="该状态下暂无想法。"/>
 
         <div v-else class="idea-list">
           <article
-            v-for="idea in ideas"
-            :key="idea.id"
-            class="idea-card"
-            :class="{ selected: isChecked(idea.id) }"
+              v-for="idea in ideas"
+              :key="idea.id"
+              :class="{ selected: isChecked(idea.id) }"
+              class="idea-card"
           >
-            <n-checkbox :checked="isChecked(idea.id)" class="row-check" @update:checked="toggleOne(idea.id)" />
+            <n-checkbox :checked="isChecked(idea.id)" class="row-check" @update:checked="toggleOne(idea.id)"/>
             <div class="row-main" @click="goDetail(idea.id)">
               <div class="row-head">
                 <span class="row-title">{{ idea.title || "（未命名想法）" }}</span>
-                <n-tag :bordered="false" size="small" round :type="statusTagType(idea.reviewStatus)">
+                <n-tag :bordered="false" :type="statusTagType(idea.reviewStatus)" round size="small">
                   {{ ideaStatusLabel(idea.reviewStatus) }}
                 </n-tag>
               </div>
@@ -68,7 +68,7 @@
               </div>
               <p v-if="idea.content" class="row-desc">{{ idea.content.slice(0, 100) }}</p>
             </div>
-            <n-button size="small" class="row-action" @click="goDetail(idea.id)">管理</n-button>
+            <n-button class="row-action" size="small" @click="goDetail(idea.id)">管理</n-button>
           </article>
         </div>
       </template>
@@ -82,30 +82,30 @@
   </main>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import type {AdminSession} from "~/composables/useAdminAuth";
 import type {Idea} from "~/types/projectHub";
 
-definePageMeta({ layout: false });
+definePageMeta({layout: false});
 
 const filterOptions = [
-  { label: "待审核", value: "PENDING" },
-  { label: "审核通过", value: "APPROVED" },
-  { label: "审核未通过", value: "REJECTED" },
-  { label: "已删除", value: "DELETED" },
-  { label: "全部", value: "" },
+  {label: "待审核", value: "PENDING"},
+  {label: "审核通过", value: "APPROVED"},
+  {label: "审核未通过", value: "REJECTED"},
+  {label: "已删除", value: "DELETED"},
+  {label: "全部", value: ""},
 ];
 // 想法状态较简单：在 PENDING/APPROVED/REJECTED 间切换；DELETED 走「批量删除」专用接口
 const targetStatusOptions = [
-  { label: "审核通过", value: "APPROVED" },
-  { label: "审核未通过", value: "REJECTED" },
-  { label: "待审核", value: "PENDING" },
+  {label: "审核通过", value: "APPROVED"},
+  {label: "审核未通过", value: "REJECTED"},
+  {label: "待审核", value: "PENDING"},
 ];
 
 const message = useMessage();
-const { themeOverrides } = useMinecraftTheme();
-const { read, clear } = useAdminAuth();
-const { listIdeasAdmin, updateIdeaStatusBatch, deleteIdeaBatch, adminLogout } = useProjectHubApi();
+const {themeOverrides} = useMinecraftTheme();
+const {read, clear} = useAdminAuth();
+const {listIdeasAdmin, updateIdeaStatusBatch, deleteIdeaBatch, adminLogout} = useProjectHubApi();
 
 const loading = ref(true);
 const session = ref<AdminSession | null>(null);
@@ -158,8 +158,8 @@ const isChecked = (id: string) => selectedIds.value.includes(id);
 
 const toggleOne = (id: string) => {
   selectedIds.value = isChecked(id)
-    ? selectedIds.value.filter((item) => item !== id)
-    : [...selectedIds.value, id];
+      ? selectedIds.value.filter((item) => item !== id)
+      : [...selectedIds.value, id];
 };
 
 const clearSelection = () => {
@@ -172,7 +172,7 @@ const applyStatusBatch = async () => {
   }
   try {
     applying.value = true;
-    await updateIdeaStatusBatch(selectedIds.value.map((id) => ({ id, status: targetStatus.value })));
+    await updateIdeaStatusBatch(selectedIds.value.map((id) => ({id, status: targetStatus.value})));
     message.success(`已将 ${selectedIds.value.length} 条想法设为「${labelOf(targetStatus.value)}」`);
     clearSelection();
     await load();
@@ -219,19 +219,27 @@ const labelOf = (value: string) => filterOptions.find((opt) => opt.value === val
 // 想法的 reviewStatus 是前端联合（pending/approved/rejected），映射为文案与配色
 const ideaStatusLabel = (status?: string) => {
   switch (status) {
-    case "pending": return "待审核";
-    case "approved": return "审核通过";
-    case "rejected": return "审核未通过";
-    default: return status || "未知";
+    case "pending":
+      return "待审核";
+    case "approved":
+      return "审核通过";
+    case "rejected":
+      return "审核未通过";
+    default:
+      return status || "未知";
   }
 };
 
 const statusTagType = (status?: string): "warning" | "success" | "error" | "default" => {
   switch (status) {
-    case "pending": return "warning";
-    case "approved": return "success";
-    case "rejected": return "error";
-    default: return "default";
+    case "pending":
+      return "warning";
+    case "approved":
+      return "success";
+    case "rejected":
+      return "error";
+    default:
+      return "default";
   }
 };
 </script>
@@ -241,11 +249,10 @@ const statusTagType = (status?: string): "warning" | "success" | "error" | "defa
   min-height: 100dvh;
   padding-bottom: 42px;
   color: #2d2418;
-  background:
-    radial-gradient(circle at 80% 8%, rgba(255, 215, 101, 0.44), transparent 21%),
-    linear-gradient(rgba(97, 153, 202, 0.17) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(97, 153, 202, 0.17) 1px, transparent 1px),
-    #dff0ff;
+  background: radial-gradient(circle at 80% 8%, rgba(255, 215, 101, 0.44), transparent 21%),
+  linear-gradient(rgba(97, 153, 202, 0.17) 1px, transparent 1px),
+  linear-gradient(90deg, rgba(97, 153, 202, 0.17) 1px, transparent 1px),
+  #dff0ff;
   background-size: auto, 26px 26px, 26px 26px, auto;
 }
 

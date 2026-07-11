@@ -1,9 +1,9 @@
 <template>
   <main class="mc-page">
-    <MinecraftSiteHeader />
+    <MinecraftSiteHeader/>
 
     <n-config-provider :theme="null" :theme-overrides="themeOverrides">
-      <n-card class="page-head" :bordered="false">
+      <n-card :bordered="false" class="page-head">
         <div>
           <p>项目广场</p>
           <h1>全部公开项目</h1>
@@ -12,20 +12,20 @@
       </n-card>
 
       <section class="filters">
-        <n-input v-model:value="keyword" placeholder="搜索标题、介绍、类型、状态、负责人或技能" clearable />
-        <n-select v-model:value="typeFilter" :options="typeSelectOptions" />
-        <n-select v-model:value="statusFilter" :options="statusSelectOptions" />
-        <n-select v-model:value="skillFilter" :options="skillSelectOptions" />
+        <n-input v-model:value="keyword" clearable placeholder="搜索标题、介绍、类型、状态、负责人或技能"/>
+        <n-select v-model:value="typeFilter" :options="typeSelectOptions"/>
+        <n-select v-model:value="statusFilter" :options="statusSelectOptions"/>
+        <n-select v-model:value="skillFilter" :options="skillSelectOptions"/>
       </section>
 
       <section v-if="filteredProjects.length" class="project-grid">
-        <ProjectHubCard v-for="project in filteredProjects" :key="project.id" :project="project" />
+        <ProjectHubCard v-for="project in filteredProjects" :key="project.id" :project="project"/>
       </section>
 
       <n-empty
-        v-else
-        class="empty-space"
-        description="暂时没有匹配的公开项目"
+          v-else
+          class="empty-space"
+          description="暂时没有匹配的公开项目"
       >
         <template #extra>
           <n-button type="primary" @click="navigateTo('/submit')">投稿项目</n-button>
@@ -35,8 +35,8 @@
   </main>
 </template>
 
-<script setup lang="ts">
-import type { Project } from "~/types/projectHub";
+<script lang="ts" setup>
+import type {Project} from "~/types/projectHub";
 
 
 definePageMeta({
@@ -45,7 +45,7 @@ definePageMeta({
 
 // 数据源对应 openapi.json：GET /api/project/object-items?status=...
 // （接口仅支持单个 status，在 useProjectHubApi 内并行请求 PREPARING / RECRUITING / IN_PROGRESS / PAUSED 四个公开状态后合并）
-const { loadPublicProjectCatalog } = useProjectHubApi();
+const {loadPublicProjectCatalog} = useProjectHubApi();
 const projects = ref<Project[]>([]);
 
 const keyword = ref("");
@@ -70,14 +70,14 @@ const skillOptions = computed(() => [...new Set(projects.value.flatMap(projectSk
 
 // n-select 需要 { label, value } 形式的选项；首项 value="" 代表"全部"，与原 <option value=""> 行为一致
 const toSelectOptions = (values: string[], allLabel: string) => [
-  { label: allLabel, value: "" },
-  ...values.map((value) => ({ label: value, value })),
+  {label: allLabel, value: ""},
+  ...values.map((value) => ({label: value, value})),
 ];
 const typeSelectOptions = computed(() => toSelectOptions(typeOptions.value, "全部类型"));
 // 状态下拉展示中文文案，value 仍是英文枚举，与 project.status 过滤匹配口径一致
 const statusSelectOptions = computed(() => [
-  { label: "全部状态", value: "" },
-  ...statusOptions.value.map((value) => ({ label: formatProjectStatus(value), value })),
+  {label: "全部状态", value: ""},
+  ...statusOptions.value.map((value) => ({label: formatProjectStatus(value), value})),
 ]);
 const skillSelectOptions = computed(() => toSelectOptions(skillOptions.value, "全部技能"));
 
@@ -97,14 +97,14 @@ const filteredProjects = computed(() => {
     ].join(" ").toLowerCase();
 
     return (!key || haystack.includes(key))
-      && (!typeFilter.value || project.type === typeFilter.value)
-      && (!statusFilter.value || project.status === statusFilter.value)
-      && (!skillFilter.value || skills.includes(skillFilter.value));
+        && (!typeFilter.value || project.type === typeFilter.value)
+        && (!statusFilter.value || project.status === statusFilter.value)
+        && (!skillFilter.value || skills.includes(skillFilter.value));
   });
 });
 
 // Minecraft 暖色主题（草地绿主色 + 羊皮纸卡片 + 木边输入/下拉），见 useMinecraftTheme
-const { themeOverrides } = useMinecraftTheme();
+const {themeOverrides} = useMinecraftTheme();
 </script>
 
 <style scoped>
@@ -112,11 +112,10 @@ const { themeOverrides } = useMinecraftTheme();
   min-height: 100dvh;
   padding-bottom: 42px;
   color: #2d2418;
-  background:
-    radial-gradient(circle at 80% 8%, rgba(255, 215, 101, 0.44), transparent 21%),
-    linear-gradient(rgba(97, 153, 202, 0.17) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(97, 153, 202, 0.17) 1px, transparent 1px),
-    #dff0ff;
+  background: radial-gradient(circle at 80% 8%, rgba(255, 215, 101, 0.44), transparent 21%),
+  linear-gradient(rgba(97, 153, 202, 0.17) 1px, transparent 1px),
+  linear-gradient(90deg, rgba(97, 153, 202, 0.17) 1px, transparent 1px),
+  #dff0ff;
   background-size: auto, 26px 26px, 26px 26px, auto;
 }
 

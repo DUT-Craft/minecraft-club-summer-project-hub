@@ -11,24 +11,24 @@
 
       <ClientOnly>
         <n-menu
-          mode="horizontal"
-          :options="menuOptions"
-          :value="activeMenuKey"
-          responsive
-          class="top-menu"
-          @update:value="handleMenuSelect"
+            :options="menuOptions"
+            :value="activeMenuKey"
+            class="top-menu"
+            mode="horizontal"
+            responsive
+            @update:value="handleMenuSelect"
         />
       </ClientOnly>
     </n-layout-header>
 
     <n-layout-content class="app-content">
-      <slot />
+      <slot/>
     </n-layout-content>
   </n-layout>
 </template>
 
-<script setup lang="ts">
-import type { MenuOption } from "naive-ui";
+<script lang="ts" setup>
+import type {MenuOption} from "naive-ui";
 
 const route = useRoute();
 

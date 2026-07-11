@@ -1,22 +1,24 @@
 <template>
   <main class="mc-page">
-    <MinecraftSiteHeader />
+    <MinecraftSiteHeader/>
 
     <n-config-provider :theme="null" :theme-overrides="themeOverrides">
       <section class="submit-shell">
         <div class="tabs">
-          <n-button size="large" :type="mode === 'project' ? 'primary' : 'default'" @click="mode = 'project'">投稿项目</n-button>
-          <n-button size="large" :type="mode === 'idea' ? 'primary' : 'default'" @click="mode = 'idea'">提交想法</n-button>
+          <n-button :type="mode === 'project' ? 'primary' : 'default'" size="large" @click="mode = 'project'">投稿项目
+          </n-button>
+          <n-button :type="mode === 'idea' ? 'primary' : 'default'" size="large" @click="mode = 'idea'">提交想法
+          </n-button>
         </div>
 
-        <n-card v-if="mode === 'project'" class="panel" :bordered="false">
+        <n-card v-if="mode === 'project'" :bordered="false" class="panel">
           <n-form
-            ref="projectFormRef"
-            :model="projectForm"
-            :rules="projectRules"
-            label-placement="top"
-            :show-require-mark="false"
-            @submit.prevent="handleSubmitProject"
+              ref="projectFormRef"
+              :model="projectForm"
+              :rules="projectRules"
+              :show-require-mark="false"
+              label-placement="top"
+              @submit.prevent="handleSubmitProject"
           >
             <div class="form-head">
               <p>Project Draft</p>
@@ -24,32 +26,32 @@
             </div>
 
             <n-form-item label="项目标题" path="title">
-              <n-input v-model:value="projectForm.title" placeholder="例如：暑假主城建设计划" />
+              <n-input v-model:value="projectForm.title" placeholder="例如：暑假主城建设计划"/>
             </n-form-item>
 
             <div class="two-col">
               <n-form-item label="项目类型" path="type">
-                <n-input v-model:value="projectForm.type" placeholder="可自定义，例如 建筑 / 生电 / 活动" />
+                <n-input v-model:value="projectForm.type" placeholder="可自定义，例如 建筑 / 生电 / 活动"/>
               </n-form-item>
               <n-form-item label="标签">
-                <n-input v-model:value="projectForm.tagsText" placeholder="用逗号分隔，例如 建筑,红石,生电" />
+                <n-input v-model:value="projectForm.tagsText" placeholder="用逗号分隔，例如 建筑,红石,生电"/>
               </n-form-item>
             </div>
 
             <n-form-item label="项目简介" path="introduction">
-              <n-input v-model:value="projectForm.introduction" placeholder="一句话概括这个项目" />
+              <n-input v-model:value="projectForm.introduction" placeholder="一句话概括这个项目"/>
             </n-form-item>
 
             <n-form-item label="负责人昵称" path="ownerName">
-              <n-input v-model:value="projectForm.ownerName" placeholder="你的社团昵称" />
+              <n-input v-model:value="projectForm.ownerName" placeholder="你的社团昵称"/>
             </n-form-item>
 
             <n-form-item label="项目详细介绍" path="description">
               <n-input
-                v-model:value="projectForm.description"
-                type="textarea"
-                :rows="7"
-                placeholder="主要写这个项目想做什么、怎么玩、希望做成什么样。"
+                  v-model:value="projectForm.description"
+                  :rows="7"
+                  placeholder="主要写这个项目想做什么、怎么玩、希望做成什么样。"
+                  type="textarea"
               />
             </n-form-item>
 
@@ -59,40 +61,40 @@
                 <n-button size="small" type="primary" @click="addNeed">添加一条</n-button>
               </div>
               <div v-for="(need, index) in projectForm.recruitmentNeeds" :key="need.id" class="need-row">
-                <n-input v-model:value="need.skill" placeholder="技能/方向" />
-                <n-input-number v-model:value="need.count" :min="1" :show-button="false" placeholder="人数" />
-                <n-input v-model:value="need.work" type="textarea" :rows="2" placeholder="大概工作内容" />
+                <n-input v-model:value="need.skill" placeholder="技能/方向"/>
+                <n-input-number v-model:value="need.count" :min="1" :show-button="false" placeholder="人数"/>
+                <n-input v-model:value="need.work" :rows="2" placeholder="大概工作内容" type="textarea"/>
                 <n-button size="small" @click="removeNeed(index)">删除</n-button>
               </div>
             </div>
 
             <div class="two-col">
               <n-form-item label="你的 Minecraft ID" path="ownerMinecraftId">
-                <n-input v-model:value="projectForm.ownerMinecraftId" placeholder="Java / 基岩版 ID" />
+                <n-input v-model:value="projectForm.ownerMinecraftId" placeholder="Java / 基岩版 ID"/>
               </n-form-item>
               <n-form-item label="联系方式" path="publicContact">
-                <n-input v-model:value="projectForm.publicContact" placeholder="QQ / 群号 / Discord 等，会公开展示" />
+                <n-input v-model:value="projectForm.publicContact" placeholder="QQ / 群号 / Discord 等，会公开展示"/>
               </n-form-item>
             </div>
 
             <n-form-item label="项目管理密码" path="ownerPassword">
-              <n-input v-model:value="projectForm.ownerPassword" type="password" placeholder="以后项目发起者后台使用" />
+              <n-input v-model:value="projectForm.ownerPassword" placeholder="以后项目发起者后台使用" type="password"/>
             </n-form-item>
 
-            <n-button type="primary" attr-type="submit" :loading="submitting">
+            <n-button :loading="submitting" attr-type="submit" type="primary">
               {{ submitting ? "提交中..." : "提交项目，等待审核" }}
             </n-button>
           </n-form>
         </n-card>
 
-        <n-card v-else class="panel" :bordered="false">
+        <n-card v-else :bordered="false" class="panel">
           <n-form
-            ref="ideaFormRef"
-            :model="ideaForm"
-            :rules="ideaRules"
-            label-placement="top"
-            :show-require-mark="false"
-            @submit.prevent="handleSubmitIdea"
+              ref="ideaFormRef"
+              :model="ideaForm"
+              :rules="ideaRules"
+              :show-require-mark="false"
+              label-placement="top"
+              @submit.prevent="handleSubmitIdea"
           >
             <div class="form-head">
               <p>Idea Wall</p>
@@ -100,26 +102,26 @@
             </div>
 
             <n-form-item label="想法标题" path="title">
-              <n-input v-model:value="ideaForm.title" placeholder="例如：每周末速通接力" />
+              <n-input v-model:value="ideaForm.title" placeholder="例如：每周末速通接力"/>
             </n-form-item>
             <n-form-item label="想法内容" path="content">
               <n-input
-                v-model:value="ideaForm.content"
-                type="textarea"
-                :rows="8"
-                placeholder="写玩法、规则、需要的人、你希望大家怎么参与。"
+                  v-model:value="ideaForm.content"
+                  :rows="8"
+                  placeholder="写玩法、规则、需要的人、你希望大家怎么参与。"
+                  type="textarea"
               />
             </n-form-item>
             <div class="two-col">
               <n-form-item label="昵称" path="nickname">
-                <n-input v-model:value="ideaForm.nickname" placeholder="你的昵称" />
+                <n-input v-model:value="ideaForm.nickname" placeholder="你的昵称"/>
               </n-form-item>
               <n-form-item label="Minecraft ID" path="minecraftId">
-                <n-input v-model:value="ideaForm.minecraftId" placeholder="你的游戏 ID" />
+                <n-input v-model:value="ideaForm.minecraftId" placeholder="你的游戏 ID"/>
               </n-form-item>
             </div>
 
-            <n-button type="primary" attr-type="submit" :loading="submitting">
+            <n-button :loading="submitting" attr-type="submit" type="primary">
               {{ submitting ? "提交中..." : "提交想法，等待审核" }}
             </n-button>
           </n-form>
@@ -129,9 +131,9 @@
   </main>
 </template>
 
-<script setup lang="ts">
-import type { FormInst, FormRules } from "naive-ui";
-import type { RecruitmentNeed } from "~/types/projectHub";
+<script lang="ts" setup>
+import type {FormInst, FormRules} from "naive-ui";
+import type {RecruitmentNeed} from "~/types/projectHub";
 
 
 definePageMeta({
@@ -140,9 +142,9 @@ definePageMeta({
 
 const message = useMessage();
 const route = useRoute();
-const { submitProject, submitIdea } = useProjectHubApi();
+const {submitProject, submitIdea} = useProjectHubApi();
 // 投稿成功后把项目信息 + 表单里的明文密码带到 /submit/success 做一次性展示
-const { write: writeSubmission } = useLastSubmission();
+const {write: writeSubmission} = useLastSubmission();
 const mode = ref<"project" | "idea">("project");
 const submitting = ref(false);
 
@@ -177,25 +179,25 @@ const ideaForm = reactive({
 });
 
 const projectRules: FormRules = {
-  title: { required: true, message: "请填写项目标题", trigger: ["blur", "input"] },
-  type: { required: true, message: "请填写项目类型", trigger: ["blur", "input"] },
-  introduction: { required: true, message: "请填写项目简介", trigger: ["blur", "input"] },
-  ownerName: { required: true, message: "请填写负责人昵称", trigger: ["blur", "input"] },
-  description: { required: true, message: "请填写项目详细介绍", trigger: ["blur", "input"] },
-  ownerMinecraftId: { required: true, message: "请填写 Minecraft ID", trigger: ["blur", "input"] },
-  publicContact: { required: true, message: "请填写联系方式", trigger: ["blur", "input"] },
-  ownerPassword: { required: true, message: "请填写管理密码", trigger: ["blur", "input"] },
+  title: {required: true, message: "请填写项目标题", trigger: ["blur", "input"]},
+  type: {required: true, message: "请填写项目类型", trigger: ["blur", "input"]},
+  introduction: {required: true, message: "请填写项目简介", trigger: ["blur", "input"]},
+  ownerName: {required: true, message: "请填写负责人昵称", trigger: ["blur", "input"]},
+  description: {required: true, message: "请填写项目详细介绍", trigger: ["blur", "input"]},
+  ownerMinecraftId: {required: true, message: "请填写 Minecraft ID", trigger: ["blur", "input"]},
+  publicContact: {required: true, message: "请填写联系方式", trigger: ["blur", "input"]},
+  ownerPassword: {required: true, message: "请填写管理密码", trigger: ["blur", "input"]},
 };
 
 const ideaRules: FormRules = {
-  title: { required: true, message: "请填写想法标题", trigger: ["blur", "input"] },
-  content: { required: true, message: "请填写想法内容", trigger: ["blur", "input"] },
-  nickname: { required: true, message: "请填写昵称", trigger: ["blur", "input"] },
-  minecraftId: { required: true, message: "请填写 Minecraft ID", trigger: ["blur", "input"] },
+  title: {required: true, message: "请填写想法标题", trigger: ["blur", "input"]},
+  content: {required: true, message: "请填写想法内容", trigger: ["blur", "input"]},
+  nickname: {required: true, message: "请填写昵称", trigger: ["blur", "input"]},
+  minecraftId: {required: true, message: "请填写 Minecraft ID", trigger: ["blur", "input"]},
 };
 
 // Minecraft 暖色主题（草地绿主色 + 羊皮纸卡片 + 木边输入框），见 useMinecraftTheme
-const { themeOverrides } = useMinecraftTheme();
+const {themeOverrides} = useMinecraftTheme();
 
 const addNeed = () => {
   projectForm.recruitmentNeeds.push(newNeed());
@@ -226,10 +228,10 @@ const resetProject = () => {
 };
 
 const parseTags = (text: string): string[] =>
-  text
-    .split(",")
-    .map((tag) => tag.trim())
-    .filter(Boolean);
+    text
+        .split(",")
+        .map((tag) => tag.trim())
+        .filter(Boolean);
 
 const handleSubmitProject = async () => {
   try {
@@ -278,7 +280,7 @@ const handleSubmitIdea = async () => {
   }
   try {
     submitting.value = true;
-    await submitIdea({ ...ideaForm });
+    await submitIdea({...ideaForm});
     message.success("想法已提交，等待管理员审核");
     Object.assign(ideaForm, {
       title: "",
@@ -305,11 +307,10 @@ onMounted(() => {
   min-height: 100dvh;
   padding-bottom: 42px;
   color: #2d2418;
-  background:
-    radial-gradient(circle at 80% 8%, rgba(255, 215, 101, 0.44), transparent 21%),
-    linear-gradient(rgba(97, 153, 202, 0.17) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(97, 153, 202, 0.17) 1px, transparent 1px),
-    #dff0ff;
+  background: radial-gradient(circle at 80% 8%, rgba(255, 215, 101, 0.44), transparent 21%),
+  linear-gradient(rgba(97, 153, 202, 0.17) 1px, transparent 1px),
+  linear-gradient(90deg, rgba(97, 153, 202, 0.17) 1px, transparent 1px),
+  #dff0ff;
   background-size: auto, 26px 26px, 26px 26px, auto;
 }
 

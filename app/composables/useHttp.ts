@@ -1,4 +1,4 @@
-import {createFetch, type FetchOptions, FetchError} from "ofetch";
+import {createFetch, FetchError, type FetchOptions} from "ofetch";
 import type {ApiResult} from "~/types/http";
 
 type ParamMode = "query" | "json";
@@ -153,7 +153,7 @@ export const useHttp = () => {
             try {
                 const res = await $fetch<ApiResult<{ accessToken: string; tokenType: string; expiresIn: number }>>(
                     "/auth/refresh",
-                    { baseURL: apiBase, method: "POST", credentials: "include" },
+                    {baseURL: apiBase, method: "POST", credentials: "include"},
                 );
                 const token = res?.data?.accessToken;
                 if (token) {
@@ -184,7 +184,7 @@ export const useHttp = () => {
             throw createError({
                 statusCode: Number(status) || 500,
                 statusMessage: message,
-                data: body ?? { status, message },
+                data: body ?? {status, message},
             });
         }
         throw err;

@@ -1,13 +1,13 @@
 <template>
   <div class="empty">
-    <div class="cube" aria-hidden="true" />
+    <div aria-hidden="true" class="cube"/>
     <h3>{{ title }}</h3>
     <p v-if="text">{{ text }}</p>
-    <slot />
+    <slot/>
   </div>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 defineProps<{
   title: string;
   text?: string;
@@ -29,9 +29,8 @@ defineProps<{
   height: 44px;
   margin: 0 auto 12px;
   border: 2px solid #5a3a21;
-  background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.28) 0 50%, transparent 51%),
-    #8bcf59;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.28) 0 50%, transparent 51%),
+  #8bcf59;
   box-shadow: 6px 6px 0 #5a3a21;
 }
 

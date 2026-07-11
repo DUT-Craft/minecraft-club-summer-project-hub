@@ -1,14 +1,14 @@
 <template>
   <main class="mc-page">
-    <MinecraftSiteHeader />
+    <MinecraftSiteHeader/>
 
     <n-config-provider :theme="null" :theme-overrides="themeOverrides">
       <div v-if="loading" class="loading-state">
-        <n-spin size="large" />
+        <n-spin size="large"/>
       </div>
 
       <template v-else-if="session">
-        <n-card class="manage-hero" :bordered="false">
+        <n-card :bordered="false" class="manage-hero">
           <div class="hero-info">
             <p class="eyebrow">{{ isSuperAdmin ? "Super Admin" : "Project Manager" }}</p>
             <h1>{{ isSuperAdmin ? "总管理控制台" : "项目管理控制台" }}</h1>
@@ -72,7 +72,7 @@
         </div>
 
         <div class="entry-grid">
-          <n-card class="entry-card" :bordered="false" hoverable>
+          <n-card :bordered="false" class="entry-card" hoverable>
             <div class="entry-head">
               <span class="eyebrow">Projects</span>
               <h2>项目管理</h2>
@@ -82,7 +82,7 @@
                 isSuperAdmin ? "审核、批量改状态、分配项目，进入单个项目维护。" : "管理名下项目：审核加入申请、发布动态、审核评论。"
               }}
             </p>
-            <n-button type="primary" size="large" @click="navigateTo('/admin/manage/projects')">进入项目管理</n-button>
+            <n-button size="large" type="primary" @click="navigateTo('/admin/manage/projects')">进入项目管理</n-button>
           </n-card>
 
           <n-card v-if="isSuperAdmin" :bordered="false" class="entry-card" hoverable>
@@ -91,7 +91,7 @@
               <h2>想法管理</h2>
             </div>
             <p class="entry-desc">审核想法墙投稿、批量改状态、编辑或删除单个想法。</p>
-            <n-button type="primary" size="large" @click="navigateTo('/admin/manage/ideas')">进入想法管理</n-button>
+            <n-button size="large" type="primary" @click="navigateTo('/admin/manage/ideas')">进入想法管理</n-button>
           </n-card>
         </div>
 
@@ -110,7 +110,7 @@
   </main>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import type {AdminSession} from "~/composables/useAdminAuth";
 import type {ManagerSummary, Project} from "~/types/projectHub";
 
@@ -119,7 +119,7 @@ definePageMeta({
 });
 
 const message = useMessage();
-const { themeOverrides } = useMinecraftTheme();
+const {themeOverrides} = useMinecraftTheme();
 const {read, clear, write} = useAdminAuth();
 const {
   adminLogout,
@@ -251,11 +251,10 @@ const handleLogout = async () => {
   min-height: 100dvh;
   padding-bottom: 42px;
   color: #2d2418;
-  background:
-    radial-gradient(circle at 80% 8%, rgba(255, 215, 101, 0.44), transparent 21%),
-    linear-gradient(rgba(97, 153, 202, 0.17) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(97, 153, 202, 0.17) 1px, transparent 1px),
-    #dff0ff;
+  background: radial-gradient(circle at 80% 8%, rgba(255, 215, 101, 0.44), transparent 21%),
+  linear-gradient(rgba(97, 153, 202, 0.17) 1px, transparent 1px),
+  linear-gradient(90deg, rgba(97, 153, 202, 0.17) 1px, transparent 1px),
+  #dff0ff;
   background-size: auto, 26px 26px, 26px 26px, auto;
 }
 

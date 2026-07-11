@@ -1,5 +1,5 @@
 <template>
-  <n-card class="manager-card" :bordered="false">
+  <n-card :bordered="false" class="manager-card">
     <template #header>
       <div class="panel-head">
         <span class="eyebrow">Comment Moderation</span>
@@ -9,30 +9,30 @@
     <template #header-extra>
       <n-space :size="8" align="center" wrap>
         <n-select
-          v-model:value="filter"
-          :options="filterOptions"
-          size="small"
-          class="filter-select"
+            v-model:value="filter"
+            :options="filterOptions"
+            class="filter-select"
+            size="small"
         />
-        <n-button size="small" :loading="loading" @click="load">
+        <n-button :loading="loading" size="small" @click="load">
           {{ comments.length || loaded ? "刷新" : "加载评论" }}
         </n-button>
       </n-space>
     </template>
 
     <n-empty
-      v-if="!comments.length"
-      description="暂无待审核评论，点击右上角「刷新」可重新拉取。"
+        v-if="!comments.length"
+        description="暂无待审核评论，点击右上角「刷新」可重新拉取。"
     />
     <div v-else class="comment-list">
       <article
-        v-for="item in comments"
-        :key="item.id"
-        class="comment-card"
+          v-for="item in comments"
+          :key="item.id"
+          class="comment-card"
       >
         <div class="comment-head">
           <span class="comment-author">{{ item.nickname || "匿名访客" }}</span>
-          <n-tag :bordered="false" size="small" round :type="statusTagType(item.reviewStatus)">
+          <n-tag :bordered="false" :type="statusTagType(item.reviewStatus)" round size="small">
             {{ statusLabel(item.reviewStatus) }}
           </n-tag>
         </div>
@@ -40,30 +40,30 @@
         <p class="comment-content">{{ item.content || "（空内容）" }}</p>
         <div class="comment-actions">
           <n-button
-            size="small"
-            type="primary"
-            :disabled="item.reviewStatus === 'approved'"
-            :loading="processingId === item.id"
-            @click="handleModerate(item, 'APPROVED')"
+              :disabled="item.reviewStatus === 'approved'"
+              :loading="processingId === item.id"
+              size="small"
+              type="primary"
+              @click="handleModerate(item, 'APPROVED')"
           >
             通过
           </n-button>
           <n-button
-            size="small"
-            :disabled="item.reviewStatus === 'rejected'"
-            :loading="processingId === item.id"
-            @click="handleModerate(item, 'REJECTED')"
+              :disabled="item.reviewStatus === 'rejected'"
+              :loading="processingId === item.id"
+              size="small"
+              @click="handleModerate(item, 'REJECTED')"
           >
             拒绝
           </n-button>
           <n-popconfirm @positive-click="handleModerate(item, 'DELETED')">
             <template #trigger>
               <n-button
-                size="small"
-                quaternary
-                type="error"
-                :disabled="item.reviewStatus === 'deleted'"
-                :loading="processingId === item.id"
+                  :disabled="item.reviewStatus === 'deleted'"
+                  :loading="processingId === item.id"
+                  quaternary
+                  size="small"
+                  type="error"
               >
                 删除
               </n-button>
@@ -76,8 +76,8 @@
   </n-card>
 </template>
 
-<script setup lang="ts">
-import type { ProjectComment } from "~/types/projectHub";
+<script lang="ts" setup>
+import type {ProjectComment} from "~/types/projectHub";
 
 // 由父级传入：项目 ID。
 // - mode="owner"（默认，项目方后台）：还需传 controlPassword，走 controlPassword 鉴权接口
@@ -110,19 +110,19 @@ const filter = ref<string>("");
 const processingId = ref<string | null>(null);
 
 const filterOptions = [
-  { label: "待审核", value: "PENDING" },
-  { label: "已公开", value: "APPROVED" },
-  { label: "未通过", value: "REJECTED" },
-  { label: "已删除", value: "DELETED" },
-  { label: "全部", value: "" },
+  {label: "待审核", value: "PENDING"},
+  {label: "已公开", value: "APPROVED"},
+  {label: "未通过", value: "REJECTED"},
+  {label: "已删除", value: "DELETED"},
+  {label: "全部", value: ""},
 ];
 
 const load = async () => {
   try {
     loading.value = true;
     const list = isAdmin.value
-      ? await listProjectCommentsAdmin(props.projectId, filter.value || undefined)
-      : await loadProjectCommentsAdmin(props.projectId, props.controlPassword, filter.value || undefined);
+        ? await listProjectCommentsAdmin(props.projectId, filter.value || undefined)
+        : await loadProjectCommentsAdmin(props.projectId, props.controlPassword, filter.value || undefined);
     comments.value = list;
     loaded.value = true;
   } catch (error) {
@@ -167,21 +167,31 @@ const formatTime = (value?: string) => (value ? new Date(value).toLocaleString("
 
 const statusLabel = (status?: string) => {
   switch (status) {
-    case "pending": return "待审核";
-    case "approved": return "已公开";
-    case "rejected": return "未通过";
-    case "deleted": return "已删除";
-    default: return status || "未知";
+    case "pending":
+      return "待审核";
+    case "approved":
+      return "已公开";
+    case "rejected":
+      return "未通过";
+    case "deleted":
+      return "已删除";
+    default:
+      return status || "未知";
   }
 };
 
 const statusTagType = (status?: string): "warning" | "success" | "error" | "default" => {
   switch (status) {
-    case "pending": return "warning";
-    case "approved": return "success";
-    case "rejected": return "error";
-    case "deleted": return "default";
-    default: return "default";
+    case "pending":
+      return "warning";
+    case "approved":
+      return "success";
+    case "rejected":
+      return "error";
+    case "deleted":
+      return "default";
+    default:
+      return "default";
   }
 };
 </script>

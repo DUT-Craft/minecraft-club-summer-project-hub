@@ -1,19 +1,19 @@
 <template>
   <main class="mc-page">
-    <MinecraftSiteHeader />
+    <MinecraftSiteHeader/>
 
     <n-config-provider :theme="null" :theme-overrides="themeOverrides">
       <div v-if="loading" class="loading-state">
-        <n-spin size="large" />
+        <n-spin size="large"/>
       </div>
 
       <template v-else-if="session">
-        <n-card class="manage-hero" :bordered="false">
+        <n-card :bordered="false" class="manage-hero">
           <div class="hero-info">
             <n-space :size="8" align="center">
               <n-tag :bordered="false" type="primary">{{ session.project.type || "未分类" }}</n-tag>
               <n-tag :bordered="false">{{ statusLabel }}</n-tag>
-              <n-tag :bordered="false" round class="id-tag">ID · {{ session.project.id }}</n-tag>
+              <n-tag :bordered="false" class="id-tag" round>ID · {{ session.project.id }}</n-tag>
             </n-space>
             <h1>{{ session.project.title }}</h1>
             <span>负责人：{{ session.project.ownerName || "未填写" }}</span>
@@ -24,7 +24,7 @@
           </div>
         </n-card>
 
-        <n-card class="manage-panel" :bordered="false">
+        <n-card :bordered="false" class="manage-panel">
           <template #header>
             <div class="panel-head">
               <span class="eyebrow">Owner Console</span>
@@ -40,7 +40,7 @@
             </n-space>
           </template>
 
-          <n-alert :bordered="false" type="success" class="login-banner">
+          <n-alert :bordered="false" class="login-banner" type="success">
             <strong>已登录项目方后台。</strong>
             登录时间：{{ formatTime(session.loginAt) }}。可在此编辑项目信息、修改管理密码、处理加入申请。
           </n-alert>
@@ -69,7 +69,7 @@
             <div class="info-row">
               <dt>当前状态</dt>
               <dd>
-                <n-tag :bordered="false" size="small" round class="status-tag">{{ statusLabel }}</n-tag>
+                <n-tag :bordered="false" class="status-tag" round size="small">{{ statusLabel }}</n-tag>
               </dd>
             </div>
           </dl>
@@ -88,13 +88,13 @@
             <strong>招工需求</strong>
             <div class="need-list">
               <article
-                v-for="need in needs"
-                :key="need.id || need.skill"
-                class="need-card"
+                  v-for="need in needs"
+                  :key="need.id || need.skill"
+                  class="need-card"
               >
                 <div class="need-head">
                   <span class="need-skill">{{ need.skill }}</span>
-                  <n-tag :bordered="false" size="small" round class="need-count">招 {{ need.count }} 人</n-tag>
+                  <n-tag :bordered="false" class="need-count" round size="small">招 {{ need.count }} 人</n-tag>
                 </div>
                 <p v-if="need.work" class="need-work">{{ need.work }}</p>
               </article>
@@ -103,7 +103,7 @@
         </n-card>
 
         <div class="action-grid">
-          <n-card class="action-card" :bordered="false">
+          <n-card :bordered="false" class="action-card">
             <template #header>
               <div class="panel-head">
                 <span class="eyebrow">Security</span>
@@ -111,33 +111,33 @@
               </div>
             </template>
             <n-form
-              ref="passwordFormRef"
-              :model="passwordForm"
-              :rules="passwordRules"
-              label-placement="top"
-              :show-require-mark="false"
-              size="medium"
-              class="password-form"
-              @submit.prevent="handleChangePassword"
+                ref="passwordFormRef"
+                :model="passwordForm"
+                :rules="passwordRules"
+                :show-require-mark="false"
+                class="password-form"
+                label-placement="top"
+                size="medium"
+                @submit.prevent="handleChangePassword"
             >
               <n-form-item label="新管理密码" path="newPassword">
                 <n-input
-                  v-model:value="passwordForm.newPassword"
-                  type="password"
-                  show-password-on="click"
-                  placeholder="至少 6 位"
+                    v-model:value="passwordForm.newPassword"
+                    placeholder="至少 6 位"
+                    show-password-on="click"
+                    type="password"
                 />
               </n-form-item>
               <n-form-item label="确认新密码" path="confirmPassword">
                 <n-input
-                  v-model:value="passwordForm.confirmPassword"
-                  type="password"
-                  show-password-on="click"
-                  placeholder="再次输入新密码"
-                  @keyup.enter="handleChangePassword"
+                    v-model:value="passwordForm.confirmPassword"
+                    placeholder="再次输入新密码"
+                    show-password-on="click"
+                    type="password"
+                    @keyup.enter="handleChangePassword"
                 />
               </n-form-item>
-              <n-button type="primary" attr-type="submit" :loading="submittingPassword">
+              <n-button :loading="submittingPassword" attr-type="submit" type="primary">
                 {{ submittingPassword ? "提交中..." : "更新密码" }}
               </n-button>
             </n-form>
@@ -145,7 +145,7 @@
           </n-card>
         </div>
 
-        <n-card class="applications-panel" :bordered="false">
+        <n-card :bordered="false" class="applications-panel">
           <template #header>
             <div class="panel-head">
               <span class="eyebrow">Join Applications</span>
@@ -155,30 +155,30 @@
           <template #header-extra>
             <n-space :size="8" align="center" wrap>
               <n-select
-                v-model:value="applicationFilter"
-                :options="filterOptions"
-                size="small"
-                class="filter-select"
+                  v-model:value="applicationFilter"
+                  :options="filterOptions"
+                  class="filter-select"
+                  size="small"
               />
-              <n-button size="small" :loading="loadingApplications" @click="loadApplications">
+              <n-button :loading="loadingApplications" size="small" @click="loadApplications">
                 {{ applications.length || loadedApplications ? "刷新" : "加载申请" }}
               </n-button>
             </n-space>
           </template>
 
           <n-empty
-            v-if="!applications.length"
-            description="暂无加入申请，点击右上角「刷新」可重新拉取。"
+              v-if="!applications.length"
+              description="暂无加入申请，点击右上角「刷新」可重新拉取。"
           />
           <div v-else class="application-list">
             <article
-              v-for="app in applications"
-              :key="app.id"
-              class="application-card"
+                v-for="app in applications"
+                :key="app.id"
+                class="application-card"
             >
               <div class="application-head">
                 <span class="application-name">{{ app.nickName || "匿名申请人" }}</span>
-                <n-tag :bordered="false" size="small" round :type="applicationTagType(app.status)">
+                <n-tag :bordered="false" :type="applicationTagType(app.status)" round size="small">
                   {{ applicationStatusLabel(app.status) }}
                 </n-tag>
               </div>
@@ -199,17 +199,17 @@
               <p v-if="app.reason" class="application-reason">{{ app.reason }}</p>
               <div v-if="(app.status || '').toUpperCase() === 'PENDING'" class="application-actions">
                 <n-button
-                  type="primary"
-                  size="small"
-                  :loading="processingId === app.id"
-                  @click="handleAccept(app)"
+                    :loading="processingId === app.id"
+                    size="small"
+                    type="primary"
+                    @click="handleAccept(app)"
                 >
                   同意
                 </n-button>
                 <n-button
-                  size="small"
-                  :loading="processingId === app.id"
-                  @click="handleReject(app)"
+                    :loading="processingId === app.id"
+                    size="small"
+                    @click="handleReject(app)"
                 >
                   拒绝
                 </n-button>
@@ -220,16 +220,16 @@
 
         <!-- 动态管理：发布 / 编辑 / 删除项目动态（自带图片上传） -->
         <AdminProjectUpdates
-          :project-id="session.project.id"
-          :control-password="session.controlPassword"
+            :control-password="session.controlPassword"
+            :project-id="session.project.id"
         />
         <!-- 评论审核：通过 / 拒绝 / 删除待审核评论 -->
         <AdminProjectComments
-          :project-id="session.project.id"
-          :control-password="session.controlPassword"
+            :control-password="session.controlPassword"
+            :project-id="session.project.id"
         />
 
-        <n-card class="danger-zone" :bordered="false">
+        <n-card :bordered="false" class="danger-zone">
           <template #header>
             <div class="panel-head">
               <span class="eyebrow danger-eyebrow">Danger Zone</span>
@@ -241,7 +241,7 @@
           </p>
           <n-popconfirm @positive-click="handleDeleteProject">
             <template #trigger>
-              <n-button type="error" :loading="deleting">删除此项目</n-button>
+              <n-button :loading="deleting" type="error">删除此项目</n-button>
             </template>
             确定删除本项目吗？删除后将立即退出管理后台。
           </n-popconfirm>
@@ -249,94 +249,94 @@
 
         <!-- 编辑项目信息弹窗：字段较多，用 modal 收纳避免主面板过长 -->
         <n-modal
-          v-model:show="showEditModal"
-          preset="card"
-          title="编辑项目信息"
-          :bordered="false"
-          style="width: min(720px, calc(100% - 28px)); max-width: 720px"
-          :mask-closable="false"
+            v-model:show="showEditModal"
+            :bordered="false"
+            :mask-closable="false"
+            preset="card"
+            style="width: min(720px, calc(100% - 28px)); max-width: 720px"
+            title="编辑项目信息"
         >
           <n-form
-            ref="editFormRef"
-            :model="editForm"
-            :rules="editRules"
-            label-placement="top"
-            :show-require-mark="false"
-            size="medium"
-            @submit.prevent="handleEditSubmit"
+              ref="editFormRef"
+              :model="editForm"
+              :rules="editRules"
+              :show-require-mark="false"
+              label-placement="top"
+              size="medium"
+              @submit.prevent="handleEditSubmit"
           >
             <div class="edit-grid">
               <n-form-item label="项目标题" path="title">
-                <n-input v-model:value="editForm.title" placeholder="项目标题" />
+                <n-input v-model:value="editForm.title" placeholder="项目标题"/>
               </n-form-item>
               <n-form-item label="项目类型" path="type">
-                <n-input v-model:value="editForm.type" placeholder="如：建筑 / 红石 / 剧情" />
+                <n-input v-model:value="editForm.type" placeholder="如：建筑 / 红石 / 剧情"/>
               </n-form-item>
             </div>
 
             <n-form-item label="运营状态" path="status">
               <n-select
-                v-model:value="editForm.status"
-                :options="statusOptions"
-                placeholder="选择当前运营状态"
+                  v-model:value="editForm.status"
+                  :options="statusOptions"
+                  placeholder="选择当前运营状态"
               />
             </n-form-item>
 
             <n-form-item label="项目简介" path="introduction">
               <n-input
-                v-model:value="editForm.introduction"
-                type="textarea"
-                :rows="2"
-                placeholder="一句话简介，展示在卡片上"
+                  v-model:value="editForm.introduction"
+                  :rows="2"
+                  placeholder="一句话简介，展示在卡片上"
+                  type="textarea"
               />
             </n-form-item>
 
             <n-form-item label="项目详细介绍" path="description">
               <n-input
-                v-model:value="editForm.description"
-                type="textarea"
-                :rows="4"
-                placeholder="项目的背景、目标、玩法等详细说明"
+                  v-model:value="editForm.description"
+                  :rows="4"
+                  placeholder="项目的背景、目标、玩法等详细说明"
+                  type="textarea"
               />
             </n-form-item>
 
             <div class="edit-grid">
               <n-form-item label="负责人" path="ownerName">
-                <n-input v-model:value="editForm.ownerName" placeholder="负责人昵称" />
+                <n-input v-model:value="editForm.ownerName" placeholder="负责人昵称"/>
               </n-form-item>
               <n-form-item label="负责人 Minecraft ID" path="ownerMinecraftId">
-                <n-input v-model:value="editForm.ownerMinecraftId" placeholder="Java / 基岩版 ID" />
+                <n-input v-model:value="editForm.ownerMinecraftId" placeholder="Java / 基岩版 ID"/>
               </n-form-item>
             </div>
 
             <n-form-item label="公开联系方式" path="publicContact">
-              <n-input v-model:value="editForm.publicContact" placeholder="QQ 群 / Discord 等" />
+              <n-input v-model:value="editForm.publicContact" placeholder="QQ 群 / Discord 等"/>
             </n-form-item>
 
             <n-form-item label="标签" path="tagsText">
-              <n-input v-model:value="editForm.tagsText" placeholder="用逗号分隔，如：建筑,红石,剧情" />
+              <n-input v-model:value="editForm.tagsText" placeholder="用逗号分隔，如：建筑,红石,剧情"/>
             </n-form-item>
 
             <n-form-item label="招工需求" path="recruitmentNeeds">
               <div class="need-editor">
                 <div
-                  v-for="(need, index) in editForm.recruitmentNeeds"
-                  :key="index"
-                  class="need-editor-row"
+                    v-for="(need, index) in editForm.recruitmentNeeds"
+                    :key="index"
+                    class="need-editor-row"
                 >
-                  <n-input v-model:value="need.skill" placeholder="岗位（如 建筑师）" />
+                  <n-input v-model:value="need.skill" placeholder="岗位（如 建筑师）"/>
                   <n-input-number
-                    v-model:value="need.count"
-                    :min="0"
-                    placeholder="人数"
-                    class="need-editor-count"
+                      v-model:value="need.count"
+                      :min="0"
+                      class="need-editor-count"
+                      placeholder="人数"
                   />
-                  <n-input v-model:value="need.work" placeholder="工作内容 / 要求" class="need-editor-work" />
+                  <n-input v-model:value="need.work" class="need-editor-work" placeholder="工作内容 / 要求"/>
                   <n-button quaternary type="error" @click="editForm.recruitmentNeeds.splice(index, 1)">
                     删除
                   </n-button>
                 </div>
-                <n-button dashed block @click="addNeed">+ 添加岗位</n-button>
+                <n-button block dashed @click="addNeed">+ 添加岗位</n-button>
               </div>
             </n-form-item>
           </n-form>
@@ -344,7 +344,7 @@
           <template #footer>
             <div class="edit-footer">
               <n-button @click="showEditModal = false">取消</n-button>
-              <n-button type="primary" :loading="submittingEdit" @click="handleEditSubmit">
+              <n-button :loading="submittingEdit" type="primary" @click="handleEditSubmit">
                 {{ submittingEdit ? "保存中..." : "保存修改" }}
               </n-button>
             </div>
@@ -353,9 +353,9 @@
       </template>
 
       <n-empty
-        v-else
-        class="empty-state"
-        description="尚未登录项目方后台"
+          v-else
+          class="empty-state"
+          description="尚未登录项目方后台"
       >
         <template #extra>
           <p class="empty-subtext">
@@ -368,7 +368,7 @@
   </main>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import type {FormInst, FormRules} from "naive-ui";
 import type {JoinApplicationResponse} from "~/composables/useProjectHubApi";
 import type {RecruitmentNeed} from "~/types/projectHub";
@@ -386,10 +386,10 @@ const OPERATIONAL_STATUSES = ["PREPARING", "RECRUITING", "IN_PROGRESS", "PAUSED"
 
 const route = useRoute();
 const message = useMessage();
-const { themeOverrides } = useMinecraftTheme();
+const {themeOverrides} = useMinecraftTheme();
 // session 直接绑定 useOwnerSession 的共享 ref：updateProjectSession / updateControlPassword /
 // clear 回写后 hero 与 info 面板自动刷新，不再用本地副本（本地副本会断开响应式，导致「刷新」点完不更新）
-const { session, read, clear, updateProject: updateProjectSession, updateControlPassword } = useOwnerSession();
+const {session, read, clear, updateProject: updateProjectSession, updateControlPassword} = useOwnerSession();
 const {
   updateProject: updateProjectApi,
   changeControlPassword,
@@ -448,8 +448,8 @@ const handleRefresh = async () => {
     message.success("已同步最新项目信息");
   } catch (error) {
     message.error(error instanceof Error && error.message
-      ? error.message
-      : "刷新失败，控制密码可能已变更，请重新登录");
+        ? error.message
+        : "刷新失败，控制密码可能已变更，请重新登录");
   } finally {
     refreshing.value = false;
   }
@@ -470,8 +470,8 @@ const handleDeleteProject = async () => {
     navigateTo("/admin");
   } catch (error) {
     message.error(error instanceof Error && error.message
-      ? error.message
-      : "删除失败，请稍后再试");
+        ? error.message
+        : "删除失败，请稍后再试");
   } finally {
     deleting.value = false;
   }
@@ -498,8 +498,8 @@ const editForm = reactive({
 });
 
 const editRules: FormRules = {
-  title: { required: true, message: "请填写项目标题", trigger: ["blur", "input"] },
-  type: { required: true, message: "请填写项目类型", trigger: ["blur", "input"] },
+  title: {required: true, message: "请填写项目标题", trigger: ["blur", "input"]},
+  type: {required: true, message: "请填写项目类型", trigger: ["blur", "input"]},
 };
 
 const statusOptions = OPERATIONAL_STATUSES.map((value) => ({
@@ -508,7 +508,7 @@ const statusOptions = OPERATIONAL_STATUSES.map((value) => ({
 }));
 
 const addNeed = () => {
-  editForm.recruitmentNeeds.push({ skill: "", count: 1, work: "" });
+  editForm.recruitmentNeeds.push({skill: "", count: 1, work: ""});
 };
 
 // 打开弹窗时把当前项目快照到表单；不在 session.value 上直接编辑，避免「取消」后脏数据残留
@@ -520,8 +520,8 @@ const openEditModal = () => {
   editForm.title = project.title ?? "";
   editForm.type = project.type ?? "";
   editForm.status = project.status && OPERATIONAL_STATUSES.includes(project.status.toUpperCase() as (typeof OPERATIONAL_STATUSES)[number])
-    ? project.status.toUpperCase()
-    : "PREPARING";
+      ? project.status.toUpperCase()
+      : "PREPARING";
   editForm.introduction = project.summary ?? "";
   editForm.description = project.description ?? "";
   editForm.ownerName = project.ownerName ?? "";
@@ -558,16 +558,16 @@ const handleEditSubmit = async () => {
       ownerMinecraftId: editForm.ownerMinecraftId.trim(),
       publicContact: editForm.publicContact.trim(),
       tags: editForm.tagsText
-        .split(/[,，]/)
-        .map((tag) => tag.trim())
-        .filter(Boolean),
+          .split(/[,，]/)
+          .map((tag) => tag.trim())
+          .filter(Boolean),
       recruitmentNeeds: editForm.recruitmentNeeds
-        .map((need) => ({
-          skill: need.skill.trim(),
-          count: Number(need.count) || 0,
-          work: need.work.trim(),
-        }))
-        .filter((need) => need.skill),
+          .map((need) => ({
+            skill: need.skill.trim(),
+            count: Number(need.count) || 0,
+            work: need.work.trim(),
+          }))
+          .filter((need) => need.skill),
     });
     // 把后端返回的最新项目回写到会话，hero / info 面板会随之刷新
     updateProjectSession(updated);
@@ -575,8 +575,8 @@ const handleEditSubmit = async () => {
     showEditModal.value = false;
   } catch (error) {
     message.error(error instanceof Error && error.message
-      ? error.message
-      : "保存失败，请稍后再试");
+        ? error.message
+        : "保存失败，请稍后再试");
   } finally {
     submittingEdit.value = false;
   }
@@ -594,11 +594,11 @@ const passwordForm = reactive({
 
 const passwordRules: FormRules = {
   newPassword: [
-    { required: true, message: "请输入新密码", trigger: ["blur", "input"] },
-    { min: 6, message: "密码至少 6 位", trigger: ["blur", "input"] },
+    {required: true, message: "请输入新密码", trigger: ["blur", "input"]},
+    {min: 6, message: "密码至少 6 位", trigger: ["blur", "input"]},
   ],
   confirmPassword: [
-    { required: true, message: "请再次输入新密码", trigger: ["blur", "input"] },
+    {required: true, message: "请再次输入新密码", trigger: ["blur", "input"]},
     {
       validator: (_rule, value) => value === passwordForm.newPassword,
       message: "两次输入的密码不一致",
@@ -627,8 +627,8 @@ const handleChangePassword = async () => {
     passwordForm.confirmPassword = "";
   } catch (error) {
     message.error(error instanceof Error && error.message
-      ? error.message
-      : "修改密码失败，请稍后再试");
+        ? error.message
+        : "修改密码失败，请稍后再试");
   } finally {
     submittingPassword.value = false;
   }
@@ -645,11 +645,11 @@ const processingId = ref<string | number | null>(null);
 const applicationFilter = ref<string>("");
 
 const filterOptions = [
-  { label: "待处理", value: "PENDING" },
-  { label: "已同意", value: "ACCEPTED" },
-  { label: "已联系", value: "CONTACTED" },
-  { label: "已拒绝", value: "REJECTED" },
-  { label: "全部", value: "" },
+  {label: "待处理", value: "PENDING"},
+  {label: "已同意", value: "ACCEPTED"},
+  {label: "已联系", value: "CONTACTED"},
+  {label: "已拒绝", value: "REJECTED"},
+  {label: "全部", value: ""},
 ];
 
 const loadApplications = async () => {
@@ -660,20 +660,20 @@ const loadApplications = async () => {
   try {
     loadingApplications.value = true;
     const list = await loadJoinApplications(
-      current.project.id,
-      current.controlPassword,
-      applicationFilter.value || undefined,
+        current.project.id,
+        current.controlPassword,
+        applicationFilter.value || undefined,
     );
     // 按 createTime 倒序，最新的申请排在最前
     applications.value = list.sort(
-      (a, b) => Date.parse(b.createTime ?? "") - Date.parse(a.createTime ?? ""),
+        (a, b) => Date.parse(b.createTime ?? "") - Date.parse(a.createTime ?? ""),
     );
     loadedApplications.value = true;
   } catch (error) {
     // 加载失败（如后端尚未实现 GET 申请列表接口）时清空列表，避免展示过期数据
     message.error(error instanceof Error && error.message
-      ? error.message
-      : "加载申请列表失败，该接口可能尚未上线");
+        ? error.message
+        : "加载申请列表失败，该接口可能尚未上线");
     applications.value = [];
   } finally {
     loadingApplications.value = false;
@@ -704,8 +704,8 @@ const handleAccept = async (app: JoinApplicationResponse) => {
     await reloadAfterProcess();
   } catch (error) {
     message.error(error instanceof Error && error.message
-      ? error.message
-      : "操作失败，请稍后再试");
+        ? error.message
+        : "操作失败，请稍后再试");
   } finally {
     processingId.value = null;
   }
@@ -723,8 +723,8 @@ const handleReject = async (app: JoinApplicationResponse) => {
     await reloadAfterProcess();
   } catch (error) {
     message.error(error instanceof Error && error.message
-      ? error.message
-      : "操作失败，请稍后再试");
+        ? error.message
+        : "操作失败，请稍后再试");
   } finally {
     processingId.value = null;
   }
@@ -732,22 +732,33 @@ const handleReject = async (app: JoinApplicationResponse) => {
 
 const applicationStatusLabel = (status?: string) => {
   switch ((status || "").toUpperCase()) {
-    case "PENDING": return "待处理";
-    case "ACCEPTED": return "已同意";
-    case "CONTACTED": return "已联系";
-    case "REJECTED": return "已拒绝";
-    case "DELETED": return "已删除";
-    default: return status || "未知";
+    case "PENDING":
+      return "待处理";
+    case "ACCEPTED":
+      return "已同意";
+    case "CONTACTED":
+      return "已联系";
+    case "REJECTED":
+      return "已拒绝";
+    case "DELETED":
+      return "已删除";
+    default:
+      return status || "未知";
   }
 };
 
 const applicationTagType = (status?: string): "warning" | "success" | "info" | "error" | "default" => {
   switch ((status || "").toUpperCase()) {
-    case "PENDING": return "warning";
-    case "ACCEPTED": return "success";
-    case "CONTACTED": return "info";
-    case "REJECTED": return "error";
-    default: return "default";
+    case "PENDING":
+      return "warning";
+    case "ACCEPTED":
+      return "success";
+    case "CONTACTED":
+      return "info";
+    case "REJECTED":
+      return "error";
+    default:
+      return "default";
   }
 };
 </script>
@@ -757,11 +768,10 @@ const applicationTagType = (status?: string): "warning" | "success" | "info" | "
   min-height: 100dvh;
   padding-bottom: 42px;
   color: #2d2418;
-  background:
-    radial-gradient(circle at 80% 8%, rgba(255, 215, 101, 0.44), transparent 21%),
-    linear-gradient(rgba(97, 153, 202, 0.17) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(97, 153, 202, 0.17) 1px, transparent 1px),
-    #dff0ff;
+  background: radial-gradient(circle at 80% 8%, rgba(255, 215, 101, 0.44), transparent 21%),
+  linear-gradient(rgba(97, 153, 202, 0.17) 1px, transparent 1px),
+  linear-gradient(90deg, rgba(97, 153, 202, 0.17) 1px, transparent 1px),
+  #dff0ff;
   background-size: auto, 26px 26px, 26px 26px, auto;
 }
 

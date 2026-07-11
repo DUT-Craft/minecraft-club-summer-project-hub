@@ -1,12 +1,12 @@
-<script setup lang="ts">
+<script lang="ts" setup>
 </script>
 <template>
   <n-card
-    :bordered="false"
-    class="mc-header"
-    content-style="padding: 0; display: flex; align-items: center; justify-content: space-between; gap: 14px;"
+      :bordered="false"
+      class="mc-header"
+      content-style="padding: 0; display: flex; align-items: center; justify-content: space-between; gap: 14px;"
   >
-    <NuxtLink to="/" class="brand">
+    <NuxtLink class="brand" to="/">
       <n-tag :bordered="false" class="brand-mark">猫</n-tag>
       <span>
         <strong>猫娘社</strong>
@@ -15,10 +15,10 @@
     </NuxtLink>
 
     <nav class="nav">
-      <n-button secondary class="nav-button" @click="navigateTo('/mall')">全部公开项目</n-button>
-      <n-button secondary class="nav-button" @click="navigateTo('/ideas')">想法墙</n-button>
-      <n-button secondary class="nav-button" @click="navigateTo('/submit')">投稿</n-button>
-      <n-button secondary class="nav-button" @click="navigateTo('/admin')">项目管理后台</n-button>
+      <n-button class="nav-button" secondary @click="navigateTo('/mall')">全部公开项目</n-button>
+      <n-button class="nav-button" secondary @click="navigateTo('/ideas')">想法墙</n-button>
+      <n-button class="nav-button" secondary @click="navigateTo('/submit')">投稿</n-button>
+      <n-button class="nav-button" secondary @click="navigateTo('/admin')">项目管理后台</n-button>
     </nav>
   </n-card>
 </template>

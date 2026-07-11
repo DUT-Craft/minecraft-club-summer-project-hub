@@ -1,14 +1,14 @@
 <template>
   <main class="mc-page">
-    <MinecraftSiteHeader />
+    <MinecraftSiteHeader/>
 
     <n-config-provider :theme="null" :theme-overrides="themeOverrides">
       <div v-if="loading" class="loading-state">
-        <n-spin size="large" />
+        <n-spin size="large"/>
       </div>
 
       <template v-else-if="project">
-        <n-card class="detail-hero" :bordered="false">
+        <n-card :bordered="false" class="detail-hero">
           <div class="hero-info">
             <n-space :size="8" align="center">
               <n-tag :bordered="false" type="primary">{{ project.type || "未分类" }}</n-tag>
@@ -23,47 +23,47 @@
         </n-card>
 
         <n-alert
-          v-if="ownerCanManage"
-          :bordered="false"
-          type="success"
-          class="owner-banner"
+            v-if="ownerCanManage"
+            :bordered="false"
+            class="owner-banner"
+            type="success"
         >
           <strong>你是本项目负责人。</strong>
           <span class="owner-banner-note">可编辑项目信息、修改管理密码、处理加入申请。</span>
           <n-button
-            text
-            type="primary"
-            class="owner-banner-link"
-            @click="navigateTo(`/admin/projects/${projectId}`)"
+              class="owner-banner-link"
+              text
+              type="primary"
+              @click="navigateTo(`/admin/projects/${projectId}`)"
           >
             前往管理面板 →
           </n-button>
         </n-alert>
 
         <div class="layout">
-          <n-card class="main-panel" title="项目介绍" :bordered="false">
+          <n-card :bordered="false" class="main-panel" title="项目介绍">
             <p class="description">{{ project.description || project.summary || "项目发起者还没有填写项目介绍。" }}</p>
-            <n-alert v-if="project.publicContact" :bordered="false" type="info" class="contact">
+            <n-alert v-if="project.publicContact" :bordered="false" class="contact" type="info">
               <strong>联系方式：</strong>{{ project.publicContact }}
             </n-alert>
           </n-card>
 
-          <n-card title="招工需求" :bordered="false">
+          <n-card :bordered="false" title="招工需求">
             <template v-if="needs.length" #header-extra>
-              <n-tag :bordered="false" size="small" round class="needs-count">
+              <n-tag :bordered="false" class="needs-count" round size="small">
                 共 {{ totalSlots }} 个名额
               </n-tag>
             </template>
-            <n-empty v-if="!needs.length" description="这个项目暂时没有公开招工需求。" />
+            <n-empty v-if="!needs.length" description="这个项目暂时没有公开招工需求。"/>
             <div v-else class="need-list">
               <article
-                v-for="need in needs"
-                :key="need.id || need.skill"
-                class="need-card"
+                  v-for="need in needs"
+                  :key="need.id || need.skill"
+                  class="need-card"
               >
                 <div class="need-card-head">
                   <span class="need-skill">{{ need.skill }}</span>
-                  <n-tag :bordered="false" size="small" round class="need-count">
+                  <n-tag :bordered="false" class="need-count" round size="small">
                     招 {{ need.count }} 人
                   </n-tag>
                 </div>
@@ -74,67 +74,67 @@
         </div>
 
         <div class="layout">
-          <n-card title="项目动态" :bordered="false">
-            <n-empty v-if="!updates.length" description="还没有公开动态。" />
+          <n-card :bordered="false" title="项目动态">
+            <n-empty v-if="!updates.length" description="还没有公开动态。"/>
             <n-timeline v-else size="large">
               <n-timeline-item
-                v-for="update in updates"
-                :key="update.id"
-                :color="primaryGreen"
-                :time="formatDate(update.createdAt)"
-                :title="update.title"
+                  v-for="update in updates"
+                  :key="update.id"
+                  :color="primaryGreen"
+                  :time="formatDate(update.createdAt)"
+                  :title="update.title"
               >
-                <img v-if="update.imageUrl" :src="update.imageUrl" :alt="update.title" class="update-image" />
+                <img v-if="update.imageUrl" :alt="update.title" :src="update.imageUrl" class="update-image"/>
                 <p class="update-content">{{ update.content }}</p>
               </n-timeline-item>
             </n-timeline>
           </n-card>
 
-          <n-card title="申请加入" :bordered="false">
+          <n-card :bordered="false" title="申请加入">
             <n-empty
-              v-if="!needs.length"
-              description="该项目暂未公开招工需求，暂时无法申请加入。"
+                v-if="!needs.length"
+                description="该项目暂未公开招工需求，暂时无法申请加入。"
             />
             <n-form
-              v-else
-              ref="joinFormRef"
-              :model="joinForm"
-              :rules="joinRules"
-              label-placement="top"
-              @submit.prevent="handleJoin"
+                v-else
+                ref="joinFormRef"
+                :model="joinForm"
+                :rules="joinRules"
+                label-placement="top"
+                @submit.prevent="handleJoin"
             >
               <n-form-item label="申请岗位" path="position">
                 <n-select
-                  v-model:value="joinForm.position"
-                  :options="positionOptions"
-                  placeholder="选择你想加入的岗位"
+                    v-model:value="joinForm.position"
+                    :options="positionOptions"
+                    placeholder="选择你想加入的岗位"
                 />
               </n-form-item>
               <n-form-item label="昵称" path="nickname">
-                <n-input v-model:value="joinForm.nickname" placeholder="你的昵称" />
+                <n-input v-model:value="joinForm.nickname" placeholder="你的昵称"/>
               </n-form-item>
               <n-form-item label="Minecraft ID" path="minecraftId">
-                <n-input v-model:value="joinForm.minecraftId" placeholder="Java / 基岩版 ID" />
+                <n-input v-model:value="joinForm.minecraftId" placeholder="Java / 基岩版 ID"/>
               </n-form-item>
               <n-form-item label="联系方式" path="contact">
-                <n-input v-model:value="joinForm.contact" placeholder="QQ / Discord 等" />
+                <n-input v-model:value="joinForm.contact" placeholder="QQ / Discord 等"/>
               </n-form-item>
               <n-form-item label="申请理由" path="reason">
                 <n-input
-                  v-model:value="joinForm.reason"
-                  type="textarea"
-                  :rows="4"
-                  placeholder="简单说说你想怎么参与"
+                    v-model:value="joinForm.reason"
+                    :rows="4"
+                    placeholder="简单说说你想怎么参与"
+                    type="textarea"
                 />
               </n-form-item>
-              <n-button type="primary" attr-type="submit" :loading="submittingJoin">
+              <n-button :loading="submittingJoin" attr-type="submit" type="primary">
                 {{ submittingJoin ? "提交中..." : "提交申请" }}
               </n-button>
             </n-form>
           </n-card>
         </div>
 
-        <n-card class="comments-panel" :bordered="false">
+        <n-card :bordered="false" class="comments-panel">
           <template #header>
             <div class="comments-head">
               <div class="comments-titles">
@@ -142,11 +142,11 @@
                 <h2>项目评论 / 建议</h2>
               </div>
               <n-tag
-                v-if="comments.length"
-                :bordered="false"
-                size="small"
-                round
-                class="comments-count"
+                  v-if="comments.length"
+                  :bordered="false"
+                  class="comments-count"
+                  round
+                  size="small"
               >
                 {{ comments.length }} 条
               </n-tag>
@@ -154,42 +154,42 @@
           </template>
 
           <n-form
-            ref="commentFormRef"
-            :model="commentForm"
-            :rules="commentRules"
-            :show-label="false"
-            class="comment-form"
-            @submit.prevent="handleComment"
+              ref="commentFormRef"
+              :model="commentForm"
+              :rules="commentRules"
+              :show-label="false"
+              class="comment-form"
+              @submit.prevent="handleComment"
           >
             <n-form-item path="nickname">
-              <n-input v-model:value="commentForm.nickname" placeholder="你的昵称" />
+              <n-input v-model:value="commentForm.nickname" placeholder="你的昵称"/>
             </n-form-item>
             <n-form-item path="content">
               <n-input
-                v-model:value="commentForm.content"
-                type="textarea"
-                :rows="3"
-                placeholder="给项目组留下一条建议"
+                  v-model:value="commentForm.content"
+                  :rows="3"
+                  placeholder="给项目组留下一条建议"
+                  type="textarea"
               />
             </n-form-item>
             <div class="comment-form-actions">
               <span class="comment-form-hint">审核通过后将公开展示</span>
-              <n-button type="primary" attr-type="submit" :loading="submittingComment">
+              <n-button :loading="submittingComment" attr-type="submit" type="primary">
                 {{ submittingComment ? "提交中..." : "发表评论" }}
               </n-button>
             </div>
           </n-form>
 
-          <n-empty v-if="!comments.length" description="还没有评论，可以先给这个项目提一个想法。" />
+          <n-empty v-if="!comments.length" description="还没有评论，可以先给这个项目提一个想法。"/>
           <div v-else class="comment-list">
             <article
-              v-for="comment in comments"
-              :key="comment.id"
-              class="comment-card"
+                v-for="comment in comments"
+                :key="comment.id"
+                class="comment-card"
             >
               <div
-                class="comment-avatar"
-                :style="{ background: avatarColor(comment.nickname) }"
+                  :style="{ background: avatarColor(comment.nickname) }"
+                  class="comment-avatar"
               >
                 {{ avatarLetter(comment.nickname) }}
               </div>
@@ -206,9 +206,9 @@
       </template>
 
       <n-empty
-        v-else
-        class="empty-space"
-        description="没有找到这个公开项目"
+          v-else
+          class="empty-space"
+          description="没有找到这个公开项目"
       >
         <template #extra>
           <p class="empty-subtext">项目可能还在审核，或已被管理员隐藏。</p>
@@ -219,9 +219,9 @@
   </main>
 </template>
 
-<script setup lang="ts">
-import type { FormInst, FormRules } from "naive-ui";
-import type { Project, ProjectComment, ProjectUpdate, RecruitmentNeed } from "~/types/projectHub";
+<script lang="ts" setup>
+import type {FormInst, FormRules} from "naive-ui";
+import type {Project, ProjectComment, ProjectUpdate, RecruitmentNeed} from "~/types/projectHub";
 
 
 definePageMeta({
@@ -235,8 +235,8 @@ const HIDDEN_STATUSES = new Set(["PENDING", "REJECTED", "DELETED"]);
 
 const route = useRoute();
 const message = useMessage();
-const { loadProjectById, loadProjectUpdates, loadProjectComments, submitJoin, submitComment } = useProjectHubApi();
-const { read: readOwnerSession } = useOwnerSession();
+const {loadProjectById, loadProjectUpdates, loadProjectComments, submitJoin, submitComment} = useProjectHubApi();
+const {read: readOwnerSession} = useOwnerSession();
 
 const loading = ref(true);
 const project = ref<Project | null>(null);
@@ -264,20 +264,20 @@ const joinFormRef = ref<FormInst | null>(null);
 const commentFormRef = ref<FormInst | null>(null);
 
 const joinRules: FormRules = {
-  position: { required: true, message: "请选择申请岗位", trigger: ["change", "blur"] },
-  nickname: { required: true, message: "请填写昵称", trigger: ["blur", "input"] },
-  minecraftId: { required: true, message: "请填写 Minecraft ID", trigger: ["blur", "input"] },
-  contact: { required: true, message: "请填写联系方式", trigger: ["blur", "input"] },
-  reason: { required: true, message: "请填写申请理由", trigger: ["blur", "input"] },
+  position: {required: true, message: "请选择申请岗位", trigger: ["change", "blur"]},
+  nickname: {required: true, message: "请填写昵称", trigger: ["blur", "input"]},
+  minecraftId: {required: true, message: "请填写 Minecraft ID", trigger: ["blur", "input"]},
+  contact: {required: true, message: "请填写联系方式", trigger: ["blur", "input"]},
+  reason: {required: true, message: "请填写申请理由", trigger: ["blur", "input"]},
 };
 
 const commentRules: FormRules = {
-  nickname: { required: true, message: "请填写昵称", trigger: ["blur", "input"] },
-  content: { required: true, message: "请填写评论内容", trigger: ["blur", "input"] },
+  nickname: {required: true, message: "请填写昵称", trigger: ["blur", "input"]},
+  content: {required: true, message: "请填写评论内容", trigger: ["blur", "input"]},
 };
 
 // Minecraft 暖色主题（草地绿主色 + 羊皮纸卡片 + 木边输入），见 useMinecraftTheme
-const { themeOverrides, primaryGreen } = useMinecraftTheme();
+const {themeOverrides, primaryGreen} = useMinecraftTheme();
 
 // route.params.id 来自文件名 projects/[id].vue（已在 definePageMeta.validate 限制为纯数字）
 const projectId = computed(() => String(route.params.id));
@@ -326,15 +326,15 @@ const needs = computed<RecruitmentNeed[]>(() => {
 
 // 招工总名额：把每条 need.count 相加，给卡片头部做一个汇总徽标
 const totalSlots = computed(() =>
-  needs.value.reduce((sum, need) => sum + (Number(need.count) || 0), 0),
+    needs.value.reduce((sum, need) => sum + (Number(need.count) || 0), 0),
 );
 
 // 申请加入表单的岗位下拉选项：只能从该项目招工需求里选
 const positionOptions = computed(() =>
-  needs.value.map((need) => ({
-    label: need.count > 0 ? `${need.skill} · 招 ${need.count} 人` : need.skill,
-    value: need.skill,
-  })),
+    needs.value.map((need) => ({
+      label: need.count > 0 ? `${need.skill} · 招 ${need.count} 人` : need.skill,
+      value: need.skill,
+    })),
 );
 
 const formatDate = (value: string) => value ? new Date(value).toLocaleString("zh-CN") : "未记录时间";
@@ -428,11 +428,10 @@ const handleComment = async () => {
   min-height: 100dvh;
   padding-bottom: 42px;
   color: #2d2418;
-  background:
-    radial-gradient(circle at 80% 8%, rgba(255, 215, 101, 0.44), transparent 21%),
-    linear-gradient(rgba(97, 153, 202, 0.17) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(97, 153, 202, 0.17) 1px, transparent 1px),
-    #dff0ff;
+  background: radial-gradient(circle at 80% 8%, rgba(255, 215, 101, 0.44), transparent 21%),
+  linear-gradient(rgba(97, 153, 202, 0.17) 1px, transparent 1px),
+  linear-gradient(90deg, rgba(97, 153, 202, 0.17) 1px, transparent 1px),
+  #dff0ff;
   background-size: auto, 26px 26px, 26px 26px, auto;
 }
 

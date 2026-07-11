@@ -1,25 +1,25 @@
 <template>
   <header class="site-header">
     <div class="wide-shell header-inner">
-      <NuxtLink to="/" class="brand">
-        <span class="brand-mark" aria-hidden="true">猫</span>
+      <NuxtLink class="brand" to="/">
+        <span aria-hidden="true" class="brand-mark">猫</span>
         <span class="brand-copy">
           <strong>猫娘社</strong>
           <small>暑假项目站</small>
         </span>
       </NuxtLink>
 
-      <nav class="nav" aria-label="站点导航">
-        <n-button quaternary class="nav-item" @click="navigateTo('/mall')">
+      <nav aria-label="站点导航" class="nav">
+        <n-button class="nav-item" quaternary @click="navigateTo('/mall')">
           全部公开项目
         </n-button>
-        <n-button quaternary class="nav-item" @click="navigateTo('/ideas')">
+        <n-button class="nav-item" quaternary @click="navigateTo('/ideas')">
           想法墙
         </n-button>
-        <n-button quaternary class="nav-item" @click="navigateTo('/submit')">
+        <n-button class="nav-item" quaternary @click="navigateTo('/submit')">
           投稿
         </n-button>
-        <n-button quaternary class="nav-item" @click="navigateTo('/submit')">
+        <n-button class="nav-item" quaternary @click="navigateTo('/submit')">
           项目管理后台
         </n-button>
       </nav>
@@ -27,7 +27,7 @@
   </header>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 </script>
 
 <style scoped>

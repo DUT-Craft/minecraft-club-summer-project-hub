@@ -13,12 +13,12 @@
     <div v-if="skills.length" class="skills">
       <span v-for="skill in skills" :key="skill">{{ skill }}</span>
     </div>
-    <NuxtLink class="card-link" :to="`/projects/${project.id}`">查看项目</NuxtLink>
+    <NuxtLink :to="`/projects/${project.id}`" class="card-link">查看项目</NuxtLink>
   </article>
 </template>
 
-<script setup lang="ts">
-import type { Project } from "~/types/projectHub";
+<script lang="ts" setup>
+import type {Project} from "~/types/projectHub";
 
 const props = defineProps<{
   project: Project;

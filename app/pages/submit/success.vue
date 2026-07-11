@@ -1,11 +1,11 @@
 <template>
   <main class="mc-page">
-    <MinecraftSiteHeader />
+    <MinecraftSiteHeader/>
 
     <n-config-provider :theme="null" :theme-overrides="themeOverrides">
       <div v-if="record" class="success-shell">
-        <n-card class="success-hero" :bordered="false">
-          <div class="hero-check" aria-hidden="true">✓</div>
+        <n-card :bordered="false" class="success-hero">
+          <div aria-hidden="true" class="hero-check">✓</div>
           <div class="hero-text">
             <span class="eyebrow">Submitted</span>
             <h1>项目已提交，等待审核</h1>
@@ -15,7 +15,7 @@
           </div>
         </n-card>
 
-        <n-card class="credentials" :bordered="false">
+        <n-card :bordered="false" class="credentials">
           <template #header>
             <div class="card-head">
               <span class="card-eyebrow">Credentials</span>
@@ -28,9 +28,9 @@
               <span class="credential-label">项目 ID</span>
               <code class="credential-value">{{ record.project.id || "——" }}</code>
               <n-button
-                size="small"
-                :disabled="!record.project.id"
-                @click="copy(record.project.id)"
+                  :disabled="!record.project.id"
+                  size="small"
+                  @click="copy(record.project.id)"
               >
                 复制
               </n-button>
@@ -39,25 +39,25 @@
               <span class="credential-label">管理密码</span>
               <code class="credential-value password">{{ record.ownerPassword || "——" }}</code>
               <n-button
-                size="small"
-                :disabled="!record.ownerPassword"
-                @click="copy(record.ownerPassword)"
+                  :disabled="!record.ownerPassword"
+                  size="small"
+                  @click="copy(record.ownerPassword)"
               >
                 复制
               </n-button>
             </div>
           </div>
 
-          <n-alert :bordered="false" type="warning" class="credential-alert">
+          <n-alert :bordered="false" class="credential-alert" type="warning">
             密码以明文显示这一次，离开本页后会自动清除；后端只保存加密后的密文，无法找回，请现在就抄走。
           </n-alert>
 
-          <n-button type="primary" size="large" @click="navigateTo('/admin')">
+          <n-button size="large" type="primary" @click="navigateTo('/admin')">
             前往项目方后台
           </n-button>
         </n-card>
 
-        <n-card title="已提交的项目信息" :bordered="false">
+        <n-card :bordered="false" title="已提交的项目信息">
           <dl class="info-list">
             <div class="info-row">
               <dt>项目标题</dt>
@@ -86,7 +86,7 @@
             <div class="info-row">
               <dt>审核状态</dt>
               <dd>
-                <n-tag :bordered="false" size="small" round class="status-tag">{{ statusLabel }}</n-tag>
+                <n-tag :bordered="false" class="status-tag" round size="small">{{ statusLabel }}</n-tag>
               </dd>
             </div>
           </dl>
@@ -100,13 +100,13 @@
             <strong>招工需求</strong>
             <div class="need-list">
               <article
-                v-for="need in needs"
-                :key="need.id || need.skill"
-                class="need-card"
+                  v-for="need in needs"
+                  :key="need.id || need.skill"
+                  class="need-card"
               >
                 <div class="need-head">
                   <span class="need-skill">{{ need.skill }}</span>
-                  <n-tag :bordered="false" size="small" round class="need-count">招 {{ need.count }} 人</n-tag>
+                  <n-tag :bordered="false" class="need-count" round size="small">招 {{ need.count }} 人</n-tag>
                 </div>
                 <p v-if="need.work" class="need-work">{{ need.work }}</p>
               </article>
@@ -132,9 +132,9 @@
   </main>
 </template>
 
-<script setup lang="ts">
-import type { ProjectSubmissionRecord } from "~/composables/useLastSubmission";
-import type { RecruitmentNeed } from "~/types/projectHub";
+<script lang="ts" setup>
+import type {ProjectSubmissionRecord} from "~/composables/useLastSubmission";
+import type {RecruitmentNeed} from "~/types/projectHub";
 
 
 definePageMeta({
@@ -142,8 +142,8 @@ definePageMeta({
 });
 
 const message = useMessage();
-const { themeOverrides } = useMinecraftTheme();
-const { read, clear } = useLastSubmission();
+const {themeOverrides} = useMinecraftTheme();
+const {read, clear} = useLastSubmission();
 
 const record = ref<ProjectSubmissionRecord | null>(null);
 
@@ -178,11 +178,10 @@ const copy = async (value?: string) => {
   min-height: 100dvh;
   padding-bottom: 42px;
   color: #2d2418;
-  background:
-    radial-gradient(circle at 80% 8%, rgba(255, 215, 101, 0.44), transparent 21%),
-    linear-gradient(rgba(97, 153, 202, 0.17) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(97, 153, 202, 0.17) 1px, transparent 1px),
-    #dff0ff;
+  background: radial-gradient(circle at 80% 8%, rgba(255, 215, 101, 0.44), transparent 21%),
+  linear-gradient(rgba(97, 153, 202, 0.17) 1px, transparent 1px),
+  linear-gradient(90deg, rgba(97, 153, 202, 0.17) 1px, transparent 1px),
+  #dff0ff;
   background-size: auto, 26px 26px, 26px 26px, auto;
 }
 

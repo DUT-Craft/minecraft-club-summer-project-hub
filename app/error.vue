@@ -2,10 +2,10 @@
   <nuxt-layout>
     <n-el v-if="error!.statusCode === 404">
       <n-el class="flex-center outbox">
-        <n-empty description="这里什么也找不到啊 QwQ" />
+        <n-empty description="这里什么也找不到啊 QwQ"/>
         <n-button
-          style="margin-top: 10px"
-          @click="() => clearError({ redirect: '/' })"
+            style="margin-top: 10px"
+            @click="() => clearError({ redirect: '/' })"
         >
           带我去首页
         </n-button>
@@ -18,15 +18,15 @@
         <n-p>{{ error!.message }}</n-p>
         <n-space>
           <n-button
-            style="margin-top: 10px"
-            type="primary"
-            @click="() => reloadNuxtApp()"
+              style="margin-top: 10px"
+              type="primary"
+              @click="() => reloadNuxtApp()"
           >
             重新载入
           </n-button>
           <n-button
-            style="margin-top: 10px"
-            @click="() => clearError({ redirect: '/' })"
+              style="margin-top: 10px"
+              @click="() => clearError({ redirect: '/' })"
           >
             带我去首页
           </n-button>
@@ -36,8 +36,8 @@
   </nuxt-layout>
 </template>
 
-<script setup lang="ts">
-import type { NuxtError } from "#app";
+<script lang="ts" setup>
+import type {NuxtError} from "#app";
 
 defineProps({
   // eslint-disable-next-line vue/require-default-prop

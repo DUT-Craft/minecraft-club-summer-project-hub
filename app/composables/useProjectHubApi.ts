@@ -237,7 +237,7 @@ export const useProjectHubApi = () => {
 
   // openapi 接口通过统一 http 客户端调用（useHttp，baseURL 已含 /api）
   // httpDelete 走 query；httpRequest 用于 DELETE /files 这类需要请求体的特殊场景。
-  const { get, post, put, patch, delete: httpDelete, request: httpRequest } = useHttp();
+  const {get, post, put, patch, delete: httpDelete, request: httpRequest} = useHttp();
 
   const loadSnapshot = async (): Promise<DataSnapshot> => {
     try {
@@ -252,11 +252,11 @@ export const useProjectHubApi = () => {
   const loadPublicProjects = async (): Promise<Project[]> => {
     try {
       const items = await request<ObjectItemResponse[]>("/project/object-items", {
-        query: { status: "IN_PROGRESS" },
+        query: {status: "IN_PROGRESS"},
       });
       return normalizeArray<ObjectItemResponse>(items)
-        .map(mapObjectItemToProject)
-        .map(normalizeProject);
+          .map(mapObjectItemToProject)
+          .map(normalizeProject);
     } catch {
       return [];
     }
@@ -268,11 +268,11 @@ export const useProjectHubApi = () => {
   // 这里再按创建时间倒序，方便页面直接渲染。
   const loadPublicIdeas = async (): Promise<Idea[]> => {
     try {
-      const minds = await get<MindResponse[]>("/project/minds", { status: "APPROVED" });
+      const minds = await get<MindResponse[]>("/project/minds", {status: "APPROVED"});
       return normalizeArray<MindResponse>(minds)
-        .map(mapMindToIdea)
-        .map(normalizeIdea)
-        .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+          .map(mapMindToIdea)
+          .map(normalizeIdea)
+          .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
     } catch {
       return [];
     }
@@ -286,14 +286,14 @@ export const useProjectHubApi = () => {
     const publicStatuses = ["PREPARING", "RECRUITING", "IN_PROGRESS", "PAUSED"] as const;
     try {
       const groups = await Promise.all(
-        publicStatuses.map((status) =>
-          get<ObjectItemResponse[]>("/project/object-items", { status }),
-        ),
+          publicStatuses.map((status) =>
+              get<ObjectItemResponse[]>("/project/object-items", {status}),
+          ),
       );
       return groups
-        .flatMap((items) => normalizeArray<ObjectItemResponse>(items))
-        .map(mapObjectItemToProject)
-        .map(normalizeProject);
+          .flatMap((items) => normalizeArray<ObjectItemResponse>(items))
+          .map(mapObjectItemToProject)
+          .map(normalizeProject);
     } catch {
       return [];
     }
@@ -364,12 +364,12 @@ export const useProjectHubApi = () => {
   const loadProjectUpdates = async (projectId: string | number): Promise<ProjectUpdate[]> => {
     try {
       const items = await get<ObjectItemUpdateResponse[]>(
-        `/project/object-items/${projectId}/updates`,
-        { status: "APPROVED" },
+          `/project/object-items/${projectId}/updates`,
+          {status: "APPROVED"},
       );
       return normalizeArray<ObjectItemUpdateResponse>(items)
-        .map(mapObjectItemUpdateToProjectUpdate)
-        .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+          .map(mapObjectItemUpdateToProjectUpdate)
+          .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
     } catch {
       return [];
     }
@@ -378,12 +378,12 @@ export const useProjectHubApi = () => {
   const loadProjectComments = async (projectId: string | number): Promise<ProjectComment[]> => {
     try {
       const items = await get<ObjectItemCommentResponse[]>(
-        `/project/object-items/${projectId}/comments`,
-        { status: "APPROVED" },
+          `/project/object-items/${projectId}/comments`,
+          {status: "APPROVED"},
       );
       return normalizeArray<ObjectItemCommentResponse>(items)
-        .map(mapObjectItemCommentToProjectComment)
-        .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+          .map(mapObjectItemCommentToProjectComment)
+          .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
     } catch {
       return [];
     }
@@ -421,7 +421,7 @@ export const useProjectHubApi = () => {
           context: need.work,
         })),
         tags: body.tags ?? [],
-      }, { payloadMode: "json" });
+      }, {payloadMode: "json"});
 
       return normalizeProject(mapObjectItemToProject(item));
     },
@@ -434,7 +434,7 @@ export const useProjectHubApi = () => {
         nickName: body.nickname,
         mcId: body.minecraftId,
         status: "PENDING",
-      }, { payloadMode: "json" });
+      }, {payloadMode: "json"});
 
       return normalizeIdea(mapMindToIdea(mind));
     },
@@ -443,14 +443,14 @@ export const useProjectHubApi = () => {
     // status 由后端固定为 PENDING，不传。
     submitJoin: async (body: SubmitJoinPayload): Promise<JoinApplicationResponse> => {
       return post<JoinApplicationResponse>(
-        `/project/object-items/${body.projectId}/join-applications`,
-        {
-          nickName: body.nickname,
-          mcId: body.minecraftId,
-          contact: body.contact,
-          reason: body.reason,
-        },
-        { payloadMode: "json" },
+          `/project/object-items/${body.projectId}/join-applications`,
+          {
+            nickName: body.nickname,
+            mcId: body.minecraftId,
+            contact: body.contact,
+            reason: body.reason,
+          },
+          {payloadMode: "json"},
       );
     },
     // 项目详情页：POST /api/project/object-items/{id}/comments（openapi.json）
@@ -458,12 +458,12 @@ export const useProjectHubApi = () => {
     // status 由后端固定为 PENDING，审核通过后才会在公开列表展示，因此请求体不传 status。
     submitComment: async (body: SubmitCommentPayload): Promise<ProjectComment> => {
       const item = await post<ObjectItemCommentResponse>(
-        `/project/object-items/${body.projectId}/comments`,
-        {
-          nickName: body.nickname,
-          content: body.content,
-        },
-        { payloadMode: "json" },
+          `/project/object-items/${body.projectId}/comments`,
+          {
+            nickName: body.nickname,
+            content: body.content,
+          },
+          {payloadMode: "json"},
       );
 
       return mapObjectItemCommentToProjectComment(item);
@@ -474,9 +474,9 @@ export const useProjectHubApi = () => {
     // 带上 controlPassword，所以前端需要在会话里留存 controlPassword 明文（见 useOwnerSession）。
     verifyProjectOwner: async (projectId: string | number, controlPassword: string): Promise<Project> => {
       const item = await post<ObjectItemResponse>(
-        `/admin/project/object-items/${projectId}/verify`,
-        { controlPassword },
-        { payloadMode: "json" },
+          `/admin/project/object-items/${projectId}/verify`,
+          {controlPassword},
+          {payloadMode: "json"},
       );
 
       return normalizeProject(mapObjectItemToProject(item));
@@ -486,30 +486,30 @@ export const useProjectHubApi = () => {
     // 字段映射沿用 submitProject 的口径（ownerName→leader 等）。
     // 不传 controlPassword 以外的敏感字段；status 仅在 4 个运营状态间切换。
     updateProject: async (
-      projectId: string | number,
-      controlPassword: string,
-      body: UpdateProjectPayload,
+        projectId: string | number,
+        controlPassword: string,
+        body: UpdateProjectPayload,
     ): Promise<Project> => {
       const item = await put<ObjectItemResponse>(
-        `/admin/project/object-items/${projectId}`,
-        {
-          controlPassword,
-          title: body.title,
-          type: body.type,
-          introduction: body.introduction,
-          description: body.description,
-          status: body.status,
-          leader: body.ownerName,
-          leaderMcId: body.ownerMinecraftId,
-          contactInformation: body.publicContact,
-          needMembers: (body.recruitmentNeeds ?? []).map((need) => ({
-            skill: need.skill,
-            number: need.count,
-            context: need.work,
-          })),
-          tags: body.tags ?? [],
-        },
-        { payloadMode: "json" },
+          `/admin/project/object-items/${projectId}`,
+          {
+            controlPassword,
+            title: body.title,
+            type: body.type,
+            introduction: body.introduction,
+            description: body.description,
+            status: body.status,
+            leader: body.ownerName,
+            leaderMcId: body.ownerMinecraftId,
+            contactInformation: body.publicContact,
+            needMembers: (body.recruitmentNeeds ?? []).map((need) => ({
+              skill: need.skill,
+              number: need.count,
+              context: need.work,
+            })),
+            tags: body.tags ?? [],
+          },
+          {payloadMode: "json"},
       );
 
       return normalizeProject(mapObjectItemToProject(item));
@@ -517,14 +517,14 @@ export const useProjectHubApi = () => {
     // 项目方修改管理密码：PATCH /api/admin/project/object-items/{id}/password（openapi.json）
     // 校验当前 controlPassword 通过后替换为 newControlPassword；前端需同步更新会话里的明文密码。
     changeControlPassword: async (
-      projectId: string | number,
-      controlPassword: string,
-      newControlPassword: string,
+        projectId: string | number,
+        controlPassword: string,
+        newControlPassword: string,
     ): Promise<void> => {
       await patch(
-        `/admin/project/object-items/${projectId}/password`,
-        { controlPassword, newControlPassword },
-        { payloadMode: "json" },
+          `/admin/project/object-items/${projectId}/password`,
+          {controlPassword, newControlPassword},
+          {payloadMode: "json"},
       );
     },
     // 项目方查看加入申请列表：GET /api/admin/project/object-items/{id}/join-applications
@@ -532,39 +532,39 @@ export const useProjectHubApi = () => {
     // controlPassword / status 走 query（项目方无 token，GET 无法携带请求体）。
     // 后端实现前此调用可能 404，调用方需自行兜底；返回全状态申请，前端可按 status 过滤。
     loadJoinApplications: async (
-      projectId: string | number,
-      controlPassword: string,
-      status?: string,
+        projectId: string | number,
+        controlPassword: string,
+        status?: string,
     ): Promise<JoinApplicationResponse[]> => {
       const items = await get<JoinApplicationResponse[]>(
-        `/admin/project/object-items/${projectId}/join-applications`,
-        { controlPassword, ...(status ? { status } : {}) },
+          `/admin/project/object-items/${projectId}/join-applications`,
+          {controlPassword, ...(status ? {status} : {})},
       );
       return normalizeArray<JoinApplicationResponse>(items);
     },
     // 项目方同意加入申请：POST .../join-applications/{applicationId}/accept（openapi.json）
     // controlPassword 走请求体（与 accept/reject 两个接口的 openapi 定义一致）。
     acceptJoinApplication: async (
-      projectId: string | number,
-      applicationId: string | number,
-      controlPassword: string,
+        projectId: string | number,
+        applicationId: string | number,
+        controlPassword: string,
     ): Promise<void> => {
       await post(
-        `/admin/project/object-items/${projectId}/join-applications/${applicationId}/accept`,
-        { controlPassword },
-        { payloadMode: "json" },
+          `/admin/project/object-items/${projectId}/join-applications/${applicationId}/accept`,
+          {controlPassword},
+          {payloadMode: "json"},
       );
     },
     // 项目方拒绝加入申请：POST .../join-applications/{applicationId}/reject（openapi.json）
     rejectJoinApplication: async (
-      projectId: string | number,
-      applicationId: string | number,
-      controlPassword: string,
+        projectId: string | number,
+        applicationId: string | number,
+        controlPassword: string,
     ): Promise<void> => {
       await post(
-        `/admin/project/object-items/${projectId}/join-applications/${applicationId}/reject`,
-        { controlPassword },
-        { payloadMode: "json" },
+          `/admin/project/object-items/${projectId}/join-applications/${applicationId}/reject`,
+          {controlPassword},
+          {payloadMode: "json"},
       );
     },
     // 项目方软删除项目：DELETE /api/admin/project/object-items/{id}（openapi.json）
@@ -572,105 +572,105 @@ export const useProjectHubApi = () => {
     // 因此不能用走 query 的 httpDelete，改用 httpRequest 显式指定 method=DELETE + json body。
     deleteProject: async (projectId: string | number, controlPassword: string): Promise<void> => {
       await httpRequest<void>(
-        `/admin/project/object-items/${projectId}`,
-        { controlPassword },
-        { method: "DELETE", payloadMode: "json" },
+          `/admin/project/object-items/${projectId}`,
+          {controlPassword},
+          {method: "DELETE", payloadMode: "json"},
       );
     },
     // 项目方查看全状态动态列表：GET /api/admin/project/object-items/{id}/updates（openapi.json）
     // 含 PENDING，供项目方管理（编辑 / 删除待审动态）。controlPassword / status 走 query。
     loadProjectUpdatesAdmin: async (
-      projectId: string | number,
-      controlPassword: string,
-      status?: string,
+        projectId: string | number,
+        controlPassword: string,
+        status?: string,
     ): Promise<ProjectUpdate[]> => {
       const items = await get<ObjectItemUpdateResponse[]>(
-        `/admin/project/object-items/${projectId}/updates`,
-        { controlPassword, ...(status ? { status } : {}) },
+          `/admin/project/object-items/${projectId}/updates`,
+          {controlPassword, ...(status ? {status} : {})},
       );
       return normalizeArray<ObjectItemUpdateResponse>(items)
-        .map(mapObjectItemUpdateToProjectUpdate)
-        .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+          .map(mapObjectItemUpdateToProjectUpdate)
+          .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
     },
     // 项目方发布动态：POST /api/admin/project/object-items/{id}/updates（openapi.json）
     // 项目方已通过 controlPassword 身份校验，发布即公开，前端固定 status=APPROVED。
     createProjectUpdate: async (
-      projectId: string | number,
-      controlPassword: string,
-      body: ProjectUpdatePayload,
+        projectId: string | number,
+        controlPassword: string,
+        body: ProjectUpdatePayload,
     ): Promise<ProjectUpdate> => {
       const item = await post<ObjectItemUpdateResponse>(
-        `/admin/project/object-items/${projectId}/updates`,
-        {
-          controlPassword,
-          title: body.title,
-          content: body.content,
-          imageUrl: body.imageUrl,
-          status: body.status ?? "APPROVED",
-        },
-        { payloadMode: "json" },
+          `/admin/project/object-items/${projectId}/updates`,
+          {
+            controlPassword,
+            title: body.title,
+            content: body.content,
+            imageUrl: body.imageUrl,
+            status: body.status ?? "APPROVED",
+          },
+          {payloadMode: "json"},
       );
       return mapObjectItemUpdateToProjectUpdate(item);
     },
     // 项目方修改动态：PUT /api/admin/project/object-items/{id}/updates/{updateId}（openapi.json）
     // 空值字段表示不修改；编辑表单不传 status，避免误改可见性。
     updateProjectUpdate: async (
-      projectId: string | number,
-      updateId: string | number,
-      controlPassword: string,
-      body: ProjectUpdatePayload,
+        projectId: string | number,
+        updateId: string | number,
+        controlPassword: string,
+        body: ProjectUpdatePayload,
     ): Promise<ProjectUpdate> => {
       const item = await put<ObjectItemUpdateResponse>(
-        `/admin/project/object-items/${projectId}/updates/${updateId}`,
-        {
-          controlPassword,
-          title: body.title,
-          content: body.content,
-          imageUrl: body.imageUrl,
-        },
-        { payloadMode: "json" },
+          `/admin/project/object-items/${projectId}/updates/${updateId}`,
+          {
+            controlPassword,
+            title: body.title,
+            content: body.content,
+            imageUrl: body.imageUrl,
+          },
+          {payloadMode: "json"},
       );
       return mapObjectItemUpdateToProjectUpdate(item);
     },
     // 项目方删除动态：DELETE /api/admin/project/object-items/{id}/updates/{updateId}（openapi.json）
     // 此接口的 controlPassword 走 query（与「删除项目」走 body 不同），用 httpDelete。
     deleteProjectUpdate: async (
-      projectId: string | number,
-      updateId: string | number,
-      controlPassword: string,
+        projectId: string | number,
+        updateId: string | number,
+        controlPassword: string,
     ): Promise<void> => {
       await httpDelete(
-        `/admin/project/object-items/${projectId}/updates/${updateId}`,
-        { controlPassword },
+          `/admin/project/object-items/${projectId}/updates/${updateId}`,
+          {controlPassword},
       );
     },
     // 项目方查看全状态评论列表：GET /api/admin/project/object-items/{id}/comments（openapi.json）
     // 含 PENDING，供项目方审核。controlPassword / status 走 query。
     loadProjectCommentsAdmin: async (
-      projectId: string | number,
-      controlPassword: string,
-      status?: string,
+        projectId: string | number,
+        controlPassword: string,
+        status?: string,
     ): Promise<ProjectComment[]> => {
       const items = await get<ObjectItemCommentResponse[]>(
-        `/admin/project/object-items/${projectId}/comments`,
-        { controlPassword, ...(status ? { status } : {}) },
+          `/admin/project/object-items/${projectId}/comments`,
+          {controlPassword, ...(status ? {status} : {})},
       );
       return normalizeArray<ObjectItemCommentResponse>(items)
-        .map(mapObjectItemCommentToProjectComment)
-        .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+          .map(mapObjectItemCommentToProjectComment)
+          .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
     },
     // 项目方审核评论：PATCH /api/admin/project/object-items/{id}/comments/{commentId}/status（openapi.json）
     // 把 PENDING 评论置为 APPROVED（公开）/ REJECTED / DELETED。controlPassword + status 走请求体。
     moderateProjectComment: async (
-      projectId: string | number,
-      commentId: string | number,
-      controlPassword: string,
-      status: string,
+        projectId: string | number,
+        commentId: string | number,
+        controlPassword: string,
+        status: string,
     ): Promise<void> => {
       await patch(
-        `/admin/project/object-items/${projectId}/comments/${commentId}/status`,
-        { controlPassword, status },
-        { payloadMode: "json" },
+          `/admin/project/object-items/${projectId}/comments/${commentId}/status`,
+          {controlPassword, status},
+          {payloadMode: "json"},
       );
     },
     // 通用文件上传：POST /api/files/upload（openapi.json，multipart/form-data）
@@ -704,9 +704,9 @@ export const useProjectHubApi = () => {
     // 响应不含 username，直接复用输入值（与后端签发 JWT 的 username claim 一致）。
     adminLogin: async (username: string, password: string): Promise<{ token: string; username: string }> => {
       const data = await post<{ accessToken: string; tokenType: string; expiresIn: number }>(
-        "/auth/login",
-        { username, password },
-        { payloadMode: "json" },
+          "/auth/login",
+          {username, password},
+          {payloadMode: "json"},
       );
       return {
         token: data?.accessToken ?? "",
@@ -719,71 +719,71 @@ export const useProjectHubApi = () => {
     adminLogout: async (): Promise<void> => {
       await post<void>("/auth/logout", undefined);
     },
-      // 管理员查询项目列表（全状态）：GET /api/admin/object-items?statuses=（openapi.json）
-      // 后端已提供管理员专用分页接口：statuses[] 多状态过滤，一次请求即可拿到含 PENDING 的全量。
-      // data 是被泛型擦除的空 object，按分页包装 { list, total, page, size } 或裸数组两种形态兼容解析。
+    // 管理员查询项目列表（全状态）：GET /api/admin/object-items?statuses=（openapi.json）
+    // 后端已提供管理员专用分页接口：statuses[] 多状态过滤，一次请求即可拿到含 PENDING 的全量。
+    // data 是被泛型擦除的空 object，按分页包装 { list, total, page, size } 或裸数组两种形态兼容解析。
     listProjectsAdmin: async (status?: string): Promise<Project[]> => {
-        const params = {...(status ? {statuses: [status]} : {}), size: 500};
-        const data = await get<unknown>("/admin/object-items", params).catch(() => null);
-        const items = extractList<ObjectItemResponse>(data);
-        return items.map(mapObjectItemToProject).map(normalizeProject);
+      const params = {...(status ? {statuses: [status]} : {}), size: 500};
+      const data = await get<unknown>("/admin/object-items", params).catch(() => null);
+      const items = extractList<ObjectItemResponse>(data);
+      return items.map(mapObjectItemToProject).map(normalizeProject);
     },
-      // 管理员批量更新项目状态：PUT /api/admin/object-items/batch/status（openapi.json）
-      // 后端已提供专用接口：body 为 { ids, status }，JWT 鉴权，无需 controlPassword。
+    // 管理员批量更新项目状态：PUT /api/admin/object-items/batch/status（openapi.json）
+    // 后端已提供专用接口：body 为 { ids, status }，JWT 鉴权，无需 controlPassword。
     updateProjectStatusBatch: async (items: { id: string | number; status: string }[]): Promise<void> => {
-        // 同一状态才能批量，按 status 分组各发一次请求
-        const groups = new Map<string, (string | number)[]>();
-        for (const it of items) {
-            const arr = groups.get(it.status) ?? [];
-            arr.push(it.id);
-            groups.set(it.status, arr);
-        }
-        await Promise.all(
-            [...groups.entries()].map(([status, ids]) =>
-                put("/admin/object-items/batch/status", {ids, status}, {payloadMode: "json"}),
-            ),
+      // 同一状态才能批量，按 status 分组各发一次请求
+      const groups = new Map<string, (string | number)[]>();
+      for (const it of items) {
+        const arr = groups.get(it.status) ?? [];
+        arr.push(it.id);
+        groups.set(it.status, arr);
+      }
+      await Promise.all(
+          [...groups.entries()].map(([status, ids]) =>
+              put("/admin/object-items/batch/status", {ids, status}, {payloadMode: "json"}),
+          ),
       );
     },
     // 管理员批量删除项目（软删除）：DELETE /api/project/object-items/batch，controlPassword 走请求体 { ids }。
     // 注意：批量删除只需 ids，不需要每条的 controlPassword（与单条删除不同）。
     deleteProjectBatch: async (ids: (string | number)[]): Promise<void> => {
-      await httpRequest("/project/object-items/batch", { ids }, { method: "DELETE", payloadMode: "json" });
+      await httpRequest("/project/object-items/batch", {ids}, {method: "DELETE", payloadMode: "json"});
     },
     // 管理员修改单个项目信息：PUT /api/project/object-items/{id}（openapi.json，全局接口）
     // 与项目方的 PUT /admin/project/object-items/{id} 不同：全局接口面向管理员，走 JWT 鉴权，
     // 不携带 controlPassword（openapi 该接口 body 里的 controlPassword 字段仅项目方自服务时使用）。
     updateProjectAdmin: async (projectId: string | number, body: UpdateProjectPayload): Promise<Project> => {
       const item = await put<ObjectItemResponse>(
-        `/project/object-items/${projectId}`,
-        {
-          id: projectId,
-          title: body.title,
-          type: body.type,
-          introduction: body.introduction,
-          description: body.description,
-          status: body.status,
-          leader: body.ownerName,
-          leaderMcId: body.ownerMinecraftId,
-          contactInformation: body.publicContact,
-          needMembers: (body.recruitmentNeeds ?? []).map((need) => ({
-            skill: need.skill,
-            number: need.count,
-            context: need.work,
-          })),
-          tags: body.tags ?? [],
-        },
-        { payloadMode: "json" },
+          `/project/object-items/${projectId}`,
+          {
+            id: projectId,
+            title: body.title,
+            type: body.type,
+            introduction: body.introduction,
+            description: body.description,
+            status: body.status,
+            leader: body.ownerName,
+            leaderMcId: body.ownerMinecraftId,
+            contactInformation: body.publicContact,
+            needMembers: (body.recruitmentNeeds ?? []).map((need) => ({
+              skill: need.skill,
+              number: need.count,
+              context: need.work,
+            })),
+            tags: body.tags ?? [],
+          },
+          {payloadMode: "json"},
       );
       return normalizeProject(mapObjectItemToProject(item));
     },
-      // 管理员查询想法列表（全状态）：GET /api/admin/minds?statuses=（openapi.json）
-      // 后端已提供管理员专用分页接口：statuses[] 多状态过滤，一次请求拿全量。
-      // data 按分页包装 { list, ... } 或裸数组兼容解析。
+    // 管理员查询想法列表（全状态）：GET /api/admin/minds?statuses=（openapi.json）
+    // 后端已提供管理员专用分页接口：statuses[] 多状态过滤，一次请求拿全量。
+    // data 按分页包装 { list, ... } 或裸数组兼容解析。
     listIdeasAdmin: async (status?: string): Promise<Idea[]> => {
-        const params = {...(status ? {statuses: [status]} : {}), size: 500};
-        const data = await get<unknown>("/admin/minds", params).catch(() => null);
-        const minds = extractList<MindResponse>(data);
-        return minds.map(mapMindToIdea).map(normalizeIdea);
+      const params = {...(status ? {statuses: [status]} : {}), size: 500};
+      const data = await get<unknown>("/admin/minds", params).catch(() => null);
+      const minds = extractList<MindResponse>(data);
+      return minds.map(mapMindToIdea).map(normalizeIdea);
     },
     // 管理员查询单个想法：GET /api/project/minds/{id}（openapi.json）
     getIdeaAdmin: async (id: string | number): Promise<Idea | null> => {
@@ -797,54 +797,61 @@ export const useProjectHubApi = () => {
     // 管理员修改单个想法：PUT /api/project/minds/{id}（openapi.json）
     // minds 更新不需要 controlPassword（与项目不同），管理员可直接改任意字段；空值字段不修改。
     updateIdeaAdmin: async (
-      id: string | number,
-      body: { title?: string; content?: string; nickName?: string; mcId?: string; status?: string },
+        id: string | number,
+        body: { title?: string; content?: string; nickName?: string; mcId?: string; status?: string },
     ): Promise<Idea> => {
       const mind = await put<MindResponse>(
-        `/project/minds/${id}`,
-        { id, title: body.title, content: body.content, nickName: body.nickName, mcId: body.mcId, status: body.status },
-        { payloadMode: "json" },
+          `/project/minds/${id}`,
+          {
+            id,
+            title: body.title,
+            content: body.content,
+            nickName: body.nickName,
+            mcId: body.mcId,
+            status: body.status
+          },
+          {payloadMode: "json"},
       );
       return normalizeIdea(mapMindToIdea(mind));
     },
-      // 管理员批量更新想法状态：PUT /api/admin/minds/batch/status（openapi.json），body 为 { ids, status }，JWT 鉴权。
+    // 管理员批量更新想法状态：PUT /api/admin/minds/batch/status（openapi.json），body 为 { ids, status }，JWT 鉴权。
     updateIdeaStatusBatch: async (items: { id: string | number; status: string }[]): Promise<void> => {
-        const groups = new Map<string, (string | number)[]>();
-        for (const it of items) {
-            const arr = groups.get(it.status) ?? [];
-            arr.push(it.id);
-            groups.set(it.status, arr);
-        }
-        await Promise.all(
-            [...groups.entries()].map(([status, ids]) =>
-                put("/admin/minds/batch/status", {ids, status}, {payloadMode: "json"}),
-            ),
-        );
+      const groups = new Map<string, (string | number)[]>();
+      for (const it of items) {
+        const arr = groups.get(it.status) ?? [];
+        arr.push(it.id);
+        groups.set(it.status, arr);
+      }
+      await Promise.all(
+          [...groups.entries()].map(([status, ids]) =>
+              put("/admin/minds/batch/status", {ids, status}, {payloadMode: "json"}),
+          ),
+      );
     },
-      // 管理员审核项目评论：PATCH /api/admin/object-items/{id}/comments/{commentId}/status（openapi.json）
-      // 后端已提供 JWT 版审核接口，body 只含 status（APPROVED/REJECTED/DELETED），无需 controlPassword。
-      moderateProjectCommentAdmin: async (
-          projectId: string | number,
-          commentId: string | number,
-          status: string,
-      ): Promise<void> => {
-          await patch(
-              `/admin/object-items/${projectId}/comments/${commentId}/status`,
-              {status},
-              {payloadMode: "json"},
-          );
-      },
-      // 管理员审核项目动态：PATCH /api/admin/object-items/{id}/updates/{updateId}/status（openapi.json）
-      // JWT 鉴权，body 只含 status（APPROVED/REJECTED/DELETED），无需 controlPassword。
-      moderateProjectUpdateAdmin: async (
-          projectId: string | number,
-          updateId: string | number,
-          status: string,
-      ): Promise<void> => {
-          await patch(
-              `/admin/object-items/${projectId}/updates/${updateId}/status`,
-              {status},
-        { payloadMode: "json" },
+    // 管理员审核项目评论：PATCH /api/admin/object-items/{id}/comments/{commentId}/status（openapi.json）
+    // 后端已提供 JWT 版审核接口，body 只含 status（APPROVED/REJECTED/DELETED），无需 controlPassword。
+    moderateProjectCommentAdmin: async (
+        projectId: string | number,
+        commentId: string | number,
+        status: string,
+    ): Promise<void> => {
+      await patch(
+          `/admin/object-items/${projectId}/comments/${commentId}/status`,
+          {status},
+          {payloadMode: "json"},
+      );
+    },
+    // 管理员审核项目动态：PATCH /api/admin/object-items/{id}/updates/{updateId}/status（openapi.json）
+    // JWT 鉴权，body 只含 status（APPROVED/REJECTED/DELETED），无需 controlPassword。
+    moderateProjectUpdateAdmin: async (
+        projectId: string | number,
+        updateId: string | number,
+        status: string,
+    ): Promise<void> => {
+      await patch(
+          `/admin/object-items/${projectId}/updates/${updateId}/status`,
+          {status},
+          {payloadMode: "json"},
       );
     },
     /* ---------- 管理员「单个项目维护」（JWT 鉴权，无需项目控制密码，对标项目方自服务） ----------
@@ -853,19 +860,19 @@ export const useProjectHubApi = () => {
         - load*Admin / 同名    = 项目方（controlPassword）接口，走 /api/admin/project/object-items/{id}/... */
     // 管理员查看加入申请：GET /api/admin/object-items/{id}/join-applications?status=（JWT 鉴权，返回全状态）
     listJoinApplicationsAdmin: async (
-      projectId: string | number,
-      status?: string,
+        projectId: string | number,
+        status?: string,
     ): Promise<JoinApplicationResponse[]> => {
       const items = await get<JoinApplicationResponse[]>(
-        `/admin/object-items/${projectId}/join-applications`,
-        status ? { status } : undefined,
+          `/admin/object-items/${projectId}/join-applications`,
+          status ? {status} : undefined,
       );
       return normalizeArray<JoinApplicationResponse>(items);
     },
     // 管理员同意加入申请：POST /api/admin/object-items/{id}/join-applications/{applicationId}/accept
     acceptJoinApplicationAdmin: async (
-      projectId: string | number,
-      applicationId: string | number,
+        projectId: string | number,
+        applicationId: string | number,
     ): Promise<void> => {
       await post(`/admin/object-items/${projectId}/join-applications/${applicationId}/accept`, undefined, {
         payloadMode: "json",
@@ -873,128 +880,128 @@ export const useProjectHubApi = () => {
     },
     // 管理员拒绝加入申请：POST .../reject，请求体可携带 rejectReason（可选）
     rejectJoinApplicationAdmin: async (
-      projectId: string | number,
-      applicationId: string | number,
-      rejectReason?: string,
+        projectId: string | number,
+        applicationId: string | number,
+        rejectReason?: string,
     ): Promise<void> => {
       await post(
-        `/admin/object-items/${projectId}/join-applications/${applicationId}/reject`,
-        rejectReason ? { rejectReason } : undefined,
-        { payloadMode: "json" },
+          `/admin/object-items/${projectId}/join-applications/${applicationId}/reject`,
+          rejectReason ? {rejectReason} : undefined,
+          {payloadMode: "json"},
       );
     },
     // 管理员查看项目动态：GET /api/admin/object-items/{id}/updates?status=（JWT 鉴权，返回全状态）
     listProjectUpdatesAdmin: async (
-      projectId: string | number,
-      status?: string,
+        projectId: string | number,
+        status?: string,
     ): Promise<ProjectUpdate[]> => {
       const items = await get<ObjectItemUpdateResponse[]>(
-        `/admin/object-items/${projectId}/updates`,
-        status ? { status } : undefined,
+          `/admin/object-items/${projectId}/updates`,
+          status ? {status} : undefined,
       );
       return normalizeArray<ObjectItemUpdateResponse>(items)
-        .map(mapObjectItemUpdateToProjectUpdate)
-        .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+          .map(mapObjectItemUpdateToProjectUpdate)
+          .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
     },
     // 管理员发布项目动态：POST /api/admin/object-items/{id}/updates（管理员发布默认 APPROVED 立即公开）
     createProjectUpdateAdmin: async (
-      projectId: string | number,
-      body: ProjectUpdatePayload,
+        projectId: string | number,
+        body: ProjectUpdatePayload,
     ): Promise<ProjectUpdate> => {
       const item = await post<ObjectItemUpdateResponse>(
-        `/admin/object-items/${projectId}/updates`,
-        {
-          title: body.title,
-          content: body.content,
-          imageUrl: body.imageUrl,
-          status: body.status ?? "APPROVED",
-        },
-        { payloadMode: "json" },
+          `/admin/object-items/${projectId}/updates`,
+          {
+            title: body.title,
+            content: body.content,
+            imageUrl: body.imageUrl,
+            status: body.status ?? "APPROVED",
+          },
+          {payloadMode: "json"},
       );
       return mapObjectItemUpdateToProjectUpdate(item);
     },
     // 管理员修改项目动态：PUT /api/admin/object-items/{id}/updates/{updateId}（空值字段不修改）
     updateProjectUpdateAdmin: async (
-      projectId: string | number,
-      updateId: string | number,
-      body: ProjectUpdatePayload,
+        projectId: string | number,
+        updateId: string | number,
+        body: ProjectUpdatePayload,
     ): Promise<ProjectUpdate> => {
       const item = await put<ObjectItemUpdateResponse>(
-        `/admin/object-items/${projectId}/updates/${updateId}`,
-        {
-          title: body.title,
-          content: body.content,
-          imageUrl: body.imageUrl,
-        },
-        { payloadMode: "json" },
+          `/admin/object-items/${projectId}/updates/${updateId}`,
+          {
+            title: body.title,
+            content: body.content,
+            imageUrl: body.imageUrl,
+          },
+          {payloadMode: "json"},
       );
       return mapObjectItemUpdateToProjectUpdate(item);
     },
     // 管理员删除项目动态：DELETE /api/admin/object-items/{id}/updates/{updateId}
     deleteProjectUpdateAdmin: async (
-      projectId: string | number,
-      updateId: string | number,
+        projectId: string | number,
+        updateId: string | number,
     ): Promise<void> => {
       await httpDelete(`/admin/object-items/${projectId}/updates/${updateId}`);
     },
     // 管理员查看项目评论：GET /api/admin/object-items/{id}/comments?status=（JWT 鉴权，返回全状态）
     listProjectCommentsAdmin: async (
-      projectId: string | number,
-      status?: string,
+        projectId: string | number,
+        status?: string,
     ): Promise<ProjectComment[]> => {
       const items = await get<ObjectItemCommentResponse[]>(
-        `/admin/object-items/${projectId}/comments`,
-        status ? { status } : undefined,
+          `/admin/object-items/${projectId}/comments`,
+          status ? {status} : undefined,
       );
       return normalizeArray<ObjectItemCommentResponse>(items)
-        .map(mapObjectItemCommentToProjectComment)
-        .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+          .map(mapObjectItemCommentToProjectComment)
+          .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
     },
     // 管理员批量删除想法：DELETE /api/project/minds/batch，请求体 { ids }。
     deleteIdeaBatch: async (ids: (string | number)[]): Promise<void> => {
-      await httpRequest("/project/minds/batch", { ids }, { method: "DELETE", payloadMode: "json" });
+      await httpRequest("/project/minds/batch", {ids}, {method: "DELETE", payloadMode: "json"});
     },
-      /* ---------- 账号等级：角色 / 邀请码 / 项目分配 ---------- */
-      // 当前管理员信息：GET /api/auth/me（JWT 鉴权）。登录后取角色（总管理 / 项目管理），
-      // 驱动总管理专属入口（邀请码生成、项目分配）的显隐。
-      adminMe: async (): Promise<{
-          id: number | string;
-          username: string;
-          role: "SUPER_ADMIN" | "PROJECT_MANAGER"
-      }> => {
-          return get("/auth/me");
-      },
-      // 项目管理注册（公开，凭一次性邀请码）：POST /api/auth/register/manager
-      registerManager: async (body: RegisterManagerPayload): Promise<{
-          id: number | string;
-          username: string;
-          role: string
-      }> => {
-          return post("/auth/register/manager", {
-              inviteCode: body.inviteCode,
-              username: body.username,
-              password: body.password,
-              email: body.email,
-          }, {payloadMode: "json"});
-      },
-      // 总管理生成项目管理邀请码：POST /api/admin/invites（仅总管理），返回一次性明文码。
-      generateInviteCode: async (): Promise<string> => {
-          const data = await post<{ inviteCode: string }>("/admin/invites", undefined, {payloadMode: "json"});
-          return data?.inviteCode ?? "";
-      },
-      // 总管理列出项目管理账号（分配项目下拉用）：GET /api/admin/users/managers（仅总管理）
-      listManagers: async (): Promise<ManagerSummary[]> => {
-          const data = await get<unknown>("/admin/users/managers").catch(() => null);
-          return extractList<ManagerSummary>(data);
-      },
-      // 总管理把项目分配给项目管理（ownerId=null 收回为未分配）：PUT /api/admin/object-items/{id}/owner
-      assignProjectOwner: async (projectId: string | number, ownerId: number | string | null): Promise<Project> => {
-          const item = await put<ObjectItemResponse>(
-              `/admin/object-items/${projectId}/owner`,
-              {ownerId},
-              {payloadMode: "json"},
-          );
-          return normalizeProject(mapObjectItemToProject(item));
-      },
+    /* ---------- 账号等级：角色 / 邀请码 / 项目分配 ---------- */
+    // 当前管理员信息：GET /api/auth/me（JWT 鉴权）。登录后取角色（总管理 / 项目管理），
+    // 驱动总管理专属入口（邀请码生成、项目分配）的显隐。
+    adminMe: async (): Promise<{
+      id: number | string;
+      username: string;
+      role: "SUPER_ADMIN" | "PROJECT_MANAGER"
+    }> => {
+      return get("/auth/me");
+    },
+    // 项目管理注册（公开，凭一次性邀请码）：POST /api/auth/register/manager
+    registerManager: async (body: RegisterManagerPayload): Promise<{
+      id: number | string;
+      username: string;
+      role: string
+    }> => {
+      return post("/auth/register/manager", {
+        inviteCode: body.inviteCode,
+        username: body.username,
+        password: body.password,
+        email: body.email,
+      }, {payloadMode: "json"});
+    },
+    // 总管理生成项目管理邀请码：POST /api/admin/invites（仅总管理），返回一次性明文码。
+    generateInviteCode: async (): Promise<string> => {
+      const data = await post<{ inviteCode: string }>("/admin/invites", undefined, {payloadMode: "json"});
+      return data?.inviteCode ?? "";
+    },
+    // 总管理列出项目管理账号（分配项目下拉用）：GET /api/admin/users/managers（仅总管理）
+    listManagers: async (): Promise<ManagerSummary[]> => {
+      const data = await get<unknown>("/admin/users/managers").catch(() => null);
+      return extractList<ManagerSummary>(data);
+    },
+    // 总管理把项目分配给项目管理（ownerId=null 收回为未分配）：PUT /api/admin/object-items/{id}/owner
+    assignProjectOwner: async (projectId: string | number, ownerId: number | string | null): Promise<Project> => {
+      const item = await put<ObjectItemResponse>(
+          `/admin/object-items/${projectId}/owner`,
+          {ownerId},
+          {payloadMode: "json"},
+      );
+      return normalizeProject(mapObjectItemToProject(item));
+    },
   };
 };

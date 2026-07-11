@@ -1,14 +1,14 @@
 <template>
   <main class="mc-page">
-    <MinecraftSiteHeader />
+    <MinecraftSiteHeader/>
 
     <n-config-provider :theme="null" :theme-overrides="themeOverrides">
       <div v-if="loading" class="loading-state">
-        <n-spin size="large" />
+        <n-spin size="large"/>
       </div>
 
       <template v-else-if="session">
-        <n-card class="manage-hero" :bordered="false">
+        <n-card :bordered="false" class="manage-hero">
           <div class="hero-info">
             <p class="eyebrow">Projects · Batch</p>
             <h1>项目管理</h1>
@@ -20,12 +20,12 @@
           </div>
         </n-card>
 
-        <n-card class="toolbar" :bordered="false">
+        <n-card :bordered="false" class="toolbar">
           <n-space :size="10" align="center" wrap>
             <n-select
-              v-model:value="filter"
-              :options="filterOptions"
-              class="filter-select"
+                v-model:value="filter"
+                :options="filterOptions"
+                class="filter-select"
             />
             <n-button :loading="loadingList" @click="load">刷新</n-button>
             <span class="toolbar-count">共 {{ projects.length }} 项</span>
@@ -37,41 +37,41 @@
             <n-space :size="8" align="center" wrap>
               <span class="batch-label">设为</span>
               <n-select
-                v-model:value="targetStatus"
-                :options="targetStatusOptions"
-                size="small"
-                class="target-select"
+                  v-model:value="targetStatus"
+                  :options="targetStatusOptions"
+                  class="target-select"
+                  size="small"
               />
-              <n-button size="small" type="primary" :loading="applying" @click="applyStatusBatch">应用</n-button>
+              <n-button :loading="applying" size="small" type="primary" @click="applyStatusBatch">应用</n-button>
               <n-popconfirm @positive-click="applyDeleteBatch">
                 <template #trigger>
-                  <n-button size="small" type="error" ghost :loading="deleting">批量删除</n-button>
+                  <n-button :loading="deleting" ghost size="small" type="error">批量删除</n-button>
                 </template>
                 确定删除选中的 {{ selectedIds.length }} 个项目吗？（软删除）
               </n-popconfirm>
-              <n-button size="small" quaternary @click="clearSelection">取消选择</n-button>
+              <n-button quaternary size="small" @click="clearSelection">取消选择</n-button>
             </n-space>
           </div>
         </n-card>
 
-        <n-empty v-if="!loadingList && !projects.length" description="该状态下暂无项目。" />
+        <n-empty v-if="!loadingList && !projects.length" description="该状态下暂无项目。"/>
 
         <div v-else class="project-list">
           <article
-            v-for="project in projects"
-            :key="project.id"
-            class="project-card"
-            :class="{ selected: isChecked(project.id) }"
+              v-for="project in projects"
+              :key="project.id"
+              :class="{ selected: isChecked(project.id) }"
+              class="project-card"
           >
             <n-checkbox
-              :checked="isChecked(project.id)"
-              class="row-check"
-              @update:checked="toggleOne(project.id)"
+                :checked="isChecked(project.id)"
+                class="row-check"
+                @update:checked="toggleOne(project.id)"
             />
             <div class="row-main" @click="goDetail(project.id)">
               <div class="row-head">
                 <span class="row-title">{{ project.title || "（未命名项目）" }}</span>
-                <n-tag :bordered="false" size="small" round :type="statusTagType(project.status)">
+                <n-tag :bordered="false" :type="statusTagType(project.status)" round size="small">
                   {{ formatProjectStatus(project.status) }}
                 </n-tag>
               </div>
@@ -85,7 +85,7 @@
                 {{ (project.summary || project.description).slice(0, 80) }}
               </p>
             </div>
-            <n-button size="small" class="row-action" @click="goDetail(project.id)">管理</n-button>
+            <n-button class="row-action" size="small" @click="goDetail(project.id)">管理</n-button>
           </article>
         </div>
       </template>
@@ -99,38 +99,38 @@
   </main>
 </template>
 
-<script setup lang="ts">
-import type { AdminSession } from "~/composables/useAdminAuth";
-import type { Project } from "~/types/projectHub";
+<script lang="ts" setup>
+import type {AdminSession} from "~/composables/useAdminAuth";
+import type {Project} from "~/types/projectHub";
 
-definePageMeta({ layout: false });
+definePageMeta({layout: false});
 
 // 状态过滤选项：覆盖项目全部 8 个状态 + 全部
 const filterOptions = [
-  { label: "待审核", value: "PENDING" },
-  { label: "审核通过", value: "APPROVED" },
-  { label: "审核未通过", value: "REJECTED" },
-  { label: "筹备中", value: "PREPARING" },
-  { label: "招募中", value: "RECRUITING" },
-  { label: "制作中", value: "IN_PROGRESS" },
-  { label: "暂缓", value: "PAUSED" },
-  { label: "已删除", value: "DELETED" },
-  { label: "全部", value: "" },
+  {label: "待审核", value: "PENDING"},
+  {label: "审核通过", value: "APPROVED"},
+  {label: "审核未通过", value: "REJECTED"},
+  {label: "筹备中", value: "PREPARING"},
+  {label: "招募中", value: "RECRUITING"},
+  {label: "制作中", value: "IN_PROGRESS"},
+  {label: "暂缓", value: "PAUSED"},
+  {label: "已删除", value: "DELETED"},
+  {label: "全部", value: ""},
 ];
 // 批量改状态的目标选项：排除 PENDING（无意义）与 DELETED（用「批量删除」走专用接口更可靠）
 const targetStatusOptions = [
-  { label: "审核通过", value: "APPROVED" },
-  { label: "审核未通过", value: "REJECTED" },
-  { label: "筹备中", value: "PREPARING" },
-  { label: "招募中", value: "RECRUITING" },
-  { label: "制作中", value: "IN_PROGRESS" },
-  { label: "暂缓", value: "PAUSED" },
+  {label: "审核通过", value: "APPROVED"},
+  {label: "审核未通过", value: "REJECTED"},
+  {label: "筹备中", value: "PREPARING"},
+  {label: "招募中", value: "RECRUITING"},
+  {label: "制作中", value: "IN_PROGRESS"},
+  {label: "暂缓", value: "PAUSED"},
 ];
 
 const message = useMessage();
-const { themeOverrides } = useMinecraftTheme();
-const { read, clear } = useAdminAuth();
-const { listProjectsAdmin, updateProjectStatusBatch, deleteProjectBatch, adminLogout } = useProjectHubApi();
+const {themeOverrides} = useMinecraftTheme();
+const {read, clear} = useAdminAuth();
+const {listProjectsAdmin, updateProjectStatusBatch, deleteProjectBatch, adminLogout} = useProjectHubApi();
 
 const loading = ref(true);
 const session = ref<AdminSession | null>(null);
@@ -179,8 +179,8 @@ const isChecked = (id: string) => selectedIds.value.includes(id);
 
 const toggleOne = (id: string) => {
   selectedIds.value = isChecked(id)
-    ? selectedIds.value.filter((item) => item !== id)
-    : [...selectedIds.value, id];
+      ? selectedIds.value.filter((item) => item !== id)
+      : [...selectedIds.value, id];
 };
 
 const clearSelection = () => {
@@ -194,7 +194,7 @@ const applyStatusBatch = async () => {
   }
   try {
     applying.value = true;
-    await updateProjectStatusBatch(selectedIds.value.map((id) => ({ id, status: targetStatus.value })));
+    await updateProjectStatusBatch(selectedIds.value.map((id) => ({id, status: targetStatus.value})));
     message.success(`已将 ${selectedIds.value.length} 个项目设为「${labelOf(targetStatus.value)}」`);
     clearSelection();
     await load();
@@ -241,13 +241,18 @@ const labelOf = (value: string) => filterOptions.find((opt) => opt.value === val
 
 const statusTagType = (status?: string): "warning" | "success" | "error" | "info" | "default" => {
   switch ((status || "").toUpperCase()) {
-    case "PENDING": return "warning";
+    case "PENDING":
+      return "warning";
     case "APPROVED":
-    case "IN_PROGRESS": return "success";
+    case "IN_PROGRESS":
+      return "success";
     case "REJECTED":
-    case "DELETED": return "error";
-    case "RECRUITING": return "info";
-    default: return "default";
+    case "DELETED":
+      return "error";
+    case "RECRUITING":
+      return "info";
+    default:
+      return "default";
   }
 };
 </script>
@@ -257,11 +262,10 @@ const statusTagType = (status?: string): "warning" | "success" | "error" | "info
   min-height: 100dvh;
   padding-bottom: 42px;
   color: #2d2418;
-  background:
-    radial-gradient(circle at 80% 8%, rgba(255, 215, 101, 0.44), transparent 21%),
-    linear-gradient(rgba(97, 153, 202, 0.17) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(97, 153, 202, 0.17) 1px, transparent 1px),
-    #dff0ff;
+  background: radial-gradient(circle at 80% 8%, rgba(255, 215, 101, 0.44), transparent 21%),
+  linear-gradient(rgba(97, 153, 202, 0.17) 1px, transparent 1px),
+  linear-gradient(90deg, rgba(97, 153, 202, 0.17) 1px, transparent 1px),
+  #dff0ff;
   background-size: auto, 26px 26px, 26px 26px, auto;
 }
 
