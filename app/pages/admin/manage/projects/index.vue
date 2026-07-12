@@ -11,8 +11,12 @@
         <n-card :bordered="false" class="manage-hero">
           <div class="hero-info">
             <p class="eyebrow">Projects · Batch</p>
-            <h1>项目管理</h1>
-            <span>批量审核、改状态，或进入单个项目更新</span>
+            <h1>{{ scope === "mine" ? "我的项目" : "项目管理" }}</h1>
+            <span>{{
+                scope === "mine"
+                    ? "管理归属给你的项目，或创建新的自有项目"
+                    : "批量审核、改状态，或进入单个项目更新"
+              }}</span>
           </div>
           <div class="hero-actions">
             <n-button size="large" @click="navigateTo('/admin/manage')">控制台</n-button>
@@ -27,8 +31,17 @@
                 :options="filterOptions"
                 class="filter-select"
             />
+            <n-button-group v-if="isSuperAdmin" class="scope-toggle">
+              <n-button :type="scope === 'all' ? 'primary' : 'default'" size="medium" @click="setScope('all')">
+                全部项目
+              </n-button>
+              <n-button :type="scope === 'mine' ? 'primary' : 'default'" size="medium" @click="setScope('mine')">
+                我的项目
+              </n-button>
+            </n-button-group>
             <n-button :loading="loadingList" @click="load">刷新</n-button>
             <span class="toolbar-count">共 {{ projects.length }} 项</span>
+            <n-button class="create-btn" type="primary" @click="openCreateModal">+ 创建项目</n-button>
           </n-space>
 
           <!-- 批量操作栏：选中后才出现 -->
@@ -54,7 +67,14 @@
           </div>
         </n-card>
 
-        <n-empty v-if="!loadingList && !projects.length" description="该状态下暂无项目。"/>
+        <n-empty
+            v-if="!loadingList && !projects.length"
+            :description="scope === 'mine' ? '你还没有自己的项目，创建一个开始吧。' : '该状态下暂无项目。'"
+        >
+          <template v-if="scope === 'mine'" #extra>
+            <n-button type="primary" @click="openCreateModal">创建项目</n-button>
+          </template>
+        </n-empty>
 
         <div v-else class="project-list">
           <article
@@ -95,13 +115,113 @@
           <n-button type="primary" @click="navigateTo('/admin')">前往登录</n-button>
         </template>
       </n-empty>
+
+      <!-- 创建项目：管理员直接创建归属自己的项目。总管理可选状态（默认招募中直接上线）；
+           项目管理固定 PENDING 待审，控制密码可选（留空则该项目不支持项目方控制密码自服务）。 -->
+      <n-modal
+          v-model:show="showCreateModal"
+          :bordered="false"
+          :mask-closable="false"
+          preset="card"
+          style="width: min(720px, calc(100% - 28px))"
+          title="创建项目"
+      >
+        <n-form
+            ref="createFormRef"
+            :model="createForm"
+            :rules="createRules"
+            :show-require-mark="false"
+            label-placement="top"
+            size="medium"
+            @submit.prevent="handleCreateSubmit"
+        >
+          <div class="edit-grid">
+            <n-form-item label="项目标题" path="title">
+              <n-input v-model:value="createForm.title" placeholder="项目标题"/>
+            </n-form-item>
+            <n-form-item label="项目类型" path="type">
+              <n-input v-model:value="createForm.type" placeholder="如：建筑 / 红石 / 剧情"/>
+            </n-form-item>
+          </div>
+
+          <n-form-item v-if="isSuperAdmin" label="状态" path="status">
+            <n-select v-model:value="createForm.status" :options="createStatusOptions" placeholder="选择状态"/>
+          </n-form-item>
+          <p v-else class="form-hint">项目管理创建的项目固定为「待审核」，需总管理审核通过后才会公开。</p>
+
+          <n-form-item label="项目简介" path="introduction">
+            <n-input v-model:value="createForm.introduction" :rows="2" placeholder="一句话简介" type="textarea"/>
+          </n-form-item>
+          <n-form-item label="详细介绍" path="description">
+            <n-input v-model:value="createForm.description" :rows="4" placeholder="详细说明" type="textarea"/>
+          </n-form-item>
+
+          <n-form-item label="项目封面图" path="coverImageUrl">
+            <ImageUploader
+                :url="createForm.coverImageUrl"
+                button-text="上传封面图"
+                @update:url="createForm.coverImageUrl = $event"
+            />
+          </n-form-item>
+
+          <div class="edit-grid">
+            <n-form-item label="负责人" path="ownerName">
+              <n-input v-model:value="createForm.ownerName" placeholder="负责人昵称"/>
+            </n-form-item>
+            <n-form-item label="负责人 MC ID" path="ownerMinecraftId">
+              <n-input v-model:value="createForm.ownerMinecraftId" placeholder="Java / 基岩版 ID"/>
+            </n-form-item>
+          </div>
+
+          <n-form-item label="公开联系方式" path="publicContact">
+            <n-input v-model:value="createForm.publicContact" placeholder="QQ 群 / Discord 等"/>
+          </n-form-item>
+          <n-form-item label="标签" path="tagsText">
+            <n-input v-model:value="createForm.tagsText" placeholder="用逗号分隔，如：建筑,红石"/>
+          </n-form-item>
+
+          <n-form-item label="招工需求" path="recruitmentNeeds">
+            <div class="need-editor">
+              <div
+                  v-for="(need, index) in createForm.recruitmentNeeds"
+                  :key="index"
+                  class="need-editor-row"
+              >
+                <n-input v-model:value="need.skill" placeholder="岗位"/>
+                <n-input-number v-model:value="need.count" :min="0" class="need-editor-count" placeholder="人数"/>
+                <n-input v-model:value="need.work" class="need-editor-work" placeholder="工作内容"/>
+                <n-button quaternary type="error" @click="createForm.recruitmentNeeds.splice(index, 1)">删除</n-button>
+              </div>
+              <n-button block dashed @click="addCreateNeed">+ 添加岗位</n-button>
+            </div>
+          </n-form-item>
+
+          <n-form-item label="项目控制密码（可选）" path="controlPassword">
+            <n-input
+                v-model:value="createForm.controlPassword"
+                placeholder="留空则仅管理员可管理；设置后项目方可凭此密码自服务"
+                type="password"
+            />
+          </n-form-item>
+        </n-form>
+
+        <template #footer>
+          <div class="edit-footer">
+            <n-button @click="showCreateModal = false">取消</n-button>
+            <n-button :loading="creating" type="primary" @click="handleCreateSubmit">
+              {{ creating ? "创建中..." : "创建项目" }}
+            </n-button>
+          </div>
+        </template>
+      </n-modal>
     </n-config-provider>
   </main>
 </template>
 
 <script lang="ts" setup>
+import type {FormInst, FormRules} from "naive-ui";
 import type {AdminSession} from "~/composables/useAdminAuth";
-import type {Project} from "~/types/projectHub";
+import type {Project, RecruitmentNeed} from "~/types/projectHub";
 
 definePageMeta({layout: false});
 
@@ -128,9 +248,16 @@ const targetStatusOptions = [
 ];
 
 const message = useMessage();
+const route = useRoute();
 const {themeOverrides} = useMinecraftTheme();
 const {read, clear} = useAdminAuth();
-const {listProjectsAdmin, updateProjectStatusBatch, deleteProjectBatch, adminLogout} = useProjectHubApi();
+const {
+  listProjectsAdmin,
+  createProjectAdmin,
+  updateProjectStatusBatch,
+  deleteProjectBatch,
+  adminLogout
+} = useProjectHubApi();
 
 const loading = ref(true);
 const session = ref<AdminSession | null>(null);
@@ -145,12 +272,32 @@ const targetStatus = ref<string>("APPROVED");
 const applying = ref(false);
 const deleting = ref(false);
 
+// 列表归属范围：all=全部（仅总管理可选），mine=仅自己名下项目。
+// 项目管理恒为 mine（后端按 ownerId 过滤），总管理默认 all，可手动切换或经 ?scope=mine 预置。
+const isSuperAdmin = computed(() => session.value?.role === "SUPER_ADMIN");
+const scope = ref<"all" | "mine">("all");
+
+const setScope = (next: "all" | "mine") => {
+  if (scope.value === next) {
+    return;
+  }
+  scope.value = next;
+  selectedIds.value = [];
+  load();
+};
+
 onMounted(async () => {
   session.value = read();
   loading.value = false;
   if (!session.value) {
     navigateTo("/admin");
     return;
+  }
+  // 项目管理只能看名下，强制 mine；总管理可由 query ?scope=mine 预置为「我的项目」
+  if (!isSuperAdmin.value) {
+    scope.value = "mine";
+  } else if (route.query.scope === "mine") {
+    scope.value = "mine";
   }
   await load();
 });
@@ -166,7 +313,7 @@ watch(filter, () => {
 const load = async () => {
   try {
     loadingList.value = true;
-    projects.value = await listProjectsAdmin(filter.value || undefined);
+    projects.value = await listProjectsAdmin(filter.value || undefined, scope.value === "mine");
   } catch (error) {
     message.error(error instanceof Error && error.message ? error.message : "加载项目列表失败");
     projects.value = [];
@@ -235,6 +382,113 @@ const handleLogout = async () => {
   session.value = null;
   message.success("已退出管理员控制台");
   await navigateTo("/admin");
+};
+
+/* ---------- 创建项目（管理员直接归属自己） ---------- */
+// 总管理可选状态（默认招募中直接上线）；项目管理固定 PENDING（后端强制，前端不传 status）。
+const createStatusOptions = [
+  {label: "待审核", value: "PENDING"},
+  {label: "审核通过", value: "APPROVED"},
+  {label: "筹备中", value: "PREPARING"},
+  {label: "招募中", value: "RECRUITING"},
+  {label: "制作中", value: "IN_PROGRESS"},
+  {label: "暂缓", value: "PAUSED"},
+];
+
+const createFormRef = ref<FormInst | null>(null);
+const showCreateModal = ref(false);
+const creating = ref(false);
+
+const newCreateNeed = (): RecruitmentNeed => ({
+  id: String(Date.now() + Math.random()),
+  skill: "",
+  count: 1,
+  work: "",
+});
+
+const createForm = reactive({
+  title: "",
+  type: "",
+  status: "RECRUITING",
+  introduction: "",
+  description: "",
+  coverImageUrl: "",
+  ownerName: "",
+  ownerMinecraftId: "",
+  publicContact: "",
+  tagsText: "",
+  controlPassword: "",
+  recruitmentNeeds: [newCreateNeed()] as RecruitmentNeed[],
+});
+
+const createRules: FormRules = {
+  title: {required: true, message: "请填写项目标题", trigger: ["blur", "input"]},
+  type: {required: true, message: "请填写项目类型", trigger: ["blur", "input"]},
+};
+
+const addCreateNeed = () => {
+  createForm.recruitmentNeeds.push(newCreateNeed());
+};
+
+const resetCreateForm = () => {
+  Object.assign(createForm, {
+    title: "",
+    type: "",
+    status: "RECRUITING",
+    introduction: "",
+    description: "",
+    coverImageUrl: "",
+    ownerName: "",
+    ownerMinecraftId: "",
+    publicContact: "",
+    tagsText: "",
+    controlPassword: "",
+    recruitmentNeeds: [newCreateNeed()],
+  });
+};
+
+const openCreateModal = () => {
+  resetCreateForm();
+  showCreateModal.value = true;
+};
+
+const handleCreateSubmit = async () => {
+  try {
+    await createFormRef.value?.validate();
+  } catch {
+    return;
+  }
+  try {
+    creating.value = true;
+    const created = await createProjectAdmin({
+      title: createForm.title.trim(),
+      type: createForm.type.trim(),
+      status: isSuperAdmin.value ? createForm.status : undefined,
+      introduction: createForm.introduction.trim() || undefined,
+      description: createForm.description || undefined,
+      coverImageUrl: createForm.coverImageUrl || undefined,
+      ownerName: createForm.ownerName.trim() || undefined,
+      ownerMinecraftId: createForm.ownerMinecraftId.trim() || undefined,
+      publicContact: createForm.publicContact.trim() || undefined,
+      tags: createForm.tagsText.split(/[,，]/).map((tag) => tag.trim()).filter(Boolean),
+      recruitmentNeeds: createForm.recruitmentNeeds
+          .map((need) => ({skill: need.skill.trim(), count: Number(need.count) || 0, work: need.work.trim()}))
+          .filter((need) => need.skill),
+      controlPassword: createForm.controlPassword || undefined,
+    });
+    message.success(`项目《${created.title}》已创建`);
+    showCreateModal.value = false;
+    // 创建的是自有项目：切到「我的项目」视角确保立即可见（总管理 all 视角也能看到，mine 更聚焦）。
+    if (isSuperAdmin.value && scope.value !== "mine") {
+      setScope("mine");
+    } else {
+      await load();
+    }
+  } catch (error) {
+    message.error(error instanceof Error && error.message ? error.message : "创建失败，请稍后再试");
+  } finally {
+    creating.value = false;
+  }
 };
 
 const labelOf = (value: string) => filterOptions.find((opt) => opt.value === value)?.label ?? value;
@@ -446,6 +700,53 @@ const statusTagType = (status?: string): "warning" | "success" | "error" | "info
   margin: 80px auto 0;
 }
 
+/* 归属范围切换 + 创建按钮 */
+.scope-toggle {
+  flex: 0 0 auto;
+}
+
+.create-btn {
+  margin-left: auto;
+}
+
+.form-hint {
+  margin: 0;
+  color: #795b36;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+/* 创建项目弹窗：复用 [id].vue 编辑弹窗的两列 / 招工编辑器布局 */
+.edit-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.edit-grid :deep(.n-form-item) {
+  margin-bottom: 0;
+}
+
+.need-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.need-editor-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 110px minmax(0, 1.4fr) auto;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.edit-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
 @media (width <= 720px) {
   .manage-hero :deep(.n-card__content) {
     flex-direction: column;
@@ -459,6 +760,11 @@ const statusTagType = (status?: string): "warning" | "success" | "error" | "info
   .row-action {
     grid-column: 1 / -1;
     width: 100%;
+  }
+
+  .need-editor-row,
+  .edit-grid {
+    grid-template-columns: 1fr;
   }
 }
 </style>

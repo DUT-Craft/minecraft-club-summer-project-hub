@@ -1,5 +1,6 @@
 import type {
   ChangePasswordPayload,
+  CreateProjectAdminPayload,
   DataSnapshot,
   EmailLoginPayload,
   FileItem,
@@ -762,9 +763,13 @@ export const useProjectHubApi = () => {
     },
     // 管理员查询项目列表（全状态）：GET /api/admin/object-items?statuses=（openapi.json）
     // 后端已提供管理员专用分页接口：statuses[] 多状态过滤，一次请求即可拿到含 PENDING 的全量。
-    // data 是被泛型擦除的空 object，按分页包装 { list, total, page, size } 或裸数组两种形态兼容解析。
-    listProjectsAdmin: async (status?: string): Promise<Project[]> => {
-      const params = {...(status ? {statuses: [status]} : {}), size: 500};
+    // mine=true 仅取自己名下项目（总管理也可拥有自有项目）；data 按分页包装或裸数组两种形态兼容解析。
+    listProjectsAdmin: async (status?: string, mine?: boolean): Promise<Project[]> => {
+      const params = {
+        ...(status ? {statuses: [status]} : {}),
+        ...(mine ? {mine: true} : {}),
+        size: 500,
+      };
       const data = await get<unknown>("/admin/object-items", params).catch(() => null);
       const items = extractList<ObjectItemResponse>(data);
       return items.map(mapObjectItemToProject).map(normalizeProject);
@@ -818,7 +823,31 @@ export const useProjectHubApi = () => {
       );
       return normalizeProject(mapObjectItemToProject(item));
     },
-    // 管理员查询想法列表（全状态）：GET /api/admin/minds?statuses=（openapi.json）
+    // 管理员创建归属自己的项目：POST /api/admin/object-items（JWT 鉴权，openapi.json 新增）
+    // 后端按当前登录账号写入 ownerId；总管理可传 status（默认后端 RECRUITING 上线），
+    // 项目管理固定 PENDING 由后端强制。controlPassword 可选——留空则不支持项目方控制密码自服务。
+    // 字段映射沿用 submitProject 口径（ownerName→leader、ownerMinecraftId→leaderMcId 等）。
+    createProjectAdmin: async (body: CreateProjectAdminPayload): Promise<Project> => {
+      const item = await post<ObjectItemResponse>("/admin/object-items", {
+        title: body.title,
+        type: body.type,
+        introduction: body.introduction,
+        description: body.description,
+        status: body.status,
+        leader: body.ownerName,
+        leaderMcId: body.ownerMinecraftId,
+        contactInformation: body.publicContact,
+        coverImageUrl: body.coverImageUrl,
+        controlPassword: body.controlPassword,
+        needMembers: (body.recruitmentNeeds ?? []).map((need) => ({
+          skill: need.skill,
+          number: need.count,
+          context: need.work,
+        })),
+        tags: body.tags ?? [],
+      }, {payloadMode: "json"});
+      return normalizeProject(mapObjectItemToProject(item));
+    },
     // 后端已提供管理员专用分页接口：statuses[] 多状态过滤，一次请求拿全量。
     // data 按分页包装 { list, ... } 或裸数组兼容解析。
     listIdeasAdmin: async (status?: string): Promise<Idea[]> => {

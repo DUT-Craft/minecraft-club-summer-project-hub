@@ -69,7 +69,7 @@
               <span class="eyebrow">Assign</span>
               <h2>项目分配</h2>
             </div>
-            <p class="entry-desc">把项目分配给项目管理（每个项目管理名下上限 10 个），或收回为未分配。</p>
+            <p class="entry-desc">把项目分配给项目管理或总管理（含你自己，每账号名下上限 10 个），或收回为未分配。</p>
             <n-space :size="10" align="center" wrap>
               <n-select
                   v-model:value="assignProjectId"
@@ -113,6 +113,17 @@
             </div>
             <p class="entry-desc">审核想法墙投稿、批量改状态、编辑或删除单个想法。</p>
             <n-button size="large" type="primary" @click="navigateTo('/admin/manage/ideas')">进入想法管理</n-button>
+          </n-card>
+
+          <n-card v-if="isSuperAdmin" :bordered="false" class="entry-card" hoverable>
+            <div class="entry-head">
+              <span class="eyebrow">My Projects</span>
+              <h2>我的项目</h2>
+            </div>
+            <p class="entry-desc">管理你自己归属的项目，或直接创建新的自有项目（与全局项目相互独立）。</p>
+            <n-button size="large" type="primary" @click="navigateTo('/admin/manage/projects?scope=mine')">
+              进入我的项目
+            </n-button>
           </n-card>
         </div>
 
@@ -315,10 +326,13 @@ const assigning = ref(false);
 const assignProjectOptions = computed(() =>
     assignProjects.value.map((p) => ({label: `#${p.id} ${p.title || "未命名项目"}`, value: p.id})),
 );
-// 首项「未分配」用于收回项目（ownerId=null）；其余为项目管理账号。
+// 首项「未分配」用于收回项目（ownerId=null）；其余为可归属账号（项目管理 + 总管理，标注身份）。
 const assignManagerOptions = computed(() => [
   {label: "（未分配）", value: null},
-  ...assignManagers.value.map((m) => ({label: `${m.nickname}（${m.username}）`, value: m.id})),
+  ...assignManagers.value.map((m) => ({
+    label: `${m.nickname}（${m.username}）· ${m.role === "SUPER_ADMIN" ? "总管理" : "项目管理"}`,
+    value: m.id,
+  })),
 ]);
 
 const loadAssignData = async () => {

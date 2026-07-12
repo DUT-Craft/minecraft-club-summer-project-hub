@@ -135,11 +135,32 @@ export interface ProjectUpdatePayload {
   status?: string;
 }
 
-// 总管理分配项目时下拉用的项目管理账号摘要（GET /api/admin/users/managers）。
+// 总管理分配项目时下拉用的可归属账号摘要（GET /api/admin/users/managers）。
+// 含项目管理与总管理（总管理也可拥有并管理自有项目），role 用于在下拉里标注身份。
 export interface ManagerSummary {
     id: number | string;
     username: string;
     nickname: string;
+    role: "SUPER_ADMIN" | "PROJECT_MANAGER";
+}
+
+// 管理员直接创建归属自己的项目（POST /api/admin/object-items）。
+// 与匿名投稿 SubmitProjectPayload 的区别：归属人为当前管理员（后端按 JWT 写入 ownerId），
+// status 可由总管理指定（默认后端 RECRUITING 上线），项目管理固定 PENDING 由后端强制；
+// controlPassword 可选——留空则该项目不支持「项目方控制密码自服务」，仅管理员 JWT 管理。
+export interface CreateProjectAdminPayload {
+    title: string;
+    type: string;
+    introduction?: string;
+    tags?: string[];
+    ownerName?: string;
+    ownerMinecraftId?: string;
+    description?: string;
+    publicContact?: string;
+    coverImageUrl?: string;
+    recruitmentNeeds?: RecruitmentNeed[];
+    status?: string;
+    controlPassword?: string;
 }
 
 // 项目管理凭一次性邀请码注册的请求体（POST /api/auth/register/manager）。

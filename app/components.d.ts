@@ -14,6 +14,7 @@ declare module 'vue' {
   export interface GlobalComponents {
     NAlert: typeof import('naive-ui')['NAlert']
     NButton: typeof import('naive-ui')['NButton']
+    NButtonGroup: typeof import('naive-ui')['NButtonGroup']
     NCard: typeof import('naive-ui')['NCard']
     NCheckbox: typeof import('naive-ui')['NCheckbox']
     NConfigProvider: typeof import('naive-ui')['NConfigProvider']
@@ -52,6 +53,7 @@ declare module 'vue' {
 declare global {
   const NAlert: typeof import('naive-ui')['NAlert']
   const NButton: typeof import('naive-ui')['NButton']
+  const NButtonGroup: typeof import('naive-ui')['NButtonGroup']
   const NCard: typeof import('naive-ui')['NCard']
   const NCheckbox: typeof import('naive-ui')['NCheckbox']
   const NConfigProvider: typeof import('naive-ui')['NConfigProvider']
