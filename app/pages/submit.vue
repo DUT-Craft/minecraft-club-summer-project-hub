@@ -29,14 +29,9 @@
               <n-input v-model:value="projectForm.title" placeholder="例如：暑假主城建设计划"/>
             </n-form-item>
 
-            <div class="two-col">
-              <n-form-item label="项目类型" path="type">
-                <n-input v-model:value="projectForm.type" placeholder="可自定义，例如 建筑 / 生电 / 活动"/>
-              </n-form-item>
-              <n-form-item label="标签">
-                <n-input v-model:value="projectForm.tagsText" placeholder="用逗号分隔，例如 建筑,红石,生电"/>
-              </n-form-item>
-            </div>
+            <n-form-item label="项目标签" path="tagIds">
+              <ProjectTagCascader v-model="projectForm.tagIds" :max-count="10" placeholder="从预设标签里选择，最多 10 个"/>
+            </n-form-item>
 
             <n-form-item label="项目简介" path="introduction">
               <n-input v-model:value="projectForm.introduction" placeholder="一句话概括这个项目"/>
@@ -168,8 +163,7 @@ const newNeed = (): RecruitmentNeed => ({
 
 const projectForm = reactive({
   title: "",
-  type: "",
-  tagsText: "",
+  tagIds: [] as Array<number | string>,
   introduction: "",
   coverImageUrl: "",
   ownerName: "",
@@ -189,7 +183,6 @@ const ideaForm = reactive({
 
 const projectRules: FormRules = {
   title: {required: true, message: "请填写项目标题", trigger: ["blur", "input"]},
-  type: {required: true, message: "请填写项目类型", trigger: ["blur", "input"]},
   introduction: {required: true, message: "请填写项目简介", trigger: ["blur", "input"]},
   ownerName: {required: true, message: "请填写负责人昵称", trigger: ["blur", "input"]},
   description: {required: true, message: "请填写项目详细介绍", trigger: ["blur", "input"]},
@@ -224,8 +217,7 @@ const removeNeed = (index: number) => {
 const resetProject = () => {
   Object.assign(projectForm, {
     title: "",
-    type: "",
-    tagsText: "",
+    tagIds: [],
     introduction: "",
     coverImageUrl: "",
     ownerName: "",
@@ -237,12 +229,6 @@ const resetProject = () => {
   });
 };
 
-const parseTags = (text: string): string[] =>
-    text
-        .split(",")
-        .map((tag) => tag.trim())
-        .filter(Boolean);
-
 const handleSubmitProject = async () => {
   try {
     await projectFormRef.value?.validate();
@@ -253,9 +239,8 @@ const handleSubmitProject = async () => {
     submitting.value = true;
     const created = await submitProject({
       title: projectForm.title,
-      type: projectForm.type,
+      tagIds: projectForm.tagIds,
       introduction: projectForm.introduction,
-      tags: parseTags(projectForm.tagsText),
       ownerName: projectForm.ownerName,
       ownerMinecraftId: projectForm.ownerMinecraftId,
       description: projectForm.description,

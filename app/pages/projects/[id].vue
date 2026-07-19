@@ -11,7 +11,8 @@
         <n-card :bordered="false" class="detail-hero">
           <div class="hero-info">
             <n-space :size="8" align="center">
-              <n-tag :bordered="false" type="primary">{{ project.type || "未分类" }}</n-tag>
+              <n-tag v-for="tag in project.tags" :key="tag.id" :bordered="false" type="primary">{{ tag.name }}</n-tag>
+              <n-tag v-if="!project.tags.length" :bordered="false" type="primary">未设置标签</n-tag>
               <n-tag :bordered="false">{{ statusLabel }}</n-tag>
             </n-space>
             <h1>{{ project.title }}</h1>
@@ -312,23 +313,7 @@ onMounted(async () => {
 // 状态文案走共享映射（useProjectStatus），后端原始英文枚举仍保存在 project.value.status
 const statusLabel = computed(() => formatProjectStatus(project.value?.status));
 
-const needs = computed<RecruitmentNeed[]>(() => {
-  const current = project.value;
-  if (!current) {
-    return [];
-  }
-
-  if (current.recruitmentNeeds?.length) {
-    return current.recruitmentNeeds;
-  }
-
-  return (current.skills ?? []).map((skill, index) => ({
-    id: `${skill}-${index}`,
-    skill,
-    count: index === 0 ? Number(current.neededMembers) || 1 : 1,
-    work: "项目发起者暂未补充具体工作内容。",
-  }));
-});
+const needs = computed<RecruitmentNeed[]>(() => project.value?.recruitmentNeeds ?? []);
 
 // 招工总名额：把每条 need.count 相加，给卡片头部做一个汇总徽标
 const totalSlots = computed(() =>

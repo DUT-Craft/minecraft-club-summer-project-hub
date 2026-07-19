@@ -64,8 +64,8 @@
               <dd>{{ record.project.title || "——" }}</dd>
             </div>
             <div class="info-row">
-              <dt>项目类型</dt>
-              <dd>{{ record.project.type || "——" }}</dd>
+              <dt>项目标签</dt>
+              <dd>{{ tagNames || "——" }}</dd>
             </div>
             <div v-if="record.project.summary" class="info-row">
               <dt>项目简介</dt>
@@ -148,6 +148,9 @@ const {read, clear} = useLastSubmission();
 const record = ref<ProjectSubmissionRecord | null>(null);
 
 const needs = computed<RecruitmentNeed[]>(() => record.value?.project.recruitmentNeeds ?? []);
+
+// 展示提交时选择的标签名称（项目响应里已带回 tags[].name）
+const tagNames = computed(() => (record.value?.project.tags ?? []).map((tag) => tag.name).filter(Boolean).join("、"));
 
 const statusLabel = computed(() => formatProjectStatus(record.value?.project.status));
 

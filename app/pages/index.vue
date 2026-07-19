@@ -140,8 +140,7 @@ definePageMeta({
 const {themeOverrides} = useMinecraftTheme();
 
 // 数据源对应 openapi.json：
-// - 公开项目列表：GET /api/project/object-items?status=...（在 useProjectHubApi 内并行请求
-//   APPROVED / PREPARING / RECRUITING / IN_PROGRESS / PAUSED 五个公开状态后合并，
+// - 公开项目列表：GET /api/project/object-items（后端 Tag 化后强制 PUBLIC_STATUSES，单次请求返回全部公开项目，
 //   用于汇总标签 / 招募岗位 / 公开项目总数，口径与项目广场 mall 页完全一致）
 // - 公开想法总数：GET /api/project/minds/count/approved
 // - openapi 没有评论 / 建议接口，原"公开建议"统计改为"招募岗位"（needMembers.number 合计）
@@ -206,7 +205,7 @@ const openPositions = computed(() =>
         .reduce((total, need) => total + (need.count || 0), 0),
 );
 
-// 汇总项目类型 + 标签（skills 由 object-items 的 tags 映射而来），取出现次数最多的 4 个
+// 汇总项目标签（project.tags[].name），按 normalized 名称去重统计，取出现次数最多的 4 个
 const hotTags = computed(() => buildHotTags(publicProjects.value));
 const heroTags = computed(() =>
     hotTags.value.length ? hotTags.value : ["项目投稿", "想法收集", "制作中项目", "招募岗位"],
@@ -226,19 +225,26 @@ const stats = computed(() => [
 ]);
 
 function buildHotTags(projects: Project[]) {
-  const counts = new Map<string, number>();
+  // 按标签名 trim + 忽略大小写归并（后端 normalizedName 唯一，这里同口径避免大小写重复计数）
+  const counts = new Map<string, { name: string; count: number }>();
   for (const project of projects) {
-    for (const tag of [project.type, ...(project.skills ?? [])]) {
-      const key = tag.trim();
-      if (key) {
-        counts.set(key, (counts.get(key) || 0) + 1);
+    for (const tag of project.tags ?? []) {
+      const key = (tag.name ?? "").trim().toLowerCase();
+      if (!key) {
+        continue;
+      }
+      const existing = counts.get(key);
+      if (existing) {
+        existing.count += 1;
+      } else {
+        counts.set(key, {name: tag.name || String(tag.id), count: 1});
       }
     }
   }
 
-  return Array.from(counts.entries())
-      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "zh-CN"))
-      .map(([tag]) => tag)
+  return Array.from(counts.values())
+      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "zh-CN"))
+      .map((info) => info.name)
       .slice(0, 4);
 }
 </script>

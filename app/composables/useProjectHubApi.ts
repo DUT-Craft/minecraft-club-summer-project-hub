@@ -10,6 +10,8 @@ import type {
   ManagerSummary,
   Project,
   ProjectComment,
+  ProjectPage,
+  ProjectTag,
   ProjectUpdate,
   ProjectUpdatePayload,
   RegisterManagerPayload,
@@ -20,6 +22,9 @@ import type {
   SubmitIdeaPayload,
   SubmitJoinPayload,
   SubmitProjectPayload,
+  TagAdminItem,
+  TagSavePayload,
+  TagTreeNode,
   UpdateProjectPayload,
 } from "~/types/projectHub";
 
@@ -92,17 +97,23 @@ interface ObjectItemNeedMember {
   context?: string;
 }
 
+// 后端 TagSummaryResponse：项目响应里携带的标签（id + 名称 + 父节点）。
+interface ObjectItemTag {
+  id?: number | string;
+  name?: string;
+  parentId?: number | string | null;
+}
+
 interface ObjectItemResponse {
   id?: number | string;
   title?: string;
-  type?: string;
   introduction?: string;
   description?: string;
   status?: string;
   leader?: string;
   leaderMcId?: string;
   needMembers?: ObjectItemNeedMember[];
-  tags?: string[];
+  tags?: ObjectItemTag[];
   contactInformation?: string;
   coverImageUrl?: string;
     ownerId?: number | string | null;
@@ -180,7 +191,11 @@ const mapReviewStatus = (status?: string): ReviewStatus => {
 const mapObjectItemToProject = (item: ObjectItemResponse): Project => ({
   id: String(item.id ?? ""),
   title: item.title ?? "",
-  type: item.type ?? "",
+  tags: normalizeArray<ObjectItemTag>(item.tags).map((tag) => ({
+    id: tag.id ?? "",
+    name: tag.name ?? "",
+    parentId: tag.parentId ?? null,
+  })),
   summary: item.introduction,
   description: item.description ?? "",
   status: item.status,
@@ -188,7 +203,6 @@ const mapObjectItemToProject = (item: ObjectItemResponse): Project => ({
   ownerName: item.leader ?? "",
   ownerMinecraftId: item.leaderMcId,
     managerId: item.ownerId ?? null,
-  skills: item.tags ? [...item.tags] : undefined,
   publicContact: item.contactInformation,
   coverImageUrl: item.coverImageUrl,
   recruitmentNeeds: normalizeArray<ObjectItemNeedMember>(item.needMembers).map((need) => ({
@@ -274,28 +288,37 @@ export const useProjectHubApi = () => {
     }
   };
 
-  // 项目广场（mall 页）数据源：GET /api/project/object-items?status=...
-  // 接口仅支持单个 status，并行请求各公开状态后合并；
-  // 公开状态 = APPROVED（审核通过）+ PREPARING（筹备中）+ RECRUITING（招募中）+ IN_PROGRESS（制作中）+ PAUSED（暂缓），
-  // PENDING / REJECTED / DELETED 不对外展示。
-  // ⚠️ APPROVED 必须包含：管理员「审核通过」批量操作把项目置为 APPROVED（admin/manage/projects 的默认目标状态），
-  // 若漏掉则刚审核通过、尚未进入运营状态的项目不会出现在项目广场。
-  const loadPublicProjectCatalog = async (): Promise<Project[]> => {
-    const publicStatuses = ["APPROVED", "PREPARING", "RECRUITING", "IN_PROGRESS", "PAUSED"] as const;
+  // 项目广场（mall 页）/ 首页数据源：GET /api/project/object-items
+  // 后端 Tag 化改造后：关键字命中 标题/简介/描述/负责人/标签名；tagIds + tagMatch(ANY/ALL) 做 Cascader 筛选；
+  // 公开端固定只返回 PUBLIC_STATUSES（APPROVED/PREPARING/RECRUITING/IN_PROGRESS/PAUSED）内的项目，
+  // 不再需要前端并发请求五个状态。不传 page/size 时后端返回裸数组（全量），便于内存侧二次筛选状态/技能。
+  const loadPublicProjects = async (query: {
+    keyword?: string;
+    tagIds?: Array<number | string>;
+    tagMatch?: "ANY" | "ALL";
+  } = {}): Promise<Project[]> => {
     try {
-      const groups = await Promise.all(
-          publicStatuses.map((status) =>
-              get<ObjectItemResponse[]>("/project/object-items", {status}),
-          ),
-      );
-      return groups
-          .flatMap((items) => normalizeArray<ObjectItemResponse>(items))
+      const params: Record<string, unknown> = {};
+      if (query.keyword?.trim()) {
+        params.keyword = query.keyword.trim();
+      }
+      if (query.tagIds?.length) {
+        params.tagIds = query.tagIds;
+        if (query.tagMatch) {
+          params.tagMatch = query.tagMatch;
+        }
+      }
+      const items = await get<ObjectItemResponse[]>("/project/object-items", params);
+      return normalizeArray<ObjectItemResponse>(items)
           .map(mapObjectItemToProject)
           .map(normalizeProject);
     } catch {
       return [];
     }
   };
+
+  // 不带筛选的公开项目全集（首页 hot tags / 公开项目总数等场景的便捷入口）
+  const loadPublicProjectCatalog = (): Promise<Project[]> => loadPublicProjects();
 
   // 公开总数专用接口（openapi.json）：审核通过想法总数 GET /api/project/minds/count/approved。
   // （项目侧「公开项目」总数不再走 count 接口——loadPublicProjectCatalog 拉的就是全部公开项目，
@@ -381,6 +404,7 @@ export const useProjectHubApi = () => {
   return {
     loadSnapshot,
     loadPublicIdeas,
+    loadPublicProjects,
     loadPublicProjectCatalog,
     loadApprovedIdeaCount,
     loadProjectById,
@@ -394,7 +418,7 @@ export const useProjectHubApi = () => {
     submitProject: async (body: SubmitProjectPayload): Promise<Project> => {
       const item = await post<ObjectItemResponse>("/project/object-items", {
         title: body.title,
-        type: body.type,
+        tagIds: body.tagIds ?? [],
         introduction: body.introduction,
         description: body.description,
         status: "PENDING",
@@ -408,7 +432,6 @@ export const useProjectHubApi = () => {
           number: need.count,
           context: need.work,
         })),
-        tags: body.tags ?? [],
       }, {payloadMode: "json"});
 
       return normalizeProject(mapObjectItemToProject(item));
@@ -483,7 +506,7 @@ export const useProjectHubApi = () => {
           {
             controlPassword,
             title: body.title,
-            type: body.type,
+            tagIds: body.tagIds,
             introduction: body.introduction,
             description: body.description,
             status: body.status,
@@ -496,7 +519,6 @@ export const useProjectHubApi = () => {
               number: need.count,
               context: need.work,
             })),
-            tags: body.tags ?? [],
           },
           {payloadMode: "json"},
       );
@@ -781,7 +803,7 @@ export const useProjectHubApi = () => {
           {
             id: projectId,
             title: body.title,
-            type: body.type,
+            tagIds: body.tagIds,
             introduction: body.introduction,
             description: body.description,
             status: body.status,
@@ -794,7 +816,6 @@ export const useProjectHubApi = () => {
               number: need.count,
               context: need.work,
             })),
-            tags: body.tags ?? [],
           },
           {payloadMode: "json"},
       );
@@ -807,7 +828,7 @@ export const useProjectHubApi = () => {
     createProjectAdmin: async (body: CreateProjectAdminPayload): Promise<Project> => {
       const item = await post<ObjectItemResponse>("/admin/object-items", {
         title: body.title,
-        type: body.type,
+        tagIds: body.tagIds ?? [],
         introduction: body.introduction,
         description: body.description,
         status: body.status,
@@ -821,7 +842,6 @@ export const useProjectHubApi = () => {
           number: need.count,
           context: need.work,
         })),
-        tags: body.tags ?? [],
       }, {payloadMode: "json"});
       return normalizeProject(mapObjectItemToProject(item));
     },
@@ -1056,6 +1076,46 @@ export const useProjectHubApi = () => {
           {payloadMode: "json"},
       );
       return normalizeProject(mapObjectItemToProject(item));
+    },
+    /* ---------- 标签字典（Tag 字典驱动项目分类 / Cascader） ----------
+       公开 GET 任何人可读；管理端 CRUD 仅总管理（SUPER_ADMIN），后端用 AccessService.requireSuperAdmin 兜底。 */
+    // 公开 Tag 树：GET /api/project/tags/tree（匿名可读，仅活跃节点，已按 sortOrder/id 排序）。
+    // 投稿 / 编辑 / 项目墙 Cascader 共用；后端组装父子层级，前端直接喂给 n-cascader。
+    loadTagTree: async (): Promise<TagTreeNode[]> => {
+      const items = await get<unknown>("/project/tags/tree").catch(() => null);
+      return extractList<TagTreeNode>(items);
+    },
+    // 管理端 Tag 列表：GET /api/admin/tags（仅总管理，含已删除节点 + 每个 Tag 的关联项目数 projectCount）。
+    // 平铺返回（带 parentId），前端按需组树展示。
+    listTagsAdmin: async (): Promise<TagAdminItem[]> => {
+      const data = await get<unknown>("/admin/tags").catch(() => null);
+      return extractList<TagAdminItem>(data);
+    },
+    // 新增 Tag：POST /api/admin/tags（仅总管理）。名称 trim 后全局唯一（忽略大小写）；parentId 不存在或已删除时后端 400/404。
+    createTagAdmin: async (body: TagSavePayload): Promise<TagAdminItem> => {
+      return post<TagAdminItem>("/admin/tags", {
+        name: body.name,
+        parentId: body.parentId ?? null,
+        selectable: body.selectable,
+        sortOrder: body.sortOrder,
+        description: body.description ?? null,
+      }, {payloadMode: "json"});
+    },
+    // 修改 Tag：PUT /api/admin/tags/{id}（仅总管理）。可改名 / 换父节点 / 改是否可选 / 排序 / 说明；
+    // 移动到自己或后代节点下会被后端拒绝（400）。
+    updateTagAdmin: async (id: number | string, body: TagSavePayload): Promise<TagAdminItem> => {
+      return put<TagAdminItem>(`/admin/tags/${id}`, {
+        name: body.name,
+        parentId: body.parentId ?? null,
+        selectable: body.selectable,
+        sortOrder: body.sortOrder,
+        description: body.description ?? null,
+      }, {payloadMode: "json"});
+    },
+    // 软删除 Tag：DELETE /api/admin/tags/{id}（仅总管理）。同事务解除全部项目关联并标记删除；
+    // 存在活跃子节点时后端返回 409。返回 { id, affectedProjects } 供前端回显受影响范围。
+    deleteTagAdmin: async (id: number | string): Promise<{ id: number | string; affectedProjects: number }> => {
+      return await httpDelete<{ id: number | string; affectedProjects: number }>(`/admin/tags/${id}`);
     },
   };
 };

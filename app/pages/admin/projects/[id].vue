@@ -11,7 +11,8 @@
         <n-card :bordered="false" class="manage-hero">
           <div class="hero-info">
             <n-space :size="8" align="center">
-              <n-tag :bordered="false" type="primary">{{ session.project.type || "未分类" }}</n-tag>
+              <n-tag v-for="tag in session.project.tags" :key="tag.id" :bordered="false" type="primary">{{ tag.name }}</n-tag>
+              <n-tag v-if="!session.project.tags.length" :bordered="false" type="primary">未设置标签</n-tag>
               <n-tag :bordered="false">{{ statusLabel }}</n-tag>
               <n-tag :bordered="false" class="id-tag" round>ID · {{ session.project.id }}</n-tag>
             </n-space>
@@ -51,8 +52,8 @@
               <dd>{{ session.project.title || "——" }}</dd>
             </div>
             <div class="info-row">
-              <dt>项目类型</dt>
-              <dd>{{ session.project.type || "——" }}</dd>
+              <dt>项目标签</dt>
+              <dd>{{ formatTagNames(session.project.tags) }}</dd>
             </div>
             <div class="info-row">
               <dt>负责人</dt>
@@ -265,14 +266,12 @@
               size="medium"
               @submit.prevent="handleEditSubmit"
           >
-            <div class="edit-grid">
-              <n-form-item label="项目标题" path="title">
-                <n-input v-model:value="editForm.title" placeholder="项目标题"/>
-              </n-form-item>
-              <n-form-item label="项目类型" path="type">
-                <n-input v-model:value="editForm.type" placeholder="如：建筑 / 红石 / 剧情"/>
-              </n-form-item>
-            </div>
+            <n-form-item label="项目标题" path="title">
+              <n-input v-model:value="editForm.title" placeholder="项目标题"/>
+            </n-form-item>
+            <n-form-item label="项目标签" path="tagIds">
+              <ProjectTagCascader v-model="editForm.tagIds" :max-count="10" placeholder="从预设标签里选择，最多 10 个"/>
+            </n-form-item>
 
             <n-form-item label="运营状态" path="status">
               <n-select
@@ -319,10 +318,6 @@
 
             <n-form-item label="公开联系方式" path="publicContact">
               <n-input v-model:value="editForm.publicContact" placeholder="QQ 群 / Discord 等"/>
-            </n-form-item>
-
-            <n-form-item label="标签" path="tagsText">
-              <n-input v-model:value="editForm.tagsText" placeholder="用逗号分隔，如：建筑,红石,剧情"/>
             </n-form-item>
 
             <n-form-item label="招工需求" path="recruitmentNeeds">
@@ -430,6 +425,10 @@ const statusLabel = computed(() => formatProjectStatus(session.value?.project.st
 
 const needs = computed<RecruitmentNeed[]>(() => session.value?.project.recruitmentNeeds ?? []);
 
+// 标签名称拼接（无标签时回退占位文案，供 hero 标签 chip / info 行复用）
+const formatTagNames = (tags?: { name?: string }[]) =>
+    (tags ?? []).map((tag) => tag.name).filter(Boolean).join("、") || "——";
+
 const formatTime = (value?: string) => (value ? new Date(value).toLocaleString("zh-CN") : "未记录时间");
 
 const handleLogout = () => {
@@ -491,10 +490,10 @@ const editFormRef = ref<FormInst | null>(null);
 const showEditModal = ref(false);
 const submittingEdit = ref(false);
 
-// 编辑表单：recruitmentNeeds 用 { skill, count, work } 行内编辑；tags 用逗号分隔文本，提交前再拆分
+// 编辑表单：recruitmentNeeds 用 { skill, count, work } 行内编辑；tagIds 由 ProjectTagCascader 维护
 const editForm = reactive({
   title: "",
-  type: "",
+  tagIds: [] as Array<number | string>,
   status: "PREPARING" as string,
   introduction: "",
   description: "",
@@ -502,13 +501,11 @@ const editForm = reactive({
   ownerName: "",
   ownerMinecraftId: "",
   publicContact: "",
-  tagsText: "",
   recruitmentNeeds: [] as { skill: string; count: number; work: string }[],
 });
 
 const editRules: FormRules = {
   title: {required: true, message: "请填写项目标题", trigger: ["blur", "input"]},
-  type: {required: true, message: "请填写项目类型", trigger: ["blur", "input"]},
 };
 
 const statusOptions = OPERATIONAL_STATUSES.map((value) => ({
@@ -527,7 +524,7 @@ const openEditModal = () => {
     return;
   }
   editForm.title = project.title ?? "";
-  editForm.type = project.type ?? "";
+  editForm.tagIds = (project.tags ?? []).map((tag) => tag.id);
   editForm.status = project.status && OPERATIONAL_STATUSES.includes(project.status.toUpperCase() as (typeof OPERATIONAL_STATUSES)[number])
       ? project.status.toUpperCase()
       : "PREPARING";
@@ -537,7 +534,6 @@ const openEditModal = () => {
   editForm.ownerName = project.ownerName ?? "";
   editForm.ownerMinecraftId = project.ownerMinecraftId ?? "";
   editForm.publicContact = project.publicContact ?? "";
-  editForm.tagsText = (project.skills ?? []).join(", ");
   editForm.recruitmentNeeds = (project.recruitmentNeeds ?? []).map((need) => ({
     skill: need.skill ?? "",
     count: need.count ?? 0,
@@ -560,7 +556,7 @@ const handleEditSubmit = async () => {
     submittingEdit.value = true;
     const updated = await updateProjectApi(current.project.id, current.controlPassword, {
       title: editForm.title.trim(),
-      type: editForm.type.trim(),
+      tagIds: editForm.tagIds,
       status: editForm.status,
       introduction: editForm.introduction.trim(),
       description: editForm.description,
@@ -568,10 +564,6 @@ const handleEditSubmit = async () => {
       ownerName: editForm.ownerName.trim(),
       ownerMinecraftId: editForm.ownerMinecraftId.trim(),
       publicContact: editForm.publicContact.trim(),
-      tags: editForm.tagsText
-          .split(/[,，]/)
-          .map((tag) => tag.trim())
-          .filter(Boolean),
       recruitmentNeeds: editForm.recruitmentNeeds
           .map((need) => ({
             skill: need.skill.trim(),

@@ -12,8 +12,20 @@
       </n-card>
 
       <section class="filters">
-        <n-input v-model:value="keyword" clearable placeholder="搜索标题、介绍、类型、状态、负责人或技能"/>
-        <n-select v-model:value="typeFilter" :options="typeSelectOptions"/>
+        <n-input
+            v-model:value="keyword"
+            :placeholder="searchPlaceholder"
+            class="filters-keyword"
+            clearable
+        />
+        <ProjectTagCascader
+            v-model="tagIds"
+            :max-count="20"
+            :show-count="false"
+            class="filters-tags"
+            placeholder="按标签筛选"
+        />
+        <n-select v-model:value="tagMatch" :options="tagMatchOptions" class="filters-match"/>
         <n-select v-model:value="statusFilter" :options="statusSelectOptions"/>
         <n-select v-model:value="skillFilter" :options="skillSelectOptions"/>
       </section>
@@ -43,27 +55,64 @@ definePageMeta({
   layout: false,
 });
 
-// 数据源对应 openapi.json：GET /api/project/object-items?status=...
-// （接口仅支持单个 status，在 useProjectHubApi 内并行请求 APPROVED / PREPARING / RECRUITING / IN_PROGRESS / PAUSED 五个公开状态后合并；
-//  APPROVED 必含——管理员「审核通过」即置为该状态，漏掉会导致刚通过审核的项目不展示）
-const {loadPublicProjectCatalog} = useProjectHubApi();
+// 数据源对应：GET /api/project/object-items（后端 Tag 化改造后强制 PUBLIC_STATUSES，单次请求）
+// 后端支持 keyword（命中标题/简介/描述/负责人/标签名）+ tagIds + tagMatch(ANY/ALL) 筛选；
+// 关键字与标签筛选走后端，状态 / 技能在前端对返回结果做二次过滤（返回的是全量公开项目，口径一致）。
+const {loadPublicProjects} = useProjectHubApi();
 const projects = ref<Project[]>([]);
+const loading = ref(false);
 
 const keyword = ref("");
-const typeFilter = ref("");
+const tagIds = ref<Array<number | string>>([]);
+const tagMatch = ref<"ANY" | "ALL">("ANY");
 const statusFilter = ref("");
 const skillFilter = ref("");
 
-onMounted(async () => {
-  projects.value = await loadPublicProjectCatalog();
-});
+// 关键字占位提示用户可搜标签名
+const searchPlaceholder = "搜索项目标题、介绍、负责人或标签";
 
-const projectSkills = (project: Project) => {
-  const needSkills = project.recruitmentNeeds?.map((item) => item.skill).filter(Boolean) ?? [];
-  return [...new Set(needSkills.length ? needSkills : project.skills ?? [])];
+// 标签匹配方式：ANY=满足任一标签即展示；ALL=需同时包含全部选中标签
+const tagMatchOptions = [
+  {label: "满足任一标签", value: "ANY"},
+  {label: "满足全部标签", value: "ALL"},
+];
+
+const fetchProjects = async () => {
+  loading.value = true;
+  try {
+    projects.value = await loadPublicProjects({
+      keyword: keyword.value,
+      tagIds: tagIds.value,
+      tagMatch: tagMatch.value,
+    });
+  } catch {
+    projects.value = [];
+  } finally {
+    loading.value = false;
+  }
 };
 
-const typeOptions = computed(() => [...new Set(projects.value.map((item) => item.type).filter(Boolean))]);
+// 关键字 / 标签 / 匹配方式变化 → 约 300ms 防抖后重新查询后端（避免每次按键都请求）
+let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+watch([keyword, tagIds, tagMatch], () => {
+  if (debounceTimer) {
+    clearTimeout(debounceTimer);
+  }
+  debounceTimer = setTimeout(() => {
+    void fetchProjects();
+  }, 300);
+}, {deep: true});
+
+onMounted(() => {
+  void fetchProjects();
+});
+
+// 招募技能始终来自 recruitmentNeeds[].skill，不再回退到项目标签
+const projectSkills = (project: Project) => {
+  const needSkills = project.recruitmentNeeds?.map((item) => item.skill).filter(Boolean) ?? [];
+  return [...new Set(needSkills)];
+};
+
 const statusOptions = computed(() => [
   ...new Set(projects.value.map((item) => item.status).filter((value): value is string => Boolean(value))),
 ]);
@@ -74,7 +123,6 @@ const toSelectOptions = (values: string[], allLabel: string) => [
   {label: allLabel, value: ""},
   ...values.map((value) => ({label: value, value})),
 ];
-const typeSelectOptions = computed(() => toSelectOptions(typeOptions.value, "全部类型"));
 // 状态下拉展示中文文案，value 仍是英文枚举，与 project.status 过滤匹配口径一致
 const statusSelectOptions = computed(() => [
   {label: "全部状态", value: ""},
@@ -82,27 +130,12 @@ const statusSelectOptions = computed(() => [
 ]);
 const skillSelectOptions = computed(() => toSelectOptions(skillOptions.value, "全部技能"));
 
-const filteredProjects = computed(() => {
-  const key = keyword.value.trim().toLowerCase();
-  return projects.value.filter((project) => {
-    const skills = projectSkills(project);
-    const haystack = [
-      project.title,
-      project.description,
-      project.summary,
-      project.type,
-      project.status,
-      formatProjectStatus(project.status),
-      project.ownerName,
-      ...skills,
-    ].join(" ").toLowerCase();
-
-    return (!key || haystack.includes(key))
-        && (!typeFilter.value || project.type === typeFilter.value)
-        && (!statusFilter.value || project.status === statusFilter.value)
-        && (!skillFilter.value || skills.includes(skillFilter.value));
-  });
-});
+// 关键字与标签已由后端筛选；这里只在前端按状态 / 技能再窄化
+const filteredProjects = computed(() => projects.value.filter((project) => {
+  const skills = projectSkills(project);
+  return (!statusFilter.value || project.status === statusFilter.value)
+      && (!skillFilter.value || skills.includes(skillFilter.value));
+}));
 
 // Minecraft 暖色主题（草地绿主色 + 羊皮纸卡片 + 木边输入/下拉），见 useMinecraftTheme
 const {themeOverrides} = useMinecraftTheme();
@@ -158,8 +191,13 @@ const {themeOverrides} = useMinecraftTheme();
 
 .filters {
   display: grid;
-  grid-template-columns: minmax(230px, 1fr) repeat(3, minmax(130px, 180px));
+  grid-template-columns: minmax(220px, 1.4fr) minmax(200px, 1.4fr) repeat(3, minmax(120px, 1fr));
   gap: 10px;
+}
+
+/* 让 grid 子项可收缩，避免 Cascader / Select 标签过长撑破列宽 */
+.filters > * {
+  min-width: 0;
 }
 
 /* n-input / n-select 对齐原 input/select 的 44px 最小高度 */

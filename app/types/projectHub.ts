@@ -7,6 +7,42 @@ export interface RecruitmentNeed {
   work: string;
 }
 
+// 全局标签字典里的单个标签（项目响应里携带的轻量形态，对标后端 TagSummaryResponse）。
+// 改造后「项目分类 / 项目类型」已并入这套 Tag 字典，不再有独立的 type 字段。
+export interface ProjectTag {
+  id: number | string;
+  name: string;
+  parentId?: number | string | null;
+}
+
+// 公开 Tag 树节点（GET /api/project/tags/tree）：驱动投稿 / 编辑 / 项目墙的 Cascader。
+// selectable=false 的节点仅用于分组展示，不能被项目直接选择。
+export interface TagTreeNode extends ProjectTag {
+  selectable: boolean;
+  sortOrder: number;
+  children: TagTreeNode[];
+}
+
+// 管理端 Tag 列表项（GET /api/admin/tags）：含关联项目数与软删除状态，平铺返回，前端按 parentId 组树。
+export interface TagAdminItem extends ProjectTag {
+  selectable: boolean;
+  sortOrder: number;
+  description?: string | null;
+  projectCount: number;
+  deleted: boolean;
+  createTime?: string | null;
+  updateTime?: string | null;
+}
+
+// 管理端新增 / 修改 Tag 的请求体（对标后端 TagSaveRequest）。
+export interface TagSavePayload {
+  name: string;
+  parentId?: number | string | null;
+  selectable: boolean;
+  sortOrder: number;
+  description?: string | null;
+}
+
 export interface ProjectUpdate {
   id: string;
   projectId: string;
@@ -33,7 +69,9 @@ export interface Project {
   id: string;
   title: string;
   summary?: string;
-  type: string;
+  // 项目标签（对标后端 ObjectItemResponse.tags: TagSummaryResponse[]）。
+  // 原 type（项目类型）与自由字符串 tags 已统一并入这套由后台维护的 Tag 字典。
+  tags: ProjectTag[];
   status?: string;
   projectStatus?: string;
   ownerName: string;
@@ -42,7 +80,6 @@ export interface Project {
     // 后端 ObjectItem.ownerId：负责该项目的「项目管理」账号 id（由总管理分配），未分配为 null/undefined。
     managerId?: number | string | null;
   neededMembers?: number;
-  skills?: string[];
   description: string;
   publicContact?: string;
   privateContact?: string;
@@ -73,9 +110,9 @@ export interface DataSnapshot {
 
 export interface SubmitProjectPayload {
   title: string;
-  type: string;
+  // 标签 ID（0~10 个，仅能从管理员预设的 Tag 字典里选择）；后端统一校验数量 / 去重 / 存在性。
+  tagIds: Array<number | string>;
   introduction?: string;
-  tags?: string[];
   ownerName: string;
   ownerMinecraftId: string;
   description: string;
@@ -111,7 +148,9 @@ export interface SubmitCommentPayload {
 // 与 SubmitProjectPayload 的区别：投稿是全新创建（含 ownerPassword），编辑是增量修改已存在项目。
 export interface UpdateProjectPayload {
   title?: string;
-  type?: string;
+  // 标签 ID：null/undefined = 不修改；空数组 = 清空全部标签；非空数组 = 完整替换。
+  // 与后端 ObjectItemUpdateRequest.tagIds 的 PATCH/PUT 语义对齐。
+  tagIds?: Array<number | string>;
   introduction?: string;
   description?: string;
   // 仅允许在 4 个运营状态间切换（PREPARING/RECRUITING/IN_PROGRESS/PAUSED）；
@@ -121,7 +160,6 @@ export interface UpdateProjectPayload {
   ownerMinecraftId?: string;
   publicContact?: string;
     coverImageUrl?: string;
-  tags?: string[];
   recruitmentNeeds?: RecruitmentNeed[];
 }
 
@@ -150,9 +188,9 @@ export interface ManagerSummary {
 // controlPassword 可选——留空则该项目不支持「项目方控制密码自服务」，仅管理员 JWT 管理。
 export interface CreateProjectAdminPayload {
     title: string;
-    type: string;
+    // 标签 ID（0~10 个，仅能从管理员预设的 Tag 字典里选择）；与匿名投稿同一套后端校验。
+    tagIds: Array<number | string>;
     introduction?: string;
-    tags?: string[];
     ownerName?: string;
     ownerMinecraftId?: string;
     description?: string;
@@ -236,6 +274,16 @@ export interface FileItem {
 // 我的文件分页结果（GET /api/files/mine）。
 export interface FilePage {
     content: FileItem[];
+    totalElements: number;
+    totalPages: number;
+    page: number;
+    size: number;
+}
+
+// 公开项目分页结果（GET /api/project/object-items 带 page/size 时返回）。
+// 不带 page/size 时后端返回裸数组 Project[]，由 composable 分别处理。
+export interface ProjectPage {
+    content: Project[];
     totalElements: number;
     totalPages: number;
     page: number;

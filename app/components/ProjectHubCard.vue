@@ -1,7 +1,8 @@
 <template>
   <article class="project-card">
     <div class="card-top">
-      <span class="chip">{{ project.type || "未分类" }}</span>
+      <span v-for="tag in visibleTags" :key="tag.id" class="chip">{{ tag.name }}</span>
+      <span v-if="extraTagCount > 0" class="chip muted">+{{ extraTagCount }}</span>
       <span class="chip muted">{{ formatProjectStatus(project.status) }}</span>
     </div>
     <h3>{{ project.title }}</h3>
@@ -35,9 +36,15 @@ const intro = computed(() => {
   return source.length > 110 ? `${source.slice(0, 110)}...` : source || "项目发起者还没有补充详细介绍。";
 });
 
+// 卡片只展示前 4 个标签，超出部分折叠成 +N；标签为空时仅显示状态 chip
+const VISIBLE_TAG_LIMIT = 4;
+const visibleTags = computed(() => (props.project.tags ?? []).slice(0, VISIBLE_TAG_LIMIT));
+const extraTagCount = computed(() => Math.max((props.project.tags ?? []).length - VISIBLE_TAG_LIMIT, 0));
+
+// 招募技能始终来自 recruitmentNeeds[].skill，不再与项目标签混用
 const skills = computed(() => {
   const fromNeeds = props.project.recruitmentNeeds?.map((item) => item.skill).filter(Boolean) ?? [];
-  return [...new Set(fromNeeds.length ? fromNeeds : props.project.skills ?? [])].slice(0, 6);
+  return [...new Set(fromNeeds)].slice(0, 6);
 });
 
 const needCount = computed(() => {

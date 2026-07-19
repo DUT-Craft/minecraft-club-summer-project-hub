@@ -96,7 +96,7 @@
                 </n-tag>
               </div>
               <div class="row-meta">
-                <span>{{ project.type || "未分类" }}</span>
+                <span>{{ formatTagNames(project.tags) }}</span>
                 <span>负责人：{{ project.ownerName || "——" }}</span>
                 <span v-if="project.ownerMinecraftId">MC：{{ project.ownerMinecraftId }}</span>
                 <span class="row-id">#{{ project.id }}</span>
@@ -139,8 +139,8 @@
             <n-form-item label="项目标题" path="title">
               <n-input v-model:value="createForm.title" placeholder="项目标题"/>
             </n-form-item>
-            <n-form-item label="项目类型" path="type">
-              <n-input v-model:value="createForm.type" placeholder="如：建筑 / 红石 / 剧情"/>
+            <n-form-item label="项目标签" path="tagIds">
+              <ProjectTagCascader v-model="createForm.tagIds" :max-count="10" placeholder="从预设标签里选择，最多 10 个"/>
             </n-form-item>
           </div>
 
@@ -175,9 +175,6 @@
 
           <n-form-item label="公开联系方式" path="publicContact">
             <n-input v-model:value="createForm.publicContact" placeholder="QQ 群 / Discord 等"/>
-          </n-form-item>
-          <n-form-item label="标签" path="tagsText">
-            <n-input v-model:value="createForm.tagsText" placeholder="用逗号分隔，如：建筑,红石"/>
           </n-form-item>
 
           <n-form-item label="招工需求" path="recruitmentNeeds">
@@ -408,7 +405,7 @@ const newCreateNeed = (): RecruitmentNeed => ({
 
 const createForm = reactive({
   title: "",
-  type: "",
+  tagIds: [] as Array<number | string>,
   status: "RECRUITING",
   introduction: "",
   description: "",
@@ -416,14 +413,12 @@ const createForm = reactive({
   ownerName: "",
   ownerMinecraftId: "",
   publicContact: "",
-  tagsText: "",
   controlPassword: "",
   recruitmentNeeds: [newCreateNeed()] as RecruitmentNeed[],
 });
 
 const createRules: FormRules = {
   title: {required: true, message: "请填写项目标题", trigger: ["blur", "input"]},
-  type: {required: true, message: "请填写项目类型", trigger: ["blur", "input"]},
 };
 
 const addCreateNeed = () => {
@@ -433,7 +428,7 @@ const addCreateNeed = () => {
 const resetCreateForm = () => {
   Object.assign(createForm, {
     title: "",
-    type: "",
+    tagIds: [],
     status: "RECRUITING",
     introduction: "",
     description: "",
@@ -441,7 +436,6 @@ const resetCreateForm = () => {
     ownerName: "",
     ownerMinecraftId: "",
     publicContact: "",
-    tagsText: "",
     controlPassword: "",
     recruitmentNeeds: [newCreateNeed()],
   });
@@ -462,7 +456,7 @@ const handleCreateSubmit = async () => {
     creating.value = true;
     const created = await createProjectAdmin({
       title: createForm.title.trim(),
-      type: createForm.type.trim(),
+      tagIds: createForm.tagIds,
       status: isSuperAdmin.value ? createForm.status : undefined,
       introduction: createForm.introduction.trim() || undefined,
       description: createForm.description || undefined,
@@ -470,7 +464,6 @@ const handleCreateSubmit = async () => {
       ownerName: createForm.ownerName.trim() || undefined,
       ownerMinecraftId: createForm.ownerMinecraftId.trim() || undefined,
       publicContact: createForm.publicContact.trim() || undefined,
-      tags: createForm.tagsText.split(/[,，]/).map((tag) => tag.trim()).filter(Boolean),
       recruitmentNeeds: createForm.recruitmentNeeds
           .map((need) => ({skill: need.skill.trim(), count: Number(need.count) || 0, work: need.work.trim()}))
           .filter((need) => need.skill),
@@ -492,6 +485,10 @@ const handleCreateSubmit = async () => {
 };
 
 const labelOf = (value: string) => filterOptions.find((opt) => opt.value === value)?.label ?? value;
+
+// 标签名称拼接（无标签时回退占位文案）
+const formatTagNames = (tags?: { name?: string }[]) =>
+    (tags ?? []).map((tag) => tag.name).filter(Boolean).join("、") || "未设置标签";
 
 const statusTagType = (status?: string): "warning" | "success" | "error" | "info" | "default" => {
   switch ((status || "").toUpperCase()) {

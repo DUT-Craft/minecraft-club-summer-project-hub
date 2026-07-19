@@ -11,7 +11,8 @@
         <n-card :bordered="false" class="detail-hero">
           <div class="hero-info">
             <n-space :size="8" align="center">
-              <n-tag :bordered="false" type="primary">{{ project.type || "未分类" }}</n-tag>
+              <n-tag v-for="tag in project.tags" :key="tag.id" :bordered="false" type="primary">{{ tag.name }}</n-tag>
+              <n-tag v-if="!project.tags.length" :bordered="false" type="primary">未设置标签</n-tag>
               <n-tag :bordered="false" :type="statusTagType(project.status)">{{
                   formatProjectStatus(project.status)
                 }}
@@ -40,8 +41,8 @@
 
           <dl class="info-list">
             <div class="info-row">
-              <dt>项目类型</dt>
-              <dd>{{ project.type || "——" }}</dd>
+              <dt>项目标签</dt>
+              <dd>{{ formatTagNames(project.tags) }}</dd>
             </div>
             <div class="info-row">
               <dt>当前状态</dt>
@@ -210,8 +211,8 @@
               <n-form-item label="项目标题" path="title">
                 <n-input v-model:value="form.title" placeholder="项目标题"/>
               </n-form-item>
-              <n-form-item label="项目类型" path="type">
-                <n-input v-model:value="form.type" placeholder="如：建筑 / 红石 / 剧情"/>
+              <n-form-item label="项目标签" path="tagIds">
+                <ProjectTagCascader v-model="form.tagIds" :max-count="10" placeholder="从预设标签里选择，最多 10 个"/>
               </n-form-item>
             </div>
 
@@ -245,9 +246,6 @@
 
             <n-form-item label="公开联系方式" path="publicContact">
               <n-input v-model:value="form.publicContact" placeholder="QQ 群 / Discord 等"/>
-            </n-form-item>
-            <n-form-item label="标签" path="tagsText">
-              <n-input v-model:value="form.tagsText" placeholder="用逗号分隔，如：建筑,红石"/>
             </n-form-item>
 
             <n-form-item label="招工需求" path="recruitmentNeeds">
@@ -346,6 +344,10 @@ onMounted(async () => {
 
 const needs = computed(() => project.value?.recruitmentNeeds ?? []);
 
+// 标签名称拼接（无标签时回退占位文案，供 hero 标签 chip / info 行复用）
+const formatTagNames = (tags?: { name?: string }[]) =>
+    (tags ?? []).map((tag) => tag.name).filter(Boolean).join("、") || "——";
+
 const formatTime = (value?: string) => (value ? new Date(value).toLocaleString("zh-CN") : "未记录时间");
 
 const statusTagType = (status?: string): "warning" | "success" | "error" | "info" | "default" => {
@@ -395,7 +397,7 @@ const submitting = ref(false);
 
 const form = reactive({
   title: "",
-  type: "",
+  tagIds: [] as Array<number | string>,
   status: "PENDING",
   introduction: "",
   description: "",
@@ -403,13 +405,11 @@ const form = reactive({
   ownerName: "",
   ownerMinecraftId: "",
   publicContact: "",
-  tagsText: "",
   recruitmentNeeds: [] as { skill: string; count: number; work: string }[],
 });
 
 const rules: FormRules = {
   title: {required: true, message: "请填写项目标题", trigger: ["blur", "input"]},
-  type: {required: true, message: "请填写项目类型", trigger: ["blur", "input"]},
 };
 
 const addNeed = () => {
@@ -422,7 +422,7 @@ const openEditModal = () => {
     return;
   }
   form.title = current.title ?? "";
-  form.type = current.type ?? "";
+  form.tagIds = (current.tags ?? []).map((tag) => tag.id);
   form.status = current.status ?? "PENDING";
   form.introduction = current.summary ?? "";
   form.description = current.description ?? "";
@@ -430,7 +430,6 @@ const openEditModal = () => {
   form.ownerName = current.ownerName ?? "";
   form.ownerMinecraftId = current.ownerMinecraftId ?? "";
   form.publicContact = current.publicContact ?? "";
-  form.tagsText = (current.skills ?? []).join(", ");
   form.recruitmentNeeds = (current.recruitmentNeeds ?? []).map((need) => ({
     skill: need.skill ?? "",
     count: need.count ?? 0,
@@ -449,7 +448,7 @@ const handleEditSubmit = async () => {
     submitting.value = true;
     const updated = await updateProjectAdmin(projectId.value, {
       title: form.title.trim(),
-      type: form.type.trim(),
+      tagIds: form.tagIds,
       status: form.status,
       introduction: form.introduction.trim(),
       description: form.description,
@@ -457,7 +456,6 @@ const handleEditSubmit = async () => {
       ownerName: form.ownerName.trim(),
       ownerMinecraftId: form.ownerMinecraftId.trim(),
       publicContact: form.publicContact.trim(),
-      tags: form.tagsText.split(/[,，]/).map((tag) => tag.trim()).filter(Boolean),
       recruitmentNeeds: form.recruitmentNeeds
           .map((need) => ({skill: need.skill.trim(), count: Number(need.count) || 0, work: need.work.trim()}))
           .filter((need) => need.skill),

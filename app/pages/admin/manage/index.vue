@@ -108,6 +108,15 @@
 
           <n-card v-if="isSuperAdmin" :bordered="false" class="entry-card" hoverable>
             <div class="entry-head">
+              <span class="eyebrow">Tags</span>
+              <h2>标签管理</h2>
+            </div>
+            <p class="entry-desc">维护全局项目标签字典（父子层级 / 是否可选 / 排序），驱动投稿、项目编辑与项目墙 Cascader。</p>
+            <n-button size="large" type="primary" @click="navigateTo('/admin/manage/tags')">进入标签管理</n-button>
+          </n-card>
+
+          <n-card v-if="isSuperAdmin" :bordered="false" class="entry-card" hoverable>
+            <div class="entry-head">
               <span class="eyebrow">Ideas</span>
               <h2>想法管理</h2>
             </div>
