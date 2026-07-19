@@ -3,7 +3,7 @@
 // 前端展示统一走这份映射，避免在多个页面 / 组件里各写一份导致漂移。
 export const PROJECT_STATUS_LABEL: Record<string, string> = {
   PENDING: "待审核",
-  APPROVED: "审核通过",
+  APPROVED: "筹备中",
   REJECTED: "审核未通过",
   DELETED: "已删除",
   PREPARING: "筹备中",
@@ -20,3 +20,5 @@ export const formatProjectStatus = (status?: string): string => {
   }
   return PROJECT_STATUS_LABEL[status.toUpperCase()] ?? "筹备中";
 };
+
+export const OPERATIONAL_STATUSES = ["PREPARING", "RECRUITING", "IN_PROGRESS", "PAUSED"] as const;

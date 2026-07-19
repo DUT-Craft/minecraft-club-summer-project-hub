@@ -44,6 +44,10 @@
               </dd>
             </div>
             <div class="info-row">
+              <dt>项目进度</dt>
+              <dd>{{ project.progress }}%</dd>
+            </div>
+            <div class="info-row">
               <dt>负责人</dt>
               <dd>{{ project.ownerName || "——" }}</dd>
             </div>
@@ -69,6 +73,7 @@
             <strong>详细介绍</strong>
             <p class="info-text">{{ project.description }}</p>
           </div>
+          <img v-if="project.coverImageUrl" :src="project.coverImageUrl" :alt="project.title" class="project-cover" />
 
           <div v-if="needs.length" class="info-block">
             <strong>招工需求</strong>
@@ -93,6 +98,8 @@
             </n-popconfirm>
           </div>
         </n-card>
+
+        <AdminProjectUpdates :project-id="project.id" admin-mode />
 
         <!-- 编辑项目：管理员可改任意字段，含状态（覆盖全部 8 个状态，含审核态） -->
         <n-modal
@@ -124,6 +131,21 @@
             <n-form-item label="状态" path="status">
               <n-select v-model:value="form.status" :options="statusOptions" placeholder="选择状态" />
             </n-form-item>
+
+            <div class="edit-grid">
+              <n-form-item label="项目进度（%）" path="progress">
+                <n-input-number v-model:value="form.progress" :min="0" :max="100" class="full-control" />
+              </n-form-item>
+              <n-form-item label="项目封面">
+                <n-upload :custom-request="handleCoverUpload" :show-file-list="false" accept="image/*">
+                  <n-button :loading="uploadingCover">{{ uploadingCover ? "上传中..." : "上传封面" }}</n-button>
+                </n-upload>
+              </n-form-item>
+            </div>
+            <n-form-item label="封面地址" path="coverImageUrl">
+              <n-input v-model:value="form.coverImageUrl" clearable placeholder="上传后自动填写，也可粘贴图片地址" />
+            </n-form-item>
+            <img v-if="form.coverImageUrl" :src="form.coverImageUrl" alt="项目封面预览" class="edit-cover-preview" />
 
             <n-form-item label="项目简介" path="introduction">
               <n-input v-model:value="form.introduction" type="textarea" :rows="2" placeholder="一句话简介" />
@@ -188,7 +210,7 @@
 </template>
 
 <script setup lang="ts">
-import type { FormInst, FormRules } from "naive-ui";
+import type { FormInst, FormRules, UploadCustomRequestOptions } from "naive-ui";
 import type { AdminSession } from "~/composables/useAdminAuth";
 import type { Project } from "~/types/projectHub";
 
@@ -197,10 +219,9 @@ definePageMeta({
   validate: (to) => /^\d+$/.test(String(to.params.id)),
 });
 
-// 管理员可设置全部 8 个状态（含审核态 PENDING/APPROVED/REJECTED 与运营态）
+// 管理员可设置内部审核态和四个运营状态；APPROVED 旧值会由后端兼容迁移为 PREPARING。
 const statusOptions = [
   { label: "待审核", value: "PENDING" },
-  { label: "审核通过", value: "APPROVED" },
   { label: "审核未通过", value: "REJECTED" },
   { label: "筹备中", value: "PREPARING" },
   { label: "招募中", value: "RECRUITING" },
@@ -213,7 +234,7 @@ const route = useRoute();
 const message = useMessage();
 const { themeOverrides } = useMinecraftTheme();
 const { read } = useAdminAuth();
-const { loadProjectById, updateProjectAdmin, deleteProjectBatch } = useProjectHubApi();
+const { loadProjectById, updateProjectAdmin, deleteProjectBatch, uploadProjectImageAdmin } = useProjectHubApi();
 
 const loading = ref(true);
 const session = ref<AdminSession | null>(null);
@@ -253,6 +274,7 @@ const statusTagType = (status?: string): "warning" | "success" | "error" | "info
 const formRef = ref<FormInst | null>(null);
 const showEditModal = ref(false);
 const submitting = ref(false);
+const uploadingCover = ref(false);
 
 const form = reactive({
   title: "",
@@ -264,6 +286,8 @@ const form = reactive({
   ownerMinecraftId: "",
   publicContact: "",
   tagsText: "",
+  coverImageUrl: "",
+  progress: 0,
   recruitmentNeeds: [] as { skill: string; count: number; work: string }[],
 });
 
@@ -284,18 +308,39 @@ const openEditModal = () => {
   form.title = current.title ?? "";
   form.type = current.type ?? "";
   form.status = current.status ?? "PENDING";
+  if (form.status === "APPROVED") form.status = "PREPARING";
   form.introduction = current.summary ?? "";
   form.description = current.description ?? "";
   form.ownerName = current.ownerName ?? "";
   form.ownerMinecraftId = current.ownerMinecraftId ?? "";
   form.publicContact = current.publicContact ?? "";
   form.tagsText = (current.skills ?? []).join(", ");
+  form.coverImageUrl = current.coverImageUrl ?? "";
+  form.progress = current.progress ?? 0;
   form.recruitmentNeeds = (current.recruitmentNeeds ?? []).map((need) => ({
     skill: need.skill ?? "",
     count: need.count ?? 0,
     work: need.work ?? "",
   }));
   showEditModal.value = true;
+};
+
+const handleCoverUpload = async ({ file, onFinish, onError }: UploadCustomRequestOptions) => {
+  const raw = file.file;
+  if (!raw) {
+    onError();
+    return;
+  }
+  try {
+    uploadingCover.value = true;
+    form.coverImageUrl = await uploadProjectImageAdmin(projectId.value, raw);
+    onFinish();
+  } catch (error) {
+    message.error(error instanceof Error ? error.message : "封面上传失败");
+    onError();
+  } finally {
+    uploadingCover.value = false;
+  }
 };
 
 const handleEditSubmit = async () => {
@@ -315,6 +360,8 @@ const handleEditSubmit = async () => {
       ownerName: form.ownerName.trim(),
       ownerMinecraftId: form.ownerMinecraftId.trim(),
       publicContact: form.publicContact.trim(),
+      coverImageUrl: form.coverImageUrl.trim(),
+      progress: form.progress,
       tags: form.tagsText.split(/[,，]/).map((tag) => tag.trim()).filter(Boolean),
       recruitmentNeeds: form.recruitmentNeeds
         .map((need) => ({ skill: need.skill.trim(), count: Number(need.count) || 0, work: need.work.trim() }))
@@ -373,7 +420,7 @@ const handleDelete = async () => {
   box-shadow: 0 6px 0 #5a3a21;
 }
 
-.detail-hero :deep(.n-card__content) {
+.detail-hero :deep(.n-card-content) {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
@@ -486,6 +533,21 @@ const handleDelete = async () => {
   word-break: break-word;
 }
 
+.project-cover,
+.edit-cover-preview {
+  width: 100%;
+  max-height: 360px;
+  display: block;
+  margin-top: 14px;
+  object-fit: cover;
+  border: 2px solid #5a3a21;
+  border-radius: 8px;
+}
+
+.full-control {
+  width: 100%;
+}
+
 .need-list {
   display: grid;
   gap: 10px;
@@ -577,7 +639,7 @@ const handleDelete = async () => {
 }
 
 @media (width <= 720px) {
-  .detail-hero :deep(.n-card__content) {
+  .detail-hero :deep(.n-card-content) {
     flex-direction: column;
     align-items: flex-start;
   }

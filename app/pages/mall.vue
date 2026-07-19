@@ -44,7 +44,7 @@ definePageMeta({
 });
 
 // 数据源对应 openapi.json：GET /api/project/object-items?status=...
-// （接口仅支持单个 status，在 useProjectHubApi 内并行请求 PREPARING / RECRUITING / IN_PROGRESS / PAUSED 四个公开状态后合并）
+// （接口在 useProjectHubApi 内并行请求四个运营状态，并兼容旧 APPROVED 数据）
 const { loadPublicProjectCatalog } = useProjectHubApi();
 const projects = ref<Project[]>([]);
 
@@ -134,7 +134,7 @@ const { themeOverrides } = useMinecraftTheme();
   box-shadow: 0 6px 0 #5a3a21;
 }
 
-.page-head :deep(.n-card__content) {
+.page-head :deep(.n-card-content) {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -172,10 +172,12 @@ const { themeOverrides } = useMinecraftTheme();
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
   gap: 16px;
+  /* 不让有封面或长内容的卡片把同一行其它卡片拉伸出空白高度。 */
+  align-items: start;
 }
 
 @media (width <= 760px) {
-  .page-head :deep(.n-card__content) {
+  .page-head :deep(.n-card-content) {
     flex-direction: column;
     align-items: flex-start;
   }

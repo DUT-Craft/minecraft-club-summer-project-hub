@@ -58,9 +58,26 @@ const extractList = <T>(value: unknown): T[] => {
 
 const normalizeProject = (project: Project): Project => ({
   ...project,
-  status: project.status || project.projectStatus || "筹备中",
+  status: normalizeProjectStatus(project.status || project.projectStatus),
+  progress: Number.isFinite(Number(project.progress)) ? Math.min(100, Math.max(0, Number(project.progress))) : 0,
   ownerMinecraftId: project.ownerMinecraftId || project.submitterMinecraftId,
 });
+
+const normalizeProjectStatus = (status?: string): string => {
+  const value = (status || "PREPARING").toUpperCase();
+  return value === "APPROVED" ? "PREPARING" : value;
+};
+
+const extractFileUrl = (value: unknown): string => {
+  if (typeof value === "string") return value;
+  if (!value || typeof value !== "object") return "";
+  const record = value as Record<string, unknown>;
+  for (const key of ["url", "link", "path", "fileUrl", "downloadUrl", "data"]) {
+    const picked = record[key];
+    if (typeof picked === "string") return picked;
+  }
+  return "";
+};
 
 const normalizeIdea = (idea: Idea): Idea => ({
   ...idea,
@@ -96,6 +113,10 @@ interface ObjectItemResponse {
   contactInformation?: string;
   createTime?: string;
   updateTime?: string;
+  coverImageUrl?: string;
+  progress?: number;
+  ownerId?: number;
+  hasControlPassword?: boolean;
 }
 
 interface MindResponse {
@@ -107,6 +128,7 @@ interface MindResponse {
   status?: string;
   createTime?: string;
   updateTime?: string;
+  trackingToken?: string;
 }
 
 // 项目详情页子资源（项目动态 / 项目评论 / 加入申请）的原始实体字段名。
@@ -141,11 +163,12 @@ export interface JoinApplicationResponse {
   reason?: string;
   skill?: string;
   status?: string;
+  rejectReason?: string;
   createTime?: string;
   updateTime?: string;
+  trackingToken?: string;
 }
 
-// 公开接口已按 status=APPROVED 过滤，能查到的都是已通过审核的内容
 // 后端英文枚举（PENDING/APPROVED/REJECTED/...）→ 前端 ReviewStatus 联合，供管理端按真实状态展示
 const mapReviewStatus = (status?: string): ReviewStatus => {
   switch ((status || "").toUpperCase()) {
@@ -169,18 +192,20 @@ const mapObjectItemToProject = (item: ObjectItemResponse): Project => ({
   type: item.type ?? "",
   summary: item.introduction,
   description: item.description ?? "",
-  status: item.status,
-  projectStatus: item.status,
+  status: normalizeProjectStatus(item.status),
+  projectStatus: normalizeProjectStatus(item.status),
   ownerName: item.leader ?? "",
   ownerMinecraftId: item.leaderMcId,
   skills: item.tags ? [...item.tags] : undefined,
   publicContact: item.contactInformation,
+  coverImageUrl: item.coverImageUrl,
+  progress: Number(item.progress ?? 0),
   recruitmentNeeds: normalizeArray<ObjectItemNeedMember>(item.needMembers).map((need) => ({
     skill: need.skill ?? "",
     count: need.number ?? 0,
     work: need.context ?? "",
   })),
-  reviewStatus: "approved",
+  reviewStatus: mapReviewStatus(item.status),
   createdAt: item.createTime ?? "",
   updatedAt: item.updateTime,
 });
@@ -192,8 +217,9 @@ const mapMindToIdea = (mind: MindResponse): Idea => ({
   nickname: mind.nickName,
   submitterName: mind.nickName,
   minecraftId: mind.mcId,
-  reviewStatus: "approved",
+  reviewStatus: mapReviewStatus(mind.status),
   createdAt: mind.createTime ?? "",
+  trackingToken: mind.trackingToken,
 });
 
 const mapObjectItemUpdateToProjectUpdate = (item: ObjectItemUpdateResponse): ProjectUpdate => ({
@@ -219,6 +245,36 @@ const mapObjectItemCommentToProjectComment = (item: ObjectItemCommentResponse): 
 export const useProjectHubApi = () => {
   const runtimeConfig = useRuntimeConfig();
   const baseURL = (runtimeConfig.public.apiBase as string) || "/api";
+  const apiOrigin = (() => {
+    try {
+      return new URL(baseURL, "http://localhost").origin;
+    } catch {
+      return "";
+    }
+  })();
+
+  const normalizeAssetUrl = (value?: string): string | undefined => {
+    if (!value) return undefined;
+    try {
+      const parsed = new URL(value, apiOrigin || "http://localhost");
+      if (["localhost", "127.0.0.1", "0.0.0.0"].includes(parsed.hostname) && apiOrigin) {
+        return `${apiOrigin}${parsed.pathname}${parsed.search}${parsed.hash}`;
+      }
+      return parsed.toString();
+    } catch {
+      return value;
+    }
+  };
+
+  const normalizeApiProject = (project: Project): Project => ({
+    ...normalizeProject(project),
+    coverImageUrl: normalizeAssetUrl(project.coverImageUrl),
+  });
+
+  const normalizeApiUpdate = (update: ProjectUpdate): ProjectUpdate => ({
+    ...update,
+    imageUrl: normalizeAssetUrl(update.imageUrl),
+  });
 
   const request = async <T>(url: string, options: Parameters<typeof $fetch<T>>[1] = {}) => {
     const response = await $fetch<T | ApiEnvelope<T>>(url, {
@@ -242,18 +298,9 @@ export const useProjectHubApi = () => {
     }
   };
 
-  // 首页公开展示：GET /api/project/object-items?status=IN_PROGRESS
+  // 首页公开展示与项目广场共用完整公开项目集合。
   const loadPublicProjects = async (): Promise<Project[]> => {
-    try {
-      const items = await request<ObjectItemResponse[]>("/project/object-items", {
-        query: { status: "IN_PROGRESS" },
-      });
-      return normalizeArray<ObjectItemResponse>(items)
-        .map(mapObjectItemToProject)
-        .map(normalizeProject);
-    } catch {
-      return [];
-    }
+    return loadPublicProjectCatalog();
   };
 
   // 想法墙 / 首页公开展示：GET /api/project/minds?status=APPROVED（openapi.json）
@@ -274,23 +321,26 @@ export const useProjectHubApi = () => {
 
   // 项目广场（mall 页）数据源：GET /api/project/object-items?status=...
   // 接口仅支持单个 status，并行请求各公开状态后合并；
-  // 公开状态 = PREPARING（筹备中）+ RECRUITING（招募中）+ IN_PROGRESS（制作中）+ PAUSED（暂缓），
-  // PENDING / REJECTED / DELETED 不对外展示
+  // 公开状态 = PREPARING（筹备中）+ RECRUITING（招募中）+ IN_PROGRESS（制作中）+ PAUSED（暂缓）。
+  // APPROVED 是旧数据的审核态，暂时一并查询并在映射层显示为 PREPARING。
   const loadPublicProjectCatalog = async (): Promise<Project[]> => {
-    const publicStatuses = ["PREPARING", "RECRUITING", "IN_PROGRESS", "PAUSED"] as const;
-    try {
-      const groups = await Promise.all(
-        publicStatuses.map((status) =>
-          get<ObjectItemResponse[]>("/project/object-items", { status }),
-        ),
-      );
-      return groups
-        .flatMap((items) => normalizeArray<ObjectItemResponse>(items))
-        .map(mapObjectItemToProject)
-        .map(normalizeProject);
-    } catch {
-      return [];
-    }
+    const publicStatuses = ["PREPARING", "RECRUITING", "IN_PROGRESS", "PAUSED", "APPROVED"] as const;
+    const groups = await Promise.all(
+      publicStatuses.map((status) =>
+        get<ObjectItemResponse[]>("/project/object-items", { status }).catch(() => []),
+      ),
+    );
+    const seen = new Set<string>();
+    return groups
+      .flatMap((items) => normalizeArray<ObjectItemResponse>(items))
+      .filter((item) => {
+        const id = String(item.id ?? "");
+        if (!id || seen.has(id)) return false;
+        seen.add(id);
+        return true;
+      })
+      .map(mapObjectItemToProject)
+      .map(normalizeApiProject);
   };
 
   // 公开总数专用接口（openapi.json）：
@@ -325,12 +375,10 @@ export const useProjectHubApi = () => {
   };
 
   const loadApprovedProjectCount = async (): Promise<number> => {
-    try {
-      const data = await get<unknown>("/project/object-items/count/in-progress");
-      return pickCount(data);
-    } catch {
-      return 0;
-    }
+    // Derive from the catalog for compatibility with the currently deployed
+    // backend, which predates count/public. This also keeps the number and
+    // visible card set on exactly the same status/filter contract.
+    return (await loadPublicProjectCatalog()).length;
   };
 
   const loadApprovedIdeaCount = async (): Promise<number> => {
@@ -349,7 +397,7 @@ export const useProjectHubApi = () => {
   const loadProjectById = async (id: string | number): Promise<Project | null> => {
     try {
       const item = await get<ObjectItemResponse>(`/project/object-items/${id}`);
-      return normalizeProject(mapObjectItemToProject(item));
+      return normalizeApiProject(mapObjectItemToProject(item));
     } catch {
       return null;
     }
@@ -363,6 +411,7 @@ export const useProjectHubApi = () => {
       );
       return normalizeArray<ObjectItemUpdateResponse>(items)
         .map(mapObjectItemUpdateToProjectUpdate)
+        .map(normalizeApiUpdate)
         .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
     } catch {
       return [];
@@ -415,9 +464,10 @@ export const useProjectHubApi = () => {
           context: need.work,
         })),
         tags: body.tags ?? [],
+        progress: body.progress ?? 0,
       }, { payloadMode: "json" });
 
-      return normalizeProject(mapObjectItemToProject(item));
+      return normalizeApiProject(mapObjectItemToProject(item));
     },
     // 投稿页：POST /api/project/minds（MindSaveRequest）
     // 前端表单字段映射：nickname→nickName、minecraftId→mcId；新投稿固定 status = PENDING。
@@ -432,19 +482,35 @@ export const useProjectHubApi = () => {
 
       return normalizeIdea(mapMindToIdea(mind));
     },
+    loadTrackedIdea: async (id: string | number, trackingToken: string): Promise<Idea> => {
+      const mind = await get<MindResponse>(`/project/minds/${id}/status`, { trackingToken });
+      return normalizeIdea(mapMindToIdea(mind));
+    },
     // 项目详情页：POST /api/project/object-items/{id}/join-applications（openapi.json）
     // 请求体仅含 nickName / mcId / contact / reason；objectItemId 取自路径 id；
     // status 由后端固定为 PENDING，不传。
     submitJoin: async (body: SubmitJoinPayload): Promise<JoinApplicationResponse> => {
-      return post<JoinApplicationResponse>(
+      const response = await post<JoinApplicationResponse>(
         `/project/object-items/${body.projectId}/join-applications`,
         {
           nickName: body.nickname,
           mcId: body.minecraftId,
           contact: body.contact,
           reason: body.reason,
+          skill: body.skill,
         },
         { payloadMode: "json" },
+      );
+      return response;
+    },
+    loadTrackedJoinApplication: async (
+      projectId: string | number,
+      applicationId: string | number,
+      trackingToken: string,
+    ): Promise<JoinApplicationResponse> => {
+      return get<JoinApplicationResponse>(
+        `/project/object-items/${projectId}/join-applications/${applicationId}/status`,
+        { trackingToken },
       );
     },
     // 项目详情页：POST /api/project/object-items/{id}/comments（openapi.json）
@@ -473,7 +539,7 @@ export const useProjectHubApi = () => {
         { payloadMode: "json" },
       );
 
-      return normalizeProject(mapObjectItemToProject(item));
+      return normalizeApiProject(mapObjectItemToProject(item));
     },
     // 项目方编辑项目信息：PUT /api/admin/project/object-items/{id}（openapi.json）
     // 与公开 POST 投稿不同，管理端更新请求体额外携带 controlPassword 做身份校验；
@@ -496,17 +562,19 @@ export const useProjectHubApi = () => {
           leader: body.ownerName,
           leaderMcId: body.ownerMinecraftId,
           contactInformation: body.publicContact,
-          needMembers: (body.recruitmentNeeds ?? []).map((need) => ({
+          needMembers: body.recruitmentNeeds?.map((need) => ({
             skill: need.skill,
             number: need.count,
             context: need.work,
           })),
-          tags: body.tags ?? [],
+          tags: body.tags,
+          coverImageUrl: body.coverImageUrl,
+          progress: body.progress,
         },
         { payloadMode: "json" },
       );
 
-      return normalizeProject(mapObjectItemToProject(item));
+      return normalizeApiProject(mapObjectItemToProject(item));
     },
     // 项目方修改管理密码：PATCH /api/admin/project/object-items/{id}/password（openapi.json）
     // 校验当前 controlPassword 通过后替换为 newControlPassword；前端需同步更新会话里的明文密码。
@@ -584,6 +652,7 @@ export const useProjectHubApi = () => {
       );
       return normalizeArray<ObjectItemUpdateResponse>(items)
         .map(mapObjectItemUpdateToProjectUpdate)
+        .map(normalizeApiUpdate)
         .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
     },
     // 项目方发布动态：POST /api/admin/project/object-items/{id}/updates（openapi.json）
@@ -604,7 +673,7 @@ export const useProjectHubApi = () => {
         },
         { payloadMode: "json" },
       );
-      return mapObjectItemUpdateToProjectUpdate(item);
+      return normalizeApiUpdate(mapObjectItemUpdateToProjectUpdate(item));
     },
     // 项目方修改动态：PUT /api/admin/project/object-items/{id}/updates/{updateId}（openapi.json）
     // 空值字段表示不修改；编辑表单不传 status，避免误改可见性。
@@ -624,7 +693,7 @@ export const useProjectHubApi = () => {
         },
         { payloadMode: "json" },
       );
-      return mapObjectItemUpdateToProjectUpdate(item);
+      return normalizeApiUpdate(mapObjectItemUpdateToProjectUpdate(item));
     },
     // 项目方删除动态：DELETE /api/admin/project/object-items/{id}/updates/{updateId}（openapi.json）
     // 此接口的 controlPassword 走 query（与「删除项目」走 body 不同），用 httpDelete。
@@ -637,6 +706,48 @@ export const useProjectHubApi = () => {
         `/admin/project/object-items/${projectId}/updates/${updateId}`,
         { controlPassword },
       );
+    },
+    loadProjectUpdatesGlobalAdmin: async (
+      projectId: string | number,
+      status?: string,
+    ): Promise<ProjectUpdate[]> => {
+      const items = await get<ObjectItemUpdateResponse[]>(
+        `/admin/object-items/${projectId}/updates`,
+        status ? { status } : undefined,
+      );
+      return normalizeArray<ObjectItemUpdateResponse>(items)
+        .map(mapObjectItemUpdateToProjectUpdate)
+        .map(normalizeApiUpdate)
+        .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+    },
+    createProjectUpdateGlobalAdmin: async (
+      projectId: string | number,
+      body: ProjectUpdatePayload,
+    ): Promise<ProjectUpdate> => {
+      const item = await post<ObjectItemUpdateResponse>(
+        `/admin/object-items/${projectId}/updates`,
+        { ...body, status: body.status ?? "APPROVED" },
+        { payloadMode: "json" },
+      );
+      return normalizeApiUpdate(mapObjectItemUpdateToProjectUpdate(item));
+    },
+    updateProjectUpdateGlobalAdmin: async (
+      projectId: string | number,
+      updateId: string | number,
+      body: ProjectUpdatePayload,
+    ): Promise<ProjectUpdate> => {
+      const item = await put<ObjectItemUpdateResponse>(
+        `/admin/object-items/${projectId}/updates/${updateId}`,
+        body,
+        { payloadMode: "json" },
+      );
+      return normalizeApiUpdate(mapObjectItemUpdateToProjectUpdate(item));
+    },
+    deleteProjectUpdateGlobalAdmin: async (
+      projectId: string | number,
+      updateId: string | number,
+    ): Promise<void> => {
+      await httpDelete(`/admin/object-items/${projectId}/updates/${updateId}`);
     },
     // 项目方查看全状态评论列表：GET /api/admin/project/object-items/{id}/comments（openapi.json）
     // 含 PENDING，供项目方审核。controlPassword / status 走 query。
@@ -691,6 +802,31 @@ export const useProjectHubApi = () => {
       }
       return "";
     },
+    uploadProjectImage: async (
+      projectId: string | number,
+      controlPassword: string,
+      file: File,
+    ): Promise<string> => {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("controlPassword", controlPassword);
+      const result = await post<unknown, FormData>(
+        `/admin/project/object-items/${projectId}/images`,
+        formData,
+        { payloadMode: "json" },
+      );
+      return extractFileUrl(result);
+    },
+    uploadProjectImageAdmin: async (projectId: string | number, file: File): Promise<string> => {
+      const formData = new FormData();
+      formData.append("file", file);
+      const result = await post<unknown, FormData>(
+        `/admin/object-items/${projectId}/images`,
+        formData,
+        { payloadMode: "json" },
+      );
+      return extractFileUrl(result);
+    },
     /* ---------- 全局管理员（token 鉴权，管理全部项目 / 想法） ---------- */
     // 管理员登录：POST /api/auth/login（openapi.json，User-Agent 由浏览器自动带）
     // 返回 token + 用户资料；data 是泛型 object，兼容 token / accessToken / authorization 等字段名。
@@ -704,14 +840,28 @@ export const useProjectHubApi = () => {
       const name = String(record.username ?? userRecord.username ?? userRecord.nickname ?? username);
       return { token, username: name };
     },
+    sendPasswordResetCode: async (email: string): Promise<void> => {
+      await post(
+        "/auth/verification-code",
+        { email, scene: "RESET_PASSWORD" },
+        { payloadMode: "json" },
+      );
+    },
+    resetAdminPassword: async (email: string, emailCode: string, newPassword: string): Promise<void> => {
+      await post(
+        "/auth/reset-password",
+        { email, emailCode, newPassword },
+        { payloadMode: "json" },
+      );
+    },
       // 管理员查询项目列表（全状态）：GET /api/admin/object-items?statuses=（openapi.json）
       // 后端已提供管理员专用分页接口：statuses[] 多状态过滤，一次请求即可拿到含 PENDING 的全量。
       // data 是被泛型擦除的空 object，按分页包装 { list, total, page, size } 或裸数组两种形态兼容解析。
     listProjectsAdmin: async (status?: string): Promise<Project[]> => {
         const params = {...(status ? {statuses: [status]} : {}), size: 500};
-        const data = await get<unknown>("/admin/object-items", params).catch(() => null);
+        const data = await get<unknown>("/admin/object-items", params);
         const items = extractList<ObjectItemResponse>(data);
-        return items.map(mapObjectItemToProject).map(normalizeProject);
+        return items.map(mapObjectItemToProject).map(normalizeApiProject);
     },
       // 管理员批量更新项目状态：PUT /api/admin/object-items/batch/status（openapi.json）
       // 后端已提供专用接口：body 为 { ids, status }，JWT 鉴权，无需 controlPassword。
@@ -750,23 +900,25 @@ export const useProjectHubApi = () => {
           leader: body.ownerName,
           leaderMcId: body.ownerMinecraftId,
           contactInformation: body.publicContact,
-          needMembers: (body.recruitmentNeeds ?? []).map((need) => ({
+          needMembers: body.recruitmentNeeds?.map((need) => ({
             skill: need.skill,
             number: need.count,
             context: need.work,
           })),
-          tags: body.tags ?? [],
+          tags: body.tags,
+          coverImageUrl: body.coverImageUrl,
+          progress: body.progress,
         },
         { payloadMode: "json" },
       );
-      return normalizeProject(mapObjectItemToProject(item));
+      return normalizeApiProject(mapObjectItemToProject(item));
     },
       // 管理员查询想法列表（全状态）：GET /api/admin/minds?statuses=（openapi.json）
       // 后端已提供管理员专用分页接口：statuses[] 多状态过滤，一次请求拿全量。
       // data 按分页包装 { list, ... } 或裸数组兼容解析。
     listIdeasAdmin: async (status?: string): Promise<Idea[]> => {
         const params = {...(status ? {statuses: [status]} : {}), size: 500};
-        const data = await get<unknown>("/admin/minds", params).catch(() => null);
+        const data = await get<unknown>("/admin/minds", params);
         const minds = extractList<MindResponse>(data);
         return minds.map(mapMindToIdea).map(normalizeIdea);
     },

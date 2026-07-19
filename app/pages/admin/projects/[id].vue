@@ -45,6 +45,13 @@
             登录时间：{{ formatTime(session.loginAt) }}。可在此编辑项目信息、修改管理密码、处理加入申请。
           </n-alert>
 
+          <img
+            v-if="session.project.coverImageUrl"
+            :src="session.project.coverImageUrl"
+            :alt="session.project.title"
+            class="project-cover"
+          />
+
           <dl class="info-list">
             <div class="info-row">
               <dt>项目标题</dt>
@@ -71,6 +78,10 @@
               <dd>
                 <n-tag :bordered="false" size="small" round class="status-tag">{{ statusLabel }}</n-tag>
               </dd>
+            </div>
+            <div class="info-row">
+              <dt>项目进度</dt>
+              <dd>{{ session.project.progress }}%</dd>
             </div>
           </dl>
 
@@ -195,6 +206,10 @@
                   <dt>申请时间</dt>
                   <dd>{{ formatTime(app.createTime) }}</dd>
                 </div>
+                <div v-if="app.skill">
+                  <dt>申请岗位</dt>
+                  <dd>{{ app.skill }}</dd>
+                </div>
               </dl>
               <p v-if="app.reason" class="application-reason">{{ app.reason }}</p>
               <div v-if="(app.status || '').toUpperCase() === 'PENDING'" class="application-actions">
@@ -281,6 +296,22 @@
                 placeholder="选择当前运营状态"
               />
             </n-form-item>
+
+            <div class="edit-grid">
+              <n-form-item label="项目进度（%）" path="progress">
+                <n-input-number v-model:value="editForm.progress" :min="0" :max="100" class="full-control" />
+              </n-form-item>
+              <n-form-item label="项目封面">
+                <n-upload :custom-request="handleCoverUpload" :show-file-list="false" accept="image/*">
+                  <n-button :loading="uploadingCover">{{ uploadingCover ? "上传中..." : "上传封面" }}</n-button>
+                </n-upload>
+              </n-form-item>
+            </div>
+
+            <n-form-item label="封面地址" path="coverImageUrl">
+              <n-input v-model:value="editForm.coverImageUrl" clearable placeholder="上传后自动填写，也可粘贴图片地址" />
+            </n-form-item>
+            <img v-if="editForm.coverImageUrl" :src="editForm.coverImageUrl" alt="项目封面预览" class="edit-cover-preview" />
 
             <n-form-item label="项目简介" path="introduction">
               <n-input
@@ -369,7 +400,7 @@
 </template>
 
 <script setup lang="ts">
-import type {FormInst, FormRules} from "naive-ui";
+import type {FormInst, FormRules, UploadCustomRequestOptions} from "naive-ui";
 import type {OwnerSession} from "~/composables/useOwnerSession";
 import type {JoinApplicationResponse} from "~/composables/useProjectHubApi";
 import type {RecruitmentNeed} from "~/types/projectHub";
@@ -397,6 +428,7 @@ const {
   rejectJoinApplication,
   verifyProjectOwner,
   deleteProject,
+  uploadProjectImage,
 } = useProjectHubApi();
 
 const loading = ref(true);
@@ -483,6 +515,7 @@ const handleDeleteProject = async () => {
 const editFormRef = ref<FormInst | null>(null);
 const showEditModal = ref(false);
 const submittingEdit = ref(false);
+const uploadingCover = ref(false);
 
 // 编辑表单：recruitmentNeeds 用 { skill, count, work } 行内编辑；tags 用逗号分隔文本，提交前再拆分
 const editForm = reactive({
@@ -495,6 +528,8 @@ const editForm = reactive({
   ownerMinecraftId: "",
   publicContact: "",
   tagsText: "",
+  coverImageUrl: "",
+  progress: 0,
   recruitmentNeeds: [] as { skill: string; count: number; work: string }[],
 });
 
@@ -529,12 +564,33 @@ const openEditModal = () => {
   editForm.ownerMinecraftId = project.ownerMinecraftId ?? "";
   editForm.publicContact = project.publicContact ?? "";
   editForm.tagsText = (project.skills ?? []).join(", ");
+  editForm.coverImageUrl = project.coverImageUrl ?? "";
+  editForm.progress = project.progress ?? 0;
   editForm.recruitmentNeeds = (project.recruitmentNeeds ?? []).map((need) => ({
     skill: need.skill ?? "",
     count: need.count ?? 0,
     work: need.work ?? "",
   }));
   showEditModal.value = true;
+};
+
+const handleCoverUpload = async ({ file, onFinish, onError }: UploadCustomRequestOptions) => {
+  const current = session.value;
+  const raw = file.file;
+  if (!current || !raw) {
+    onError();
+    return;
+  }
+  try {
+    uploadingCover.value = true;
+    editForm.coverImageUrl = await uploadProjectImage(current.project.id, current.controlPassword, raw);
+    onFinish();
+  } catch (error) {
+    message.error(error instanceof Error ? error.message : "封面上传失败");
+    onError();
+  } finally {
+    uploadingCover.value = false;
+  }
 };
 
 const handleEditSubmit = async () => {
@@ -558,6 +614,8 @@ const handleEditSubmit = async () => {
       ownerName: editForm.ownerName.trim(),
       ownerMinecraftId: editForm.ownerMinecraftId.trim(),
       publicContact: editForm.publicContact.trim(),
+      coverImageUrl: editForm.coverImageUrl.trim(),
+      progress: editForm.progress,
       tags: editForm.tagsText
         .split(/[,，]/)
         .map((tag) => tag.trim())
@@ -796,7 +854,7 @@ const applicationTagType = (status?: string): "warning" | "success" | "info" | "
   box-shadow: 0 6px 0 #5a3a21;
 }
 
-.manage-hero :deep(.n-card__content) {
+.manage-hero :deep(.n-card-content) {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
@@ -857,6 +915,21 @@ const applicationTagType = (status?: string): "warning" | "success" | "info" | "
   border: 2px solid #6b8f32 !important;
   border-radius: 9px;
   background: #f0f8d8;
+}
+
+.project-cover,
+.edit-cover-preview {
+  width: 100%;
+  max-height: 360px;
+  display: block;
+  margin-bottom: 16px;
+  object-fit: cover;
+  border: 2px solid #5a3a21;
+  border-radius: 8px;
+}
+
+.full-control {
+  width: 100%;
 }
 
 /* 项目信息：自定义 dl 网格，比 n-descriptions 更可控主题 */
@@ -1135,7 +1208,7 @@ const applicationTagType = (status?: string): "warning" | "success" | "info" | "
 }
 
 @media (width <= 720px) {
-  .manage-hero :deep(.n-card__content) {
+  .manage-hero :deep(.n-card-content) {
     flex-direction: column;
     align-items: flex-start;
   }

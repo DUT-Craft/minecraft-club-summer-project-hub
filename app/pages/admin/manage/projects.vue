@@ -105,10 +105,9 @@ import type { Project } from "~/types/projectHub";
 
 definePageMeta({ layout: false });
 
-// 状态过滤选项：覆盖项目全部 8 个状态 + 全部
+// 审核态只保留后台队列；公开运营状态不再显示“审核通过”。
 const filterOptions = [
   { label: "待审核", value: "PENDING" },
-  { label: "审核通过", value: "APPROVED" },
   { label: "审核未通过", value: "REJECTED" },
   { label: "筹备中", value: "PREPARING" },
   { label: "招募中", value: "RECRUITING" },
@@ -119,7 +118,6 @@ const filterOptions = [
 ];
 // 批量改状态的目标选项：排除 PENDING（无意义）与 DELETED（用「批量删除」走专用接口更可靠）
 const targetStatusOptions = [
-  { label: "审核通过", value: "APPROVED" },
   { label: "审核未通过", value: "REJECTED" },
   { label: "筹备中", value: "PREPARING" },
   { label: "招募中", value: "RECRUITING" },
@@ -141,7 +139,7 @@ const loadingList = ref(false);
 const filter = ref<string>("PENDING");
 
 const selectedIds = ref<string[]>([]);
-const targetStatus = ref<string>("APPROVED");
+const targetStatus = ref<string>("PREPARING");
 const applying = ref(false);
 const deleting = ref(false);
 
@@ -287,7 +285,7 @@ const statusTagType = (status?: string): "warning" | "success" | "error" | "info
   box-shadow: 0 6px 0 #5a3a21;
 }
 
-.manage-hero :deep(.n-card__content) {
+.manage-hero :deep(.n-card-content) {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
@@ -325,7 +323,7 @@ const statusTagType = (status?: string): "warning" | "success" | "error" | "info
   gap: 10px;
 }
 
-.toolbar :deep(.n-card__content) {
+.toolbar :deep(.n-card-content) {
   padding: 14px 18px;
 }
 
@@ -417,6 +415,11 @@ const statusTagType = (status?: string): "warning" | "success" | "error" | "info
   font-weight: 700;
 }
 
+.row-meta span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .row-id {
   color: #a6732b;
 }
@@ -430,6 +433,8 @@ const statusTagType = (status?: string): "warning" | "success" | "error" | "info
   line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .empty-state {
@@ -438,7 +443,7 @@ const statusTagType = (status?: string): "warning" | "success" | "error" | "info
 }
 
 @media (width <= 720px) {
-  .manage-hero :deep(.n-card__content) {
+  .manage-hero :deep(.n-card-content) {
     flex-direction: column;
     align-items: flex-start;
   }

@@ -1,4 +1,9 @@
 <script setup lang="ts">
+const { read: readAdminSession } = useAdminAuth();
+
+const goToAdmin = () => {
+  navigateTo(readAdminSession() ? "/admin/manage" : "/admin");
+};
 </script>
 <template>
   <n-card
@@ -18,7 +23,8 @@
       <n-button secondary class="nav-button" @click="navigateTo('/mall')">全部公开项目</n-button>
       <n-button secondary class="nav-button" @click="navigateTo('/ideas')">想法墙</n-button>
       <n-button secondary class="nav-button" @click="navigateTo('/submit')">投稿</n-button>
-      <n-button secondary class="nav-button" @click="navigateTo('/admin')">项目管理后台</n-button>
+      <n-button secondary class="nav-button" @click="navigateTo('/submissions')">我的提交</n-button>
+      <n-button secondary class="nav-button" @click="goToAdmin">项目管理后台</n-button>
     </nav>
   </n-card>
 </template>
@@ -92,13 +98,30 @@
 }
 
 @media (width <= 680px) {
-  .mc-header :deep(.n-card__content) {
+  .mc-header :deep(.n-card-content) {
     align-items: flex-start !important;
-    flex-direction: column;
+    flex-direction: column !important;
+  }
+
+  .brand span {
+    white-space: nowrap;
   }
 
   .nav {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     justify-content: flex-start;
+  }
+
+  .nav-button {
+    width: 100%;
+    min-width: 0;
+    white-space: normal;
+  }
+
+  .nav-button:last-child {
+    grid-column: 1 / -1;
   }
 }
 </style>

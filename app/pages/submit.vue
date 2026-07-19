@@ -36,6 +36,31 @@
               </n-form-item>
             </div>
 
+            <div class="two-col">
+              <n-form-item label="项目进度（%）" path="progress">
+                <n-input-number
+                  v-model:value="projectForm.progress"
+                  :min="0"
+                  :max="100"
+                  :step="5"
+                  :show-button="true"
+                  class="full-control"
+                />
+              </n-form-item>
+              <n-form-item label="项目封面">
+                <n-upload
+                  :custom-request="selectCover"
+                  :show-file-list="false"
+                  accept="image/*"
+                >
+                  <n-button>{{ coverFile ? "更换封面" : "选择封面" }}</n-button>
+                </n-upload>
+                <span v-if="coverFile" class="file-note">{{ coverFile.name }}</span>
+              </n-form-item>
+            </div>
+
+            <img v-if="coverPreview" :src="coverPreview" alt="项目封面预览" class="cover-preview" />
+
             <n-form-item label="项目简介" path="introduction">
               <n-input v-model:value="projectForm.introduction" placeholder="一句话概括这个项目" />
             </n-form-item>
@@ -80,7 +105,7 @@
             </n-form-item>
 
             <n-button type="primary" attr-type="submit" :loading="submitting">
-              {{ submitting ? "提交中..." : "提交项目，等待审核" }}
+              {{ submitting ? "提交中..." : "提交项目，等待处理" }}
             </n-button>
           </n-form>
         </n-card>
@@ -120,7 +145,7 @@
             </div>
 
             <n-button type="primary" attr-type="submit" :loading="submitting">
-              {{ submitting ? "提交中..." : "提交想法，等待审核" }}
+              {{ submitting ? "提交中..." : "提交想法，等待处理" }}
             </n-button>
           </n-form>
         </n-card>
@@ -130,7 +155,7 @@
 </template>
 
 <script setup lang="ts">
-import type { FormInst, FormRules } from "naive-ui";
+import type { FormInst, FormRules, UploadCustomRequestOptions } from "naive-ui";
 import type { RecruitmentNeed } from "~/types/projectHub";
 
 
@@ -140,7 +165,8 @@ definePageMeta({
 
 const message = useMessage();
 const route = useRoute();
-const { submitProject, submitIdea } = useProjectHubApi();
+const { submitProject, submitIdea, uploadProjectImage, updateProject } = useProjectHubApi();
+const { add: addAnonymousSubmission } = useAnonymousSubmissions();
 // 投稿成功后把项目信息 + 表单里的明文密码带到 /submit/success 做一次性展示
 const { write: writeSubmission } = useLastSubmission();
 const mode = ref<"project" | "idea">("project");
@@ -166,8 +192,12 @@ const projectForm = reactive({
   description: "",
   publicContact: "",
   ownerPassword: "",
+  progress: 0,
   recruitmentNeeds: [newNeed()],
 });
+
+const coverFile = ref<File | null>(null);
+const coverPreview = ref("");
 
 const ideaForm = reactive({
   title: "",
@@ -221,8 +251,28 @@ const resetProject = () => {
     description: "",
     publicContact: "",
     ownerPassword: "",
+    progress: 0,
     recruitmentNeeds: [newNeed()],
   });
+  coverFile.value = null;
+  coverPreview.value = "";
+};
+
+const selectCover = ({ file, onFinish, onError }: UploadCustomRequestOptions) => {
+  const raw = file.file;
+  if (!raw || !raw.type.startsWith("image/")) {
+    message.error("请选择图片文件");
+    onError();
+    return;
+  }
+  if (raw.size > 10 * 1024 * 1024) {
+    message.error("图片不能超过 10MB");
+    onError();
+    return;
+  }
+  coverFile.value = raw;
+  coverPreview.value = URL.createObjectURL(raw);
+  onFinish();
 };
 
 const parseTags = (text: string): string[] =>
@@ -239,7 +289,7 @@ const handleSubmitProject = async () => {
   }
   try {
     submitting.value = true;
-    const created = await submitProject({
+    let created = await submitProject({
       title: projectForm.title,
       type: projectForm.type,
       introduction: projectForm.introduction,
@@ -253,7 +303,18 @@ const handleSubmitProject = async () => {
         ...need,
         count: Number(need.count) || 1,
       })),
+      progress: projectForm.progress,
     });
+    if (coverFile.value && created.id) {
+      try {
+        const coverUrl = await uploadProjectImage(created.id, projectForm.ownerPassword, coverFile.value);
+        created = await updateProject(created.id, projectForm.ownerPassword, { coverImageUrl: coverUrl });
+      } catch (error) {
+        message.warning(error instanceof Error
+          ? `项目已提交，但封面上传失败：${error.message}`
+          : "项目已提交，但封面上传失败，可稍后在项目后台补充");
+      }
+    }
     // 后端返回的 controlPassword 是密文无法回显，这里把表单里的明文密码连同
     // 返回的项目信息存到 useLastSubmission，带到 /submit/success 做一次性展示
     writeSubmission({
@@ -278,8 +339,18 @@ const handleSubmitIdea = async () => {
   }
   try {
     submitting.value = true;
-    await submitIdea({ ...ideaForm });
-    message.success("想法已提交，等待管理员审核");
+    const submitted = await submitIdea({ ...ideaForm });
+    if (submitted.id && submitted.trackingToken) {
+      addAnonymousSubmission({
+        kind: "idea",
+        id: submitted.id,
+        title: submitted.title || ideaForm.title,
+        trackingToken: submitted.trackingToken,
+        status: submitted.reviewStatus,
+        submittedAt: submitted.createdAt || new Date().toISOString(),
+      });
+    }
+    message.success("想法已提交，可在“我的提交”查看状态");
     Object.assign(ideaForm, {
       title: "",
       content: "",
@@ -330,7 +401,7 @@ onMounted(() => {
   box-shadow: 0 7px 0 #5a3a21;
 }
 
-.panel :deep(.n-card__content) {
+.panel :deep(.n-card-content) {
   padding: 22px;
 }
 
@@ -398,6 +469,27 @@ onMounted(() => {
 .need-row :deep(.n-input-number) {
   width: 100%;
   min-width: 0;
+}
+
+.full-control {
+  width: 100%;
+}
+
+.file-note {
+  display: block;
+  min-width: 0;
+  margin-left: 10px;
+  color: #795b36;
+  overflow-wrap: anywhere;
+}
+
+.cover-preview {
+  width: 100%;
+  max-height: 360px;
+  display: block;
+  object-fit: cover;
+  border: 2px solid #5a3a21;
+  border-radius: 8px;
 }
 
 @media (width <= 760px) {

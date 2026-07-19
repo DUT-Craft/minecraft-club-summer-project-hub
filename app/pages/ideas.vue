@@ -96,7 +96,7 @@ const formatDate = (value: string) => value ? new Date(value).toLocaleDateString
   box-shadow: 0 6px 0 #5a3a21;
 }
 
-.page-head :deep(.n-card__content) {
+.page-head :deep(.n-card-content) {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -162,7 +162,7 @@ const formatDate = (value: string) => value ? new Date(value).toLocaleDateString
 }
 
 @media (width <= 680px) {
-  .page-head :deep(.n-card__content) {
+  .page-head :deep(.n-card-content) {
     flex-direction: column;
     align-items: flex-start;
   }

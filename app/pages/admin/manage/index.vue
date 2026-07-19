@@ -43,7 +43,7 @@
 
       <n-empty v-else class="empty-state" description="尚未登录管理员账号">
         <template #extra>
-          <p class="empty-subtext">管理员会话仅在当前标签页有效，关闭或刷新过久会失效。</p>
+          <p class="empty-subtext">管理员会话会保存在本机浏览器，退出登录后立即失效。</p>
           <n-button type="primary" @click="navigateTo('/admin')">前往登录</n-button>
         </template>
       </n-empty>
@@ -116,7 +116,7 @@ const handleLogout = () => {
   box-shadow: 0 6px 0 #5a3a21;
 }
 
-.manage-hero :deep(.n-card__content) {
+.manage-hero :deep(.n-card-content) {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
@@ -191,7 +191,7 @@ const handleLogout = () => {
 }
 
 @media (width <= 720px) {
-  .manage-hero :deep(.n-card__content) {
+  .manage-hero :deep(.n-card-content) {
     flex-direction: column;
     align-items: flex-start;
   }

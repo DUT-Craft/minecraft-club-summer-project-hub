@@ -62,6 +62,9 @@
             <n-button type="primary" attr-type="submit" block :loading="submitting">
               {{ submitting ? "登录中..." : "登录后台" }}
             </n-button>
+            <n-button text type="primary" class="forgot-button" @click="showResetModal = true">
+              忘记管理员密码？
+            </n-button>
           </n-form>
 
           <n-form
@@ -96,6 +99,45 @@
             </n-button>
           </n-form>
         </n-card>
+
+        <n-modal
+          v-model:show="showResetModal"
+          preset="card"
+          title="找回管理员密码"
+          :bordered="false"
+          :mask-closable="false"
+          style="width: min(500px, calc(100% - 28px))"
+        >
+          <n-form label-placement="top" :show-require-mark="false">
+            <n-form-item label="账号邮箱">
+              <n-input v-model:value="resetForm.email" placeholder="输入管理员账号绑定的邮箱" />
+            </n-form-item>
+            <n-form-item label="邮箱验证码">
+              <n-input-group>
+                <n-input v-model:value="resetForm.emailCode" placeholder="6 位验证码" />
+                <n-button
+                  :disabled="codeCountdown > 0"
+                  :loading="sendingCode"
+                  @click="sendResetCode"
+                >
+                  {{ codeCountdown > 0 ? `${codeCountdown}s` : "发送验证码" }}
+                </n-button>
+              </n-input-group>
+            </n-form-item>
+            <n-form-item label="新密码">
+              <n-input v-model:value="resetForm.newPassword" type="password" show-password-on="click" />
+            </n-form-item>
+            <n-form-item label="确认新密码">
+              <n-input v-model:value="resetForm.confirmPassword" type="password" show-password-on="click" />
+            </n-form-item>
+          </n-form>
+          <template #footer>
+            <div class="modal-footer">
+              <n-button @click="showResetModal = false">取消</n-button>
+              <n-button type="primary" :loading="resettingPassword" @click="handleResetPassword">重置密码</n-button>
+            </div>
+          </template>
+        </n-modal>
 
         <p class="hint">
           项目方登录仅能管理自己提交的项目；管理员可管理全部项目、想法与审核。
@@ -138,6 +180,18 @@ const ownerForm = reactive({
   controlPassword: "",
 });
 
+const showResetModal = ref(false);
+const sendingCode = ref(false);
+const resettingPassword = ref(false);
+const codeCountdown = ref(0);
+const resetForm = reactive({
+  email: "",
+  emailCode: "",
+  newPassword: "",
+  confirmPassword: "",
+});
+let countdownTimer: ReturnType<typeof setInterval> | undefined;
+
 const adminRules: FormRules = {
   username: { required: true, message: "请输入账号", trigger: ["blur", "input"] },
   password: { required: true, message: "请输入密码", trigger: ["blur", "input"] },
@@ -156,7 +210,7 @@ const switchMode = (next: LoginMode) => {
 };
 
 // 管理员登录：POST /api/auth/login（openapi.json）→ 拿 token 写入 chat_auth_token cookie
-// （useHttp 后续自动带 Bearer），会话快照存 sessionStorage，随后进入全局管理面板 /admin/manage
+// （useHttp 后续自动带 Bearer），会话快照会持久保存，随后进入全局管理面板 /admin/manage
 const handleAdminLogin = async () => {
   try {
     await adminFormRef.value?.validate();
@@ -185,9 +239,70 @@ const handleAdminLogin = async () => {
   }
 };
 
-const { verifyProjectOwner, adminLogin } = useProjectHubApi();
+const {
+  verifyProjectOwner,
+  adminLogin,
+  sendPasswordResetCode,
+  resetAdminPassword,
+} = useProjectHubApi();
 const { write: writeOwnerSession } = useOwnerSession();
 const { write: writeAdminSession } = useAdminAuth();
+
+const sendResetCode = async () => {
+  const email = resetForm.email.trim();
+  if (!email) {
+    message.warning("请先填写账号邮箱");
+    return;
+  }
+  try {
+    sendingCode.value = true;
+    await sendPasswordResetCode(email);
+    message.success("验证码已发送");
+    codeCountdown.value = 60;
+    if (countdownTimer) clearInterval(countdownTimer);
+    countdownTimer = setInterval(() => {
+      codeCountdown.value -= 1;
+      if (codeCountdown.value <= 0 && countdownTimer) {
+        clearInterval(countdownTimer);
+        countdownTimer = undefined;
+      }
+    }, 1000);
+  } catch (error) {
+    message.error(error instanceof Error ? error.message : "验证码发送失败");
+  } finally {
+    sendingCode.value = false;
+  }
+};
+
+const handleResetPassword = async () => {
+  if (!resetForm.email.trim() || !resetForm.emailCode.trim() || !resetForm.newPassword) {
+    message.warning("请完整填写邮箱、验证码和新密码");
+    return;
+  }
+  if (resetForm.newPassword.length < 6) {
+    message.warning("新密码至少 6 位");
+    return;
+  }
+  if (resetForm.newPassword !== resetForm.confirmPassword) {
+    message.warning("两次输入的密码不一致");
+    return;
+  }
+  try {
+    resettingPassword.value = true;
+    await resetAdminPassword(resetForm.email.trim(), resetForm.emailCode.trim(), resetForm.newPassword);
+    message.success("密码已重置，请使用新密码登录");
+    Object.assign(resetForm, { email: "", emailCode: "", newPassword: "", confirmPassword: "" });
+    showResetModal.value = false;
+  } catch (error) {
+    message.error(error instanceof Error ? error.message : "密码重置失败");
+  } finally {
+    resettingPassword.value = false;
+  }
+};
+
+onBeforeUnmount(() => {
+  if (countdownTimer) clearInterval(countdownTimer);
+});
 
 // 项目方登录：POST /api/admin/project/object-items/{id}/verify（openapi.json）
 // 校验通过后把项目详情 + controlPassword 写入会话（后续管理操作每次都要带 controlPassword），
@@ -321,7 +436,7 @@ const handleOwnerLogin = async () => {
   box-shadow: 0 7px 0 #5a3a21;
 }
 
-.panel :deep(.n-card__content) {
+.panel :deep(.n-card-content) {
   padding: 22px;
 }
 
@@ -338,6 +453,16 @@ const handleOwnerLogin = async () => {
 /* 标签字重对齐其它页面的 font-weight: 900 */
 .panel :deep(.n-form-item-label) {
   font-weight: 900;
+}
+
+.forgot-button {
+  justify-self: center;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
 }
 
 .hint {

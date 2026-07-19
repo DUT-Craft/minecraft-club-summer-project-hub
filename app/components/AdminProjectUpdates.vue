@@ -122,7 +122,8 @@ import type { ProjectUpdate } from "~/types/projectHub";
 // 由父级（项目方管理页）传入：项目 ID + 当前会话的控制密码明文
 const props = defineProps<{
   projectId: string | number;
-  controlPassword: string;
+  controlPassword?: string;
+  adminMode?: boolean;
 }>();
 
 const message = useMessage();
@@ -131,7 +132,12 @@ const {
   createProjectUpdate,
   updateProjectUpdate,
   deleteProjectUpdate,
-  uploadFile,
+  uploadProjectImage,
+  uploadProjectImageAdmin,
+  loadProjectUpdatesGlobalAdmin,
+  createProjectUpdateGlobalAdmin,
+  updateProjectUpdateGlobalAdmin,
+  deleteProjectUpdateGlobalAdmin,
 } = useProjectHubApi();
 
 const updates = ref<ProjectUpdate[]>([]);
@@ -150,7 +156,9 @@ const filterOptions = [
 const load = async () => {
   try {
     loading.value = true;
-    const list = await loadProjectUpdatesAdmin(props.projectId, props.controlPassword, filter.value || undefined);
+    const list = props.adminMode
+      ? await loadProjectUpdatesGlobalAdmin(props.projectId, filter.value || undefined)
+      : await loadProjectUpdatesAdmin(props.projectId, props.controlPassword || "", filter.value || undefined);
     updates.value = list;
     loaded.value = true;
   } catch (error) {
@@ -222,18 +230,28 @@ const handleSubmit = async () => {
   try {
     submitting.value = true;
     if (editingId.value) {
-      await updateProjectUpdate(props.projectId, editingId.value, props.controlPassword, {
+      const payload = {
         title: form.title.trim(),
         content: form.content.trim(),
         imageUrl: form.imageUrl.trim(),
-      });
+      };
+      if (props.adminMode) {
+        await updateProjectUpdateGlobalAdmin(props.projectId, editingId.value, payload);
+      } else {
+        await updateProjectUpdate(props.projectId, editingId.value, props.controlPassword || "", payload);
+      }
       message.success("动态已更新");
     } else {
-      await createProjectUpdate(props.projectId, props.controlPassword, {
+      const payload = {
         title: form.title.trim(),
         content: form.content.trim(),
         imageUrl: form.imageUrl.trim(),
-      });
+      };
+      if (props.adminMode) {
+        await createProjectUpdateGlobalAdmin(props.projectId, payload);
+      } else {
+        await createProjectUpdate(props.projectId, props.controlPassword || "", payload);
+      }
       message.success("动态已发布");
     }
     showModal.value = false;
@@ -247,7 +265,11 @@ const handleSubmit = async () => {
 
 const handleDelete = async (item: ProjectUpdate) => {
   try {
-    await deleteProjectUpdate(props.projectId, item.id, props.controlPassword);
+    if (props.adminMode) {
+      await deleteProjectUpdateGlobalAdmin(props.projectId, item.id);
+    } else {
+      await deleteProjectUpdate(props.projectId, item.id, props.controlPassword || "");
+    }
     message.success("动态已删除");
     await load();
   } catch (error) {
@@ -263,7 +285,9 @@ const handleUpload = async ({ file, onFinish, onError }: UploadCustomRequestOpti
       onError();
       return;
     }
-    const url = await uploadFile(raw);
+    const url = props.adminMode
+      ? await uploadProjectImageAdmin(props.projectId, raw)
+      : await uploadProjectImage(props.projectId, props.controlPassword || "", raw);
     if (url) {
       form.imageUrl = url;
       onFinish();
@@ -365,6 +389,10 @@ const statusTagType = (status?: string): "warning" | "success" | "error" | "defa
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 2px;
+}
+
+.update-head > * {
+  min-width: 0;
 }
 
 .update-title {

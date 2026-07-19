@@ -1,11 +1,21 @@
 <template>
   <article class="project-card">
+    <img v-if="project.coverImageUrl" :src="project.coverImageUrl" :alt="project.title" class="cover" />
     <div class="card-top">
       <span class="chip">{{ project.type || "未分类" }}</span>
       <span class="chip muted">{{ formatProjectStatus(project.status) }}</span>
     </div>
     <h3>{{ project.title }}</h3>
     <p class="desc">{{ intro }}</p>
+    <div class="progress-block">
+      <div class="progress-head">
+        <span>进度</span>
+        <strong>{{ project.progress }}%</strong>
+      </div>
+      <div class="progress-track" role="progressbar" :aria-valuenow="project.progress" aria-valuemin="0" aria-valuemax="100">
+        <span :style="{ width: `${project.progress}%` }" />
+      </div>
+    </div>
     <div class="meta">
       <span>负责人：{{ project.ownerName || "未填写" }}</span>
       <span v-if="needCount > 0">招募 {{ needCount }} 人</span>
@@ -53,6 +63,17 @@ const needCount = computed(() => {
   border-radius: 10px;
   background: #fff5cf;
   box-shadow: 0 6px 0 #5a3a21;
+  overflow: hidden;
+}
+
+.cover {
+  width: calc(100% + 36px);
+  max-width: none;
+  height: 170px;
+  display: block;
+  margin: -18px -18px 2px;
+  object-fit: cover;
+  border-bottom: 2px solid #5a3a21;
 }
 
 .card-top,
@@ -71,6 +92,8 @@ const needCount = computed(() => {
   background: #ffdf7e;
   font-size: 12px;
   font-weight: 800;
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 
 .chip.muted {
@@ -82,6 +105,11 @@ h3 {
   color: #2d2418;
   font-size: 22px;
   line-height: 1.25;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow-wrap: anywhere;
 }
 
 .desc {
@@ -89,12 +117,50 @@ h3 {
   min-height: 72px;
   color: #5d4328;
   line-height: 1.7;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow-wrap: anywhere;
+}
+
+.progress-block {
+  display: grid;
+  gap: 6px;
+}
+
+.progress-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: #795b36;
+  font-size: 13px;
+}
+
+.progress-track {
+  height: 10px;
+  overflow: hidden;
+  border: 2px solid #5a3a21;
+  border-radius: 5px;
+  background: #d9c99b;
+}
+
+.progress-track span {
+  display: block;
+  height: 100%;
+  background: #65a844;
+  transition: width 180ms ease;
 }
 
 .meta {
   color: #795b36;
   font-size: 13px;
   font-weight: 700;
+}
+
+.meta span {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .skills span {

@@ -44,14 +44,14 @@ http://localhost:3000/projects
 复制 `.env.example` 为 `.env`：
 
 ```env
-NUXT_PUBLIC_API_BASE=/api
+NUXT_PUBLIC_API_BASE=https://api.project.doh.ink/api
 NUXT_PUBLIC_AUTH_CHECK_ENABLED=false
 LOCAL_DATA_DIR=./data
 ```
 
 说明：
 
-- `NUXT_PUBLIC_API_BASE`：前端 API 根路径，本项目默认使用 Nuxt 自带的 `/api`。
+- `NUXT_PUBLIC_API_BASE`：前端 API 根路径。ESA 静态部署必须填写线上后端地址，不能填写 `localhost` 或 `127.0.0.1`。
 - `NUXT_PUBLIC_AUTH_CHECK_ENABLED`：是否启用登录拦截。设为 `false` 时公开项目站可直接访问。
 - `LOCAL_DATA_DIR`：本地 JSON 数据目录，默认是 `./data`。
 

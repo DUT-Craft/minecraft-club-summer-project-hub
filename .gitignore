@@ -3,6 +3,7 @@
 .next
 .nuxt
 .output
+.playwright-cli
 .nitro
 .cache
 node_modules

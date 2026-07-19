@@ -265,7 +265,7 @@ const statusTagType = (status?: string): "warning" | "success" | "error" | "defa
   box-shadow: 0 6px 0 #5a3a21;
 }
 
-.manage-hero :deep(.n-card__content) {
+.manage-hero :deep(.n-card-content) {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
@@ -303,7 +303,7 @@ const statusTagType = (status?: string): "warning" | "success" | "error" | "defa
   gap: 10px;
 }
 
-.toolbar :deep(.n-card__content) {
+.toolbar :deep(.n-card-content) {
   padding: 14px 18px;
 }
 
@@ -414,7 +414,7 @@ const statusTagType = (status?: string): "warning" | "success" | "error" | "defa
 }
 
 @media (width <= 720px) {
-  .manage-hero :deep(.n-card__content) {
+  .manage-hero :deep(.n-card-content) {
     flex-direction: column;
     align-items: flex-start;
   }

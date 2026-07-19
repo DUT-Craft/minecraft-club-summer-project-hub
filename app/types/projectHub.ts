@@ -44,6 +44,8 @@ export interface Project {
   description: string;
   publicContact?: string;
   privateContact?: string;
+  coverImageUrl?: string;
+  progress: number;
   reviewStatus: ReviewStatus;
   recruitmentNeeds?: RecruitmentNeed[];
   createdAt: string;
@@ -59,6 +61,21 @@ export interface Idea {
   minecraftId?: string;
   reviewStatus: ReviewStatus;
   createdAt: string;
+  trackingToken?: string;
+}
+
+export type AnonymousSubmissionKind = "idea" | "join";
+
+export interface AnonymousSubmissionRecord {
+  kind: AnonymousSubmissionKind;
+  id: string;
+  projectId?: string;
+  title: string;
+  trackingToken: string;
+  status: string;
+  submittedAt: string;
+  updatedAt?: string;
+  rejectReason?: string;
 }
 
 export interface DataSnapshot {
@@ -79,6 +96,8 @@ export interface SubmitProjectPayload {
   publicContact: string;
   ownerPassword: string;
   recruitmentNeeds: RecruitmentNeed[];
+  progress?: number;
+  coverImage?: File;
 }
 
 export interface SubmitIdeaPayload {
@@ -95,6 +114,7 @@ export interface SubmitJoinPayload {
   minecraftId: string;
   contact: string;
   reason: string;
+  skill?: string;
 }
 
 export interface SubmitCommentPayload {
@@ -118,6 +138,8 @@ export interface UpdateProjectPayload {
   publicContact?: string;
   tags?: string[];
   recruitmentNeeds?: RecruitmentNeed[];
+  coverImageUrl?: string;
+  progress?: number;
 }
 
 // 项目方发布 / 编辑项目动态的请求体（对应后端 ObjectItemUpdateSaveRequest）。

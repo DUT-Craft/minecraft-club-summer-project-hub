@@ -293,7 +293,7 @@ const ideaStatusToEnum = (status?: string): string => {
   box-shadow: 0 6px 0 #5a3a21;
 }
 
-.detail-hero :deep(.n-card__content) {
+.detail-hero :deep(.n-card-content) {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
@@ -411,7 +411,7 @@ const ideaStatusToEnum = (status?: string): string => {
 }
 
 @media (width <= 720px) {
-  .detail-hero :deep(.n-card__content) {
+  .detail-hero :deep(.n-card-content) {
     flex-direction: column;
     align-items: flex-start;
   }

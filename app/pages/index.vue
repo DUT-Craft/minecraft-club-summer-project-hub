@@ -7,12 +7,12 @@
         <div class="wide-shell hero-shell">
           <section class="hero-copy">
             <n-tag class="hero-chip" type="info" :bordered="false">
-              暑假共创 / 审核后公开展示
+              暑假共创 / 公开项目实时更新
             </n-tag>
 
             <h1>Minecraft 暑假共创项目站</h1>
             <p class="lead">
-              集中展示社团项目、收集玩法灵感、处理加入申请。公开内容由管理员审核后展示。
+              集中展示社团项目、收集玩法灵感、处理加入申请。项目状态和制作进度会持续更新。
             </p>
 
             <div class="tag-row" :aria-label="hotTags.length ? '公开项目标签' : '站点入口'">
@@ -64,8 +64,8 @@
                 <span>{{ projectCountHint }}</span>
               </n-card>
               <n-card class="mini-card" size="small">
-                <strong>审核说明</strong>
-                <span>投稿会先进入后台，公开页面只展示通过审核的项目和想法</span>
+                <strong>公开规则</strong>
+                <span>投稿会先进入后台，处理后会按项目状态和进度公开展示</span>
               </n-card>
             </div>
           </section>
@@ -174,7 +174,7 @@ const portalEntries = [
     image: "/assets/catgirl-concepts/catgirl-survival-plaza.png",
     kicker: "项目投稿",
     title: "把你的暑假计划挂出来",
-    text: "把项目标题、介绍和招工需求写清楚，管理员审核通过后就会公开展示。",
+    text: "把项目标题、介绍和招工需求写清楚，后台处理后就会按筹备、招募或制作状态展示。",
     action: "提交项目草案",
   },
   {
@@ -215,8 +215,8 @@ const heroTags = computed(() =>
 
 const projectCountHint = computed(() =>
   approvedProjectCount.value
-    ? `已有 ${approvedProjectCount.value} 个项目通过审核`
-    : "暂无公开项目，投稿后会先进入后台审核",
+      ? `已有 ${approvedProjectCount.value} 个公开项目`
+    : "暂无公开项目，投稿后会进入后台处理",
 );
 
 // 顶部三张统计卡：标签与取值放在一起，模板直接 v-for 渲染

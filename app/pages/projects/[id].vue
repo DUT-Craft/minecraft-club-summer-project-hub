@@ -42,6 +42,27 @@
 
         <div class="layout">
           <n-card class="main-panel" title="项目介绍" :bordered="false">
+            <img
+              v-if="project.coverImageUrl"
+              :src="project.coverImageUrl"
+              :alt="project.title"
+              class="project-cover"
+            />
+            <div class="progress-block">
+              <div class="progress-head">
+                <strong>项目进度</strong>
+                <span>{{ project.progress }}%</span>
+              </div>
+              <n-progress
+                type="line"
+                :percentage="project.progress"
+                :height="14"
+                :border-radius="4"
+                :show-indicator="false"
+                color="#65a844"
+                rail-color="#d9c99b"
+              />
+            </div>
             <p class="description">{{ project.description || project.summary || "项目发起者还没有填写项目介绍。" }}</p>
             <n-alert v-if="project.publicContact" :bordered="false" type="info" class="contact">
               <strong>联系方式：</strong>{{ project.publicContact }}
@@ -173,7 +194,7 @@
               />
             </n-form-item>
             <div class="comment-form-actions">
-              <span class="comment-form-hint">审核通过后将公开展示</span>
+              <span class="comment-form-hint">处理后将公开展示</span>
               <n-button type="primary" attr-type="submit" :loading="submittingComment">
                 {{ submittingComment ? "提交中..." : "发表评论" }}
               </n-button>
@@ -211,7 +232,7 @@
         description="没有找到这个公开项目"
       >
         <template #extra>
-          <p class="empty-subtext">项目可能还在审核，或已被管理员隐藏。</p>
+          <p class="empty-subtext">项目可能还在后台处理，或已被管理员隐藏。</p>
           <n-button type="primary" @click="navigateTo('/mall')">回到项目列表</n-button>
         </template>
       </n-empty>
@@ -237,6 +258,7 @@ const route = useRoute();
 const message = useMessage();
 const { loadProjectById, loadProjectUpdates, loadProjectComments, submitJoin, submitComment } = useProjectHubApi();
 const { read: readOwnerSession } = useOwnerSession();
+const { add: addAnonymousSubmission } = useAnonymousSubmissions();
 
 const loading = ref(true);
 const project = ref<Project | null>(null);
@@ -372,17 +394,26 @@ const handleJoin = async () => {
   }
   try {
     submittingJoin.value = true;
-    // 后端 join-applications 请求体只有 nickName/mcId/contact/reason，没有岗位字段，
-    // 把选择的岗位拼到 reason 最前面，方便项目方审核时看到申请方向
-    const reason = `【申请岗位：${joinForm.position}】\n${joinForm.reason}`;
-    await submitJoin({
+    const submitted = await submitJoin({
       projectId: projectId.value,
       nickname: joinForm.nickname,
       minecraftId: joinForm.minecraftId,
       contact: joinForm.contact,
-      reason,
+      reason: joinForm.reason,
+      skill: joinForm.position,
     });
-    message.success("申请已提交，等待项目发起者或管理员处理");
+    if (submitted.id && submitted.trackingToken) {
+      addAnonymousSubmission({
+        kind: "join",
+        id: String(submitted.id),
+        projectId: projectId.value,
+        title: `申请加入：${project.value?.title || `项目 #${projectId.value}`}`,
+        trackingToken: submitted.trackingToken,
+        status: submitted.status || "PENDING",
+        submittedAt: submitted.createTime || new Date().toISOString(),
+      });
+    }
+    message.success("申请已提交，可在“我的提交”查看状态");
     Object.assign(joinForm, {
       position: "",
       nickname: "",
@@ -409,8 +440,8 @@ const handleComment = async () => {
       projectId: projectId.value,
       ...commentForm,
     });
-    // 新评论 status=PENDING，需审核通过后才会出现在公开列表，这里不直接插入
-    message.success("评论已提交，审核通过后将展示");
+    // 新评论 status=PENDING，处理后才会出现在公开列表，这里不直接插入
+    message.success("评论已提交，处理后将展示");
     Object.assign(commentForm, {
       nickname: "",
       content: "",
@@ -464,7 +495,7 @@ const handleComment = async () => {
   box-shadow: 0 6px 0 #5a3a21;
 }
 
-.detail-hero :deep(.n-card__content) {
+.detail-hero :deep(.n-card-content) {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
@@ -473,6 +504,14 @@ const handleComment = async () => {
 
 .hero-info {
   min-width: 0;
+}
+
+.hero-info h1,
+.description,
+.need-work,
+.update-content {
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .hero-info h1 {
@@ -495,6 +534,29 @@ const handleComment = async () => {
   font-size: 17px;
   line-height: 1.85;
   white-space: pre-wrap;
+}
+
+.project-cover {
+  width: 100%;
+  max-height: 420px;
+  display: block;
+  margin-bottom: 16px;
+  object-fit: cover;
+  border: 2px solid #5a3a21;
+  border-radius: 8px;
+}
+
+.progress-block {
+  margin-bottom: 18px;
+}
+
+.progress-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 7px;
+  color: #4f3924;
 }
 
 .contact {
@@ -736,7 +798,7 @@ const handleComment = async () => {
 }
 
 @media (width <= 840px) {
-  .detail-hero :deep(.n-card__content) {
+  .detail-hero :deep(.n-card-content) {
     flex-direction: column;
     align-items: flex-start;
   }

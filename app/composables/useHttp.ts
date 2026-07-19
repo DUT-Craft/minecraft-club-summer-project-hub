@@ -43,7 +43,8 @@ function getResponseMessage(response: ApiResult<unknown>) {
 
 export const useHttp = () => {
     const authToken = useCookie<string | null>("chat_auth_token");
-    const apiBase = "https://api.project.doh.ink/api";
+    const runtimeConfig = useRuntimeConfig();
+    const apiBase = (runtimeConfig.public.apiBase as string) || "https://api.project.doh.ink/api";
 
     const http = createFetch({
         defaults: {
@@ -51,6 +52,7 @@ export const useHttp = () => {
             headers: {
                 Accept: "application/json",
             },
+            credentials: "include",
         },
     });
 

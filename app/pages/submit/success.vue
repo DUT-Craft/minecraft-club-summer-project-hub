@@ -8,9 +8,9 @@
           <div class="hero-check" aria-hidden="true">✓</div>
           <div class="hero-text">
             <span class="eyebrow">Submitted</span>
-            <h1>项目已提交，等待审核</h1>
+            <h1>项目已提交，等待处理</h1>
             <p class="hero-sub">
-              管理员审核通过后，项目会出现在公开列表里。请先记好下面的项目 ID 和管理密码——这是后续登录项目方后台的唯一凭据。
+              项目处理后会按运营状态出现在公开列表里。请先记好下面的项目 ID 和管理密码——这是后续登录项目方后台的唯一凭据。
             </p>
           </div>
         </n-card>
@@ -84,7 +84,7 @@
               <dd>{{ record.project.publicContact }}</dd>
             </div>
             <div class="info-row">
-              <dt>审核状态</dt>
+              <dt>当前状态</dt>
               <dd>
                 <n-tag :bordered="false" size="small" round class="status-tag">{{ statusLabel }}</n-tag>
               </dd>
@@ -200,7 +200,7 @@ const copy = async (value?: string) => {
 }
 
 /* 成功头部：绿勾 + 标题 */
-.success-hero :deep(.n-card__content) {
+.success-hero :deep(.n-card-content) {
   display: flex;
   align-items: center;
   gap: 18px;
@@ -436,7 +436,7 @@ const copy = async (value?: string) => {
 }
 
 @media (width <= 720px) {
-  .success-hero :deep(.n-card__content) {
+  .success-hero :deep(.n-card-content) {
     flex-direction: column;
     align-items: flex-start;
   }

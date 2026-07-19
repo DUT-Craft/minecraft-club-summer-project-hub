@@ -3,7 +3,7 @@
 //
 // token 写入 chat_auth_token cookie：useHttp 会自动把它作为 Bearer 头带上，
 // 这样所有走 useHttp 的管理端请求都自动鉴权，无需每个调用手动传 token。
-// 会话快照（username / loginAt）另存 sessionStorage，刷新后仍能恢复管理页 UI 状态。
+// 会话快照另存 localStorage，站内跳转、刷新和重新打开页面都能恢复管理页状态。
 export interface AdminSession {
   token: string;
   username: string;
@@ -30,7 +30,8 @@ export const useAdminAuth = () => {
     pending.value = session;
     tokenCookie.value = session.token;
     if (isClient()) {
-      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+      sessionStorage.removeItem(STORAGE_KEY);
     }
   };
 
@@ -39,7 +40,7 @@ export const useAdminAuth = () => {
       return pending.value;
     }
     if (isClient()) {
-      const raw = sessionStorage.getItem(STORAGE_KEY);
+      const raw = localStorage.getItem(STORAGE_KEY) || sessionStorage.getItem(STORAGE_KEY);
       if (raw) {
         try {
           const parsed = JSON.parse(raw) as AdminSession;
@@ -51,6 +52,7 @@ export const useAdminAuth = () => {
           }
           return parsed;
         } catch {
+          localStorage.removeItem(STORAGE_KEY);
           sessionStorage.removeItem(STORAGE_KEY);
         }
       }
@@ -62,6 +64,7 @@ export const useAdminAuth = () => {
     pending.value = null;
     tokenCookie.value = null;
     if (isClient()) {
+      localStorage.removeItem(STORAGE_KEY);
       sessionStorage.removeItem(STORAGE_KEY);
     }
   };
