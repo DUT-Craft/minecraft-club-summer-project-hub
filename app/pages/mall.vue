@@ -44,7 +44,8 @@ definePageMeta({
 });
 
 // 数据源对应 openapi.json：GET /api/project/object-items?status=...
-// （接口仅支持单个 status，在 useProjectHubApi 内并行请求 PREPARING / RECRUITING / IN_PROGRESS / PAUSED 四个公开状态后合并）
+// （接口仅支持单个 status，在 useProjectHubApi 内并行请求 APPROVED / PREPARING / RECRUITING / IN_PROGRESS / PAUSED 五个公开状态后合并；
+//  APPROVED 必含——管理员「审核通过」即置为该状态，漏掉会导致刚通过审核的项目不展示）
 const {loadPublicProjectCatalog} = useProjectHubApi();
 const projects = ref<Project[]>([]);
 

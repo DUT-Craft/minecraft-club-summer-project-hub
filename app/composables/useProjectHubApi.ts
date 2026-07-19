@@ -258,20 +258,6 @@ export const useProjectHubApi = () => {
     }
   };
 
-  // 首页公开展示：GET /api/project/object-items?status=IN_PROGRESS
-  const loadPublicProjects = async (): Promise<Project[]> => {
-    try {
-      const items = await request<ObjectItemResponse[]>("/project/object-items", {
-        query: {status: "IN_PROGRESS"},
-      });
-      return normalizeArray<ObjectItemResponse>(items)
-          .map(mapObjectItemToProject)
-          .map(normalizeProject);
-    } catch {
-      return [];
-    }
-  };
-
   // 想法墙 / 首页公开展示：GET /api/project/minds?status=APPROVED（openapi.json）
   // 接口已按 APPROVED 过滤；走统一 http 客户端（useHttp）拉取 ApiResult<MindVO[]> 并解包，
   // 与 loadApprovedIdeaCount / loadPublicProjectCatalog 等公开查询保持同一调用口径。
@@ -290,10 +276,12 @@ export const useProjectHubApi = () => {
 
   // 项目广场（mall 页）数据源：GET /api/project/object-items?status=...
   // 接口仅支持单个 status，并行请求各公开状态后合并；
-  // 公开状态 = PREPARING（筹备中）+ RECRUITING（招募中）+ IN_PROGRESS（制作中）+ PAUSED（暂缓），
-  // PENDING / REJECTED / DELETED 不对外展示
+  // 公开状态 = APPROVED（审核通过）+ PREPARING（筹备中）+ RECRUITING（招募中）+ IN_PROGRESS（制作中）+ PAUSED（暂缓），
+  // PENDING / REJECTED / DELETED 不对外展示。
+  // ⚠️ APPROVED 必须包含：管理员「审核通过」批量操作把项目置为 APPROVED（admin/manage/projects 的默认目标状态），
+  // 若漏掉则刚审核通过、尚未进入运营状态的项目不会出现在项目广场。
   const loadPublicProjectCatalog = async (): Promise<Project[]> => {
-    const publicStatuses = ["PREPARING", "RECRUITING", "IN_PROGRESS", "PAUSED"] as const;
+    const publicStatuses = ["APPROVED", "PREPARING", "RECRUITING", "IN_PROGRESS", "PAUSED"] as const;
     try {
       const groups = await Promise.all(
           publicStatuses.map((status) =>
@@ -309,9 +297,9 @@ export const useProjectHubApi = () => {
     }
   };
 
-  // 公开总数专用接口（openapi.json）：
-  // - 制作中项目总数：GET /api/project/object-items/count/in-progress
-  // - 审核通过想法总数：GET /api/project/minds/count/approved
+  // 公开总数专用接口（openapi.json）：审核通过想法总数 GET /api/project/minds/count/approved。
+  // （项目侧「公开项目」总数不再走 count 接口——loadPublicProjectCatalog 拉的就是全部公开项目，
+  //   调用方 index.vue 直接取 .length 即可，口径与项目广场 mall 页一致，避免与列表展示数对不上。）
   // count 接口的 data 在 openapi 中是泛型 object，真实结构未声明，
   // 这里兼容数字直接返回 / { count } / { total } 等常见形态，解析失败降级为 0
   const pickCount = (value: unknown): number => {
@@ -338,15 +326,6 @@ export const useProjectHubApi = () => {
       }
     }
     return 0;
-  };
-
-  const loadApprovedProjectCount = async (): Promise<number> => {
-    try {
-      const data = await get<unknown>("/project/object-items/count/in-progress");
-      return pickCount(data);
-    } catch {
-      return 0;
-    }
   };
 
   const loadApprovedIdeaCount = async (): Promise<number> => {
@@ -401,10 +380,8 @@ export const useProjectHubApi = () => {
 
   return {
     loadSnapshot,
-    loadPublicProjects,
     loadPublicIdeas,
     loadPublicProjectCatalog,
-    loadApprovedProjectCount,
     loadApprovedIdeaCount,
     loadProjectById,
     loadProjectUpdates,

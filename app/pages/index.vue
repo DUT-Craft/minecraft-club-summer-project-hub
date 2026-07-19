@@ -140,16 +140,17 @@ definePageMeta({
 const {themeOverrides} = useMinecraftTheme();
 
 // 数据源对应 openapi.json：
-// - 公开项目列表：GET /api/project/object-items?status=IN_PROGRESS（用于汇总标签和招募岗位）
-// - 公开项目总数：GET /api/project/object-items/count/in-progress
+// - 公开项目列表：GET /api/project/object-items?status=...（在 useProjectHubApi 内并行请求
+//   APPROVED / PREPARING / RECRUITING / IN_PROGRESS / PAUSED 五个公开状态后合并，
+//   用于汇总标签 / 招募岗位 / 公开项目总数，口径与项目广场 mall 页完全一致）
 // - 公开想法总数：GET /api/project/minds/count/approved
 // - openapi 没有评论 / 建议接口，原"公开建议"统计改为"招募岗位"（needMembers.number 合计）
-const {loadPublicProjects, loadApprovedProjectCount, loadApprovedIdeaCount} = useProjectHubApi();
+// ⚠️ 公开项目总数直接取列表 .length，不再走 /count/in-progress（只数 IN_PROGRESS 会漏掉刚审核通过的项目）
+const {loadPublicProjectCatalog, loadApprovedIdeaCount} = useProjectHubApi();
 
 // 接口层已按状态过滤，这里保存的就是可直接公开展示的数据
-const approvedProjects = ref<Project[]>([]);
-// 公开项目 / 想法总数走专用 count 接口，无需拉全量列表只为取 length
-const approvedProjectCount = ref(0);
+const publicProjects = ref<Project[]>([]);
+// 公开想法总数仍走专用 count 接口；公开项目总数 = publicProjects.length，与项目广场同源
 const approvedIdeaCount = ref(0);
 
 // 首页入口按钮：label 与路由集中维护，避免模板里散落多个 navigateTo
@@ -188,40 +189,38 @@ const portalEntries = [
 ];
 
 onMounted(async () => {
-  // 列表与总数接口互不依赖，并行拉取；任一失败时各自方法内部已降级为空数组 / 0
-  const [projects, projectCount, ideaCount] = await Promise.all([
-    loadPublicProjects(),
-    loadApprovedProjectCount(),
+  // 项目列表与想法总数互不依赖，并行拉取；任一失败时各自方法内部已降级为空数组 / 0
+  const [projects, ideaCount] = await Promise.all([
+    loadPublicProjectCatalog(),
     loadApprovedIdeaCount(),
   ]);
 
-  approvedProjects.value = projects;
-  approvedProjectCount.value = projectCount;
+  publicProjects.value = projects;
   approvedIdeaCount.value = ideaCount;
 });
 
 // 招募岗位 = 所有公开项目 recruitmentNeeds.count 之和（由 needMembers.number 映射）
 const openPositions = computed(() =>
-    approvedProjects.value
+    publicProjects.value
         .flatMap((project) => project.recruitmentNeeds ?? [])
         .reduce((total, need) => total + (need.count || 0), 0),
 );
 
 // 汇总项目类型 + 标签（skills 由 object-items 的 tags 映射而来），取出现次数最多的 4 个
-const hotTags = computed(() => buildHotTags(approvedProjects.value));
+const hotTags = computed(() => buildHotTags(publicProjects.value));
 const heroTags = computed(() =>
     hotTags.value.length ? hotTags.value : ["项目投稿", "想法收集", "制作中项目", "招募岗位"],
 );
 
 const projectCountHint = computed(() =>
-    approvedProjectCount.value
-        ? `已有 ${approvedProjectCount.value} 个项目通过审核`
+    publicProjects.value.length
+        ? `已有 ${publicProjects.value.length} 个项目通过审核`
         : "暂无公开项目，投稿后会先进入后台审核",
 );
 
 // 顶部三张统计卡：标签与取值放在一起，模板直接 v-for 渲染
 const stats = computed(() => [
-  {label: "公开项目", value: approvedProjectCount.value},
+  {label: "公开项目", value: publicProjects.value.length},
   {label: "公开想法", value: approvedIdeaCount.value},
   {label: "招募岗位", value: openPositions.value},
 ]);
