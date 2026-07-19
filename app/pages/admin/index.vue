@@ -3,7 +3,11 @@
     <MinecraftSiteHeader/>
 
     <n-config-provider :theme="null" :theme-overrides="themeOverrides">
-      <section class="login-shell">
+      <div v-if="checkingSession" class="session-check">
+        <n-spin size="large"/>
+      </div>
+
+      <section v-else class="login-shell">
         <header class="login-head">
           <p class="eyebrow">Admin Console</p>
           <h1>项目管理后台</h1>
@@ -263,8 +267,27 @@ const handleAdminLogin = async () => {
 };
 
 const {verifyProjectOwner, adminLogin, adminMe, emailLogin} = useProjectHubApi();
-const {write: writeOwnerSession} = useOwnerSession();
-const {write: writeAdminSession} = useAdminAuth();
+const {write: writeOwnerSession, read: readOwnerSession} = useOwnerSession();
+const {write: writeAdminSession, read: readAdminSession} = useAdminAuth();
+
+// 已登录用户落到登录页会看到登录表单，误以为「登录态没保留、要重新登录」
+// （典型路径：在 /admin/manage 点 header 的「项目管理后台」按钮 → 回到 /admin）。
+// 挂载时按已有会话直接跳走：管理员 → /admin/manage；项目方 → 该项目管理页；
+// 都没有才显示登录表单。token 若已过期，目标页 onMounted 会校验失败再跳回这里。
+const checkingSession = ref(true);
+onMounted(async () => {
+  const admin = readAdminSession();
+  if (admin?.token) {
+    await navigateTo("/admin/manage");
+    return;
+  }
+  const owner = readOwnerSession();
+  if (owner?.project?.id) {
+    await navigateTo(`/admin/projects/${owner.project.id}`);
+    return;
+  }
+  checkingSession.value = false;
+});
 
 // 项目方登录：POST /api/admin/project/object-items/{id}/verify（openapi.json）
 // 校验通过后把项目详情 + controlPassword 写入会话（后续管理操作每次都要带 controlPassword），
@@ -310,6 +333,12 @@ const handleOwnerLogin = async () => {
   linear-gradient(90deg, rgba(97, 153, 202, 0.17) 1px, transparent 1px),
   #dff0ff;
   background-size: auto, 26px 26px, 26px 26px, auto;
+}
+
+.session-check {
+  display: grid;
+  place-items: center;
+  padding: 96px 0;
 }
 
 .login-shell {
