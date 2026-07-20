@@ -27,12 +27,14 @@
           </div>
         </n-card>
 
-        <!-- 总管理专属：项目分配 -->
-        <div v-if="isSuperAdmin" class="super-grid">
-          <n-card :bordered="false" class="entry-card" hoverable>
+        <div class="entry-grid">
+          <n-card v-if="isSuperAdmin" :bordered="false" class="entry-card entry-card--assign" hoverable>
             <div class="entry-head">
-              <span class="eyebrow">Assign</span>
-              <h2>项目分配</h2>
+              <span class="entry-badge entry-badge--assign" aria-hidden="true"> ⟲ </span>
+              <div class="entry-titles">
+                <span class="eyebrow">Assign</span>
+                <h2>项目分配</h2>
+              </div>
             </div>
             <p class="entry-desc">把项目分配给有创建资格的用户或总管理（含你自己，每账号名下上限 10 个），或收回为未分配。</p>
             <n-space :size="10" align="center" wrap>
@@ -55,58 +57,81 @@
               </n-button>
             </n-space>
           </n-card>
-        </div>
 
-        <div class="entry-grid">
-          <n-card v-if="isSuperAdmin" :bordered="false" class="entry-card" hoverable>
+          <n-card v-if="isSuperAdmin" :bordered="false" class="entry-card entry-card--users" hoverable>
             <div class="entry-head">
-              <span class="eyebrow">Users</span>
-              <h2>用户管理</h2>
+              <span class="entry-badge entry-badge--users" aria-hidden="true"> ♛ </span>
+              <div class="entry-titles">
+                <span class="eyebrow">Users</span>
+                <h2>用户管理</h2>
+              </div>
             </div>
             <p class="entry-desc">管理全部账号：授予 / 撤销项目创建资格，查看角色与状态。被授权的用户可创建并管理自己的项目。</p>
-            <n-button size="large" type="primary" @click="navigateTo('/admin/manage/users')">进入用户管理</n-button>
+            <div class="entry-foot">
+              <n-button size="large" type="primary" @click="navigateTo('/admin/manage/users')">进入用户管理</n-button>
+            </div>
           </n-card>
 
-          <n-card :bordered="false" class="entry-card" hoverable>
+          <n-card :bordered="false" class="entry-card entry-card--projects" hoverable>
             <div class="entry-head">
-              <span class="eyebrow">Projects</span>
-              <h2>项目管理</h2>
+              <span class="entry-badge entry-badge--projects" aria-hidden="true"> ❖ </span>
+              <div class="entry-titles">
+                <span class="eyebrow">Projects</span>
+                <h2>项目管理</h2>
+              </div>
             </div>
             <p class="entry-desc">
               {{
                 isSuperAdmin ? "审核、批量改状态、分配项目，进入单个项目维护。" : "管理名下项目：审核加入申请、发布动态、审核评论。"
               }}
             </p>
-            <n-button size="large" type="primary" @click="navigateTo('/admin/manage/projects')">进入项目管理</n-button>
+            <div class="entry-foot">
+              <n-button size="large" type="primary" @click="navigateTo('/admin/manage/projects')">进入项目管理</n-button>
+            </div>
           </n-card>
 
-          <n-card v-if="isSuperAdmin" :bordered="false" class="entry-card" hoverable>
+          <n-card v-if="isSuperAdmin" :bordered="false" class="entry-card entry-card--tags" hoverable>
             <div class="entry-head">
-              <span class="eyebrow">Tags</span>
-              <h2>标签管理</h2>
+              <span class="entry-badge entry-badge--tags" aria-hidden="true"> # </span>
+              <div class="entry-titles">
+                <span class="eyebrow">Tags</span>
+                <h2>标签管理</h2>
+              </div>
             </div>
             <p class="entry-desc">维护全局项目标签字典（父子层级 / 是否可选 / 排序），驱动投稿、项目编辑与项目墙 Cascader。</p>
-            <n-button size="large" type="primary" @click="navigateTo('/admin/manage/tags')">进入标签管理</n-button>
+            <div class="entry-foot">
+              <n-button size="large" type="primary" @click="navigateTo('/admin/manage/tags')">进入标签管理</n-button>
+            </div>
           </n-card>
 
-          <n-card v-if="isSuperAdmin" :bordered="false" class="entry-card" hoverable>
+          <n-card v-if="isSuperAdmin" :bordered="false" class="entry-card entry-card--ideas" hoverable>
             <div class="entry-head">
-              <span class="eyebrow">Ideas</span>
-              <h2>想法管理</h2>
+              <span class="entry-badge entry-badge--ideas" aria-hidden="true"> ✦ </span>
+              <div class="entry-titles">
+                <span class="eyebrow">Ideas</span>
+                <h2>想法管理</h2>
+              </div>
             </div>
             <p class="entry-desc">审核想法墙投稿、批量改状态、编辑或删除单个想法。</p>
-            <n-button size="large" type="primary" @click="navigateTo('/admin/manage/ideas')">进入想法管理</n-button>
+            <div class="entry-foot">
+              <n-button size="large" type="primary" @click="navigateTo('/admin/manage/ideas')">进入想法管理</n-button>
+            </div>
           </n-card>
 
-          <n-card v-if="isSuperAdmin" :bordered="false" class="entry-card" hoverable>
+          <n-card v-if="isSuperAdmin" :bordered="false" class="entry-card entry-card--mine" hoverable>
             <div class="entry-head">
-              <span class="eyebrow">My Projects</span>
-              <h2>我的项目</h2>
+              <span class="entry-badge entry-badge--mine" aria-hidden="true"> ★ </span>
+              <div class="entry-titles">
+                <span class="eyebrow">My Projects</span>
+                <h2>我的项目</h2>
+              </div>
             </div>
             <p class="entry-desc">管理你自己归属的项目，或直接创建新的自有项目（与全局项目相互独立）。</p>
-            <n-button size="large" type="primary" @click="navigateTo('/admin/manage/projects?scope=mine')">
-              进入我的项目
-            </n-button>
+            <div class="entry-foot">
+              <n-button size="large" type="primary" @click="navigateTo('/admin/manage/projects?scope=mine')">
+                进入我的项目
+              </n-button>
+            </div>
           </n-card>
         </div>
 
@@ -381,7 +406,6 @@ const handleChangePassword = async () => {
 }
 
 .manage-hero,
-.super-grid,
 .entry-grid,
 .scope-hint,
 .empty-state,
@@ -445,22 +469,89 @@ const handleChangePassword = async () => {
   gap: 10px;
 }
 
-.super-grid,
 .entry-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  align-items: stretch;
+}
+
+/* 入口卡：左侧主题色条 + 顶部对齐，让同行卡片底栏齐平 */
+.entry-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.entry-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 5px;
+  background: var(--entry-accent, #6b8f32);
+  transition: width 0.18s ease;
+}
+
+.entry-card :deep(.n-card__content) {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+}
+
+.entry-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 0 #5a3a21;
+}
+
+.entry-card:hover::before {
+  width: 9px;
 }
 
 .entry-head {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-bottom: 10px;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+/* 彩色方块徽标：Minecraft 像素风质感，hover 时高亮 */
+.entry-badge {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border: 2px solid #5a3a21;
+  border-radius: 8px;
+  background: var(--entry-accent, #6b8f32);
+  color: #fff8df;
+  font-size: 22px;
+  font-weight: 900;
+  line-height: 1;
+  box-shadow: 0 3px 0 #5a3a21;
+  transition: filter 0.18s ease;
+}
+
+.entry-card:hover .entry-badge {
+  filter: brightness(1.12);
+}
+
+.entry-titles {
+  min-width: 0;
+}
+
+.entry-titles .eyebrow {
+  margin: 0;
+  color: var(--entry-accent, #6b8f32);
+  font-weight: 900;
+  font-size: 12px;
+  letter-spacing: 0.12em;
 }
 
 .entry-head h2 {
-  margin: 0;
+  margin: 2px 0 0;
   color: #2d2418;
 }
 
@@ -468,7 +559,22 @@ const handleChangePassword = async () => {
   margin: 0 0 16px;
   color: #60462b;
   line-height: 1.7;
+  flex: 1 1 auto;
 }
+
+/* 底部按钮区：统一贴底，保证多卡对齐 */
+.entry-foot {
+  margin-top: auto;
+  padding-top: 4px;
+}
+
+/* 各入口主题色（与徽标 + 色条联动） */
+.entry-card--assign { --entry-accent: #c0732d; }   /* 橙：分配 */
+.entry-card--users { --entry-accent: #6b8f32; }   /* 绿：用户 */
+.entry-card--projects { --entry-accent: #4a7cb8; } /* 蓝：项目 */
+.entry-card--tags { --entry-accent: #8b5cb6; }    /* 紫：标签 */
+.entry-card--ideas { --entry-accent: #c8a83a; }   /* 金：想法 */
+.entry-card--mine { --entry-accent: #3aa3a3; }    /* 青：我的项目 */
 
 .assign-select {
   min-width: 220px;
@@ -494,13 +600,18 @@ const handleChangePassword = async () => {
   line-height: 1.7;
 }
 
-@media (width <= 720px) {
+@media (width <= 880px) {
   .manage-hero :deep(.n-card__content) {
     flex-direction: column;
     align-items: flex-start;
   }
 
-  .super-grid,
+  .entry-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (width <= 600px) {
   .entry-grid {
     grid-template-columns: 1fr;
   }
