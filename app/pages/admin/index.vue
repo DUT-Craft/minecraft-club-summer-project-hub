@@ -32,8 +32,8 @@
               type="button"
               @click="switchMode('owner')"
           >
-            <span class="tab-title">项目方登录</span>
-            <span class="tab-sub">项目 ID + 管理密码</span>
+            <span class="tab-title">项目管理</span>
+            <span class="tab-sub">登录后管理名下项目</span>
           </button>
         </div>
 
@@ -106,23 +106,15 @@
                   placeholder="例如：12"
               />
             </n-form-item>
-            <n-form-item label="项目管理密码" path="controlPassword">
-              <n-input
-                  v-model:value="ownerForm.controlPassword"
-                  placeholder="投稿时设置的管理密码"
-                  show-password-on="click"
-                  type="password"
-                  @keyup.enter="handleOwnerLogin"
-              />
-            </n-form-item>
+            <p class="owner-hint">凭账号登录后，直接以项目 ID 进入该项目管理页（JWT 鉴权，无需管理密码）。</p>
             <n-button :loading="submitting" attr-type="submit" block type="primary">
-              {{ submitting ? "登录中..." : "登录后台" }}
+              {{ submitting ? "进入中..." : "进入项目管理" }}
             </n-button>
           </n-form>
         </n-card>
 
         <p class="hint">
-          项目方登录仅能管理自己提交的项目；管理员可管理全部项目、想法与审核。
+          管理员可管理全部项目、想法与审核；登录用户可进入自己拥有/参与的项目管理页。
         </p>
 
         <p class="register-link">
@@ -172,7 +164,6 @@ const adminForm = reactive({
 
 const ownerForm = reactive({
   projectId: "",
-  controlPassword: "",
 });
 
 // 管理员登录校验：邮箱验证登录模式下额外要求邮箱 + 验证码
@@ -202,7 +193,6 @@ const adminRules = computed<FormRules>(() => {
 
 const ownerRules: FormRules = {
   projectId: {required: true, message: "请输入项目 ID", trigger: ["blur", "input"]},
-  controlPassword: {required: true, message: "请输入项目管理密码", trigger: ["blur", "input"]},
 };
 
 const switchMode = (next: LoginMode) => {
@@ -266,7 +256,7 @@ const handleAdminLogin = async () => {
   }
 };
 
-const {verifyProjectOwner, adminLogin, adminMe, emailLogin} = useProjectHubApi();
+const {adminLogin, adminMe, emailLogin, listProjectsAdmin} = useProjectHubApi();
 const {write: writeOwnerSession, read: readOwnerSession} = useOwnerSession();
 const {write: writeAdminSession, read: readAdminSession} = useAdminAuth();
 
@@ -289,34 +279,40 @@ onMounted(async () => {
   checkingSession.value = false;
 });
 
-// 项目方登录：POST /api/admin/project/object-items/{id}/verify（openapi.json）
-// 校验通过后把项目详情 + controlPassword 写入会话（后续管理操作每次都要带 controlPassword），
-// 随后跳转到该项目专属的管理页 /admin/projects/{id}
+// 项目管理入口：controlPassword 已下线（设计 §14.11），改为登录态 + 项目 ID 直达项目管理页。
+// 校验：必须先登录（admin 会话存在），且该项目在当前登录用户名下（mine=true）才放行进入。
 const handleOwnerLogin = async () => {
   try {
     await ownerFormRef.value?.validate();
   } catch {
     return;
   }
+  const admin = readAdminSession();
+  if (!admin?.token) {
+    message.warning("请先在「管理员登录」完成账号登录，再进入项目管理");
+    switchMode("admin");
+    return;
+  }
   const projectId = ownerForm.projectId.trim();
-  const controlPassword = ownerForm.controlPassword;
   try {
     submitting.value = true;
-    const project = await verifyProjectOwner(projectId, controlPassword);
+    // 拉取名下项目，确认该项目归属当前登录用户（JWT 鉴权）
+    const mine = await listProjectsAdmin(undefined, true);
+    const target = mine.find((p) => String(p.id) === projectId);
+    if (!target) {
+      message.error("该项目不在你的名下，或 ID 不正确");
+      return;
+    }
     writeOwnerSession({
-      project,
-      controlPassword,
+      project: target,
       loginAt: new Date().toISOString(),
     });
-    message.success(`欢迎，${project.ownerName || "项目方"}！正在进入管理面板...`);
-    // 校验接口已确认项目存在，统一以 verify 返回的 id 作为管理页路径，避免与输入大小写 / 空格漂移
-    await navigateTo(`/admin/projects/${project.id || projectId}`);
-    // 跳转后清空敏感字段，避免登录页 DOM 里残留密码
-    ownerForm.controlPassword = "";
+    message.success(`进入项目《${target.title}》管理页`);
+    await navigateTo(`/admin/projects/${target.id || projectId}`);
   } catch (error) {
     message.error(error instanceof Error && error.message
         ? error.message
-        : "项目 ID 或管理密码不正确，请重试");
+        : "项目 ID 不正确或无权访问，请重试");
   } finally {
     submitting.value = false;
   }

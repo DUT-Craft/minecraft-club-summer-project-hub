@@ -1,13 +1,9 @@
 import type {Project} from "~/types/projectHub";
 
 export interface OwnerSession {
-    // verifyProjectOwner 校验通过后返回的项目信息（已映射为前端 Project 类型），
+    // 进入项目管理页时回填的项目信息（已映射为前端 Project 类型），
     // 管理页直接展示，避免重复请求公开接口（公开接口还会过滤掉非 APPROVED 的项目）。
     project: Project;
-    // 项目控制密码明文。后端 /api/admin/project/object-items/{id}/verify 只做一次性校验、不签发 token，
-    // 后续所有 /api/admin/project/... 管理操作（修改 / 删除 / 改密 / 处理申请）都要求请求体带上
-    // controlPassword，所以前端必须在会话里留存明文。仅在当前标签页存活，关闭即清除（见 STORAGE_KEY）。
-    controlPassword: string;
     // 登录时间，方便管理页展示「登录于 xx」与做超时提示
     loginAt: string;
 }
@@ -15,7 +11,7 @@ export interface OwnerSession {
 const STORAGE_KEY = "project-owner-session";
 
 // 模块级 ref：在 SPA 客户端导航（/admin 登录 → /admin/projects/:id 管理）期间直接可用；
-// sessionStorage 兜底：刷新管理页时仍能读到，避免因刷新把 controlPassword 丢掉而被踢回登录页。
+// sessionStorage 兜底：刷新管理页时仍能读到，避免因刷新丢会话而被踢回登录页。
 // SSR 时此 ref 永远是 null，且读写都加了 import.meta.client 守卫，不会污染服务端状态。
 // 实现思路与 useLastSubmission 保持一致。
 const pending = ref<OwnerSession | null>(null);
@@ -50,7 +46,7 @@ export const useOwnerSession = () => {
         return null;
     };
 
-    // 仅替换 project 字段（编辑保存后回写最新详情，controlPassword / loginAt 保持不变）
+    // 仅替换 project 字段（编辑保存后回写最新详情，loginAt 保持不变）
     const updateProject = (project: Project) => {
         const current = pending.value;
         if (!current) {
@@ -60,16 +56,6 @@ export const useOwnerSession = () => {
         write(next);
     };
 
-    // 仅替换 controlPassword 字段（修改管理密码成功后回写新密码明文，
-    // 否则后续管理操作仍带旧密码会被后端拒收；project / loginAt 保持不变）
-    const updateControlPassword = (controlPassword: string) => {
-        const current = pending.value;
-        if (!current) {
-            return;
-        }
-        write({...current, controlPassword});
-    };
-
     const clear = () => {
         pending.value = null;
         if (isClient()) {
@@ -77,9 +63,8 @@ export const useOwnerSession = () => {
         }
     };
 
-    // session：暴露共享响应式 ref，组件直接绑定即可随 write / updateProject /
-    // updateControlPassword / clear 自动同步。切勿再用本地 ref 拷贝 read() 的返回值——
-    // update* 会把 pending.value 整体替换成新对象，本地副本仍指向旧对象，UI 不会刷新
-    // （admin/projects/[id].vue 的「刷新」按钮曾因此点完不更新）。
-    return {session: pending, write, read, updateProject, updateControlPassword, clear};
+    // session：暴露共享响应式 ref，组件直接绑定即可随 write / updateProject / clear 自动同步。
+    // 切勿再用本地 ref 拷贝 read() 的返回值——updateProject 会把 pending.value 整体替换成新对象，
+    // 本地副本仍指向旧对象，UI 不会刷新（admin/projects/[id].vue 的「刷新」按钮曾因此点完不更新）。
+    return {session: pending, write, read, updateProject, clear};
 };

@@ -192,14 +192,6 @@
               <n-button block dashed @click="addCreateNeed">+ 添加岗位</n-button>
             </div>
           </n-form-item>
-
-          <n-form-item label="项目控制密码（可选）" path="controlPassword">
-            <n-input
-                v-model:value="createForm.controlPassword"
-                placeholder="留空则仅管理员可管理；设置后项目方可凭此密码自服务"
-                type="password"
-            />
-          </n-form-item>
         </n-form>
 
         <template #footer>
@@ -413,7 +405,6 @@ const createForm = reactive({
   ownerName: "",
   ownerMinecraftId: "",
   publicContact: "",
-  controlPassword: "",
   recruitmentNeeds: [newCreateNeed()] as RecruitmentNeed[],
 });
 
@@ -436,7 +427,6 @@ const resetCreateForm = () => {
     ownerName: "",
     ownerMinecraftId: "",
     publicContact: "",
-    controlPassword: "",
     recruitmentNeeds: [newCreateNeed()],
   });
 };
@@ -467,7 +457,6 @@ const handleCreateSubmit = async () => {
       recruitmentNeeds: createForm.recruitmentNeeds
           .map((need) => ({skill: need.skill.trim(), count: Number(need.count) || 0, work: need.work.trim()}))
           .filter((need) => need.skill),
-      controlPassword: createForm.controlPassword || undefined,
     });
     message.success(`项目《${created.title}》已创建`);
     showCreateModal.value = false;

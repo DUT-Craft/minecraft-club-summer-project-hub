@@ -5,10 +5,33 @@
     <n-config-provider :theme="null" :theme-overrides="themeOverrides">
       <section class="login-shell">
         <header class="login-head">
-          <p class="eyebrow">Project Manager</p>
-          <h1>项目管理注册</h1>
-          <p class="sub">凭总管理发放的一次性邀请码注册项目管理账号</p>
+          <p class="eyebrow">Sign Up</p>
+          <h1>注册账号</h1>
+          <p class="sub">公开注册为普通用户；凭邀请码注册可创建项目</p>
         </header>
+
+        <div class="tabs" role="tablist">
+          <button
+              :aria-selected="mode === 'public'"
+              :class="['tab', { active: mode === 'public' }]"
+              role="tab"
+              type="button"
+              @click="switchMode('public')"
+          >
+            <span class="tab-title">公开注册</span>
+            <span class="tab-sub">无需邀请码</span>
+          </button>
+          <button
+              :aria-selected="mode === 'invite'"
+              :class="['tab', { active: mode === 'invite' }]"
+              role="tab"
+              type="button"
+              @click="switchMode('invite')"
+          >
+            <span class="tab-title">邀请码注册</span>
+            <span class="tab-sub">可创建项目</span>
+          </button>
+        </div>
 
         <n-card :bordered="false" class="panel">
           <n-form
@@ -20,7 +43,7 @@
               size="large"
               @submit.prevent="handleSubmit"
           >
-            <n-form-item label="邀请码" path="inviteCode">
+            <n-form-item v-if="mode === 'invite'" label="邀请码" path="inviteCode">
               <n-input
                   v-model:value="form.inviteCode"
                   clearable
@@ -31,13 +54,21 @@
               <n-input
                   v-model:value="form.username"
                   clearable
-                  placeholder="设置登录账号"
+                  placeholder="3-32 位，字母/数字/下划线/短横线"
               />
             </n-form-item>
             <n-form-item label="密码" path="password">
               <n-input
                   v-model:value="form.password"
-                  placeholder="设置登录密码"
+                  placeholder="8-64 位，含大写/小写/数字/特殊字符三类"
+                  show-password-on="click"
+                  type="password"
+              />
+            </n-form-item>
+            <n-form-item label="确认密码" path="confirmPassword">
+              <n-input
+                  v-model:value="form.confirmPassword"
+                  placeholder="再次输入密码"
                   show-password-on="click"
                   type="password"
               />
@@ -64,7 +95,9 @@
         </n-card>
 
         <p class="hint">
-          邀请码仅可使用一次，注册成功后即可登录后台管理名下项目。没有邀请码请联系总管理获取。
+          {{ mode === "invite"
+            ? "邀请码注册的用户拥有项目创建资格。邀请码仅可使用一次。"
+            : "公开注册为普通用户，可投稿想法 / 评论 / 加入申请；创建项目需邀请码或总管理授权。" }}
         </p>
 
         <div class="back">
@@ -84,41 +117,67 @@ definePageMeta({
 
 const message = useMessage();
 const {themeOverrides} = useMinecraftTheme();
-const {registerManager} = useProjectHubApi();
+const {registerManager, registerUser} = useProjectHubApi();
+
+type RegisterMode = "public" | "invite";
+const mode = ref<RegisterMode>("public");
+const submitting = ref(false);
+
+const switchMode = (next: RegisterMode) => {
+  if (mode.value === next || submitting.value) return;
+  mode.value = next;
+};
 
 const formRef = ref<FormInst | null>(null);
-const submitting = ref(false);
 
 const form = reactive({
   inviteCode: "",
   username: "",
   password: "",
+  confirmPassword: "",
   email: "",
   emailCode: "",
 });
 
-const rules: FormRules = {
-  inviteCode: {required: true, message: "请输入邀请码", trigger: ["blur", "input"]},
-  username: {required: true, message: "请输入账号", trigger: ["blur", "input"]},
-  password: {required: true, message: "请输入密码", trigger: ["blur", "input"]},
-  emailCode: {required: true, message: "请输入邮箱验证码", trigger: ["blur", "input"]},
-  email: {
-    required: true,
-    trigger: ["blur", "input"],
-    validator: (_rule, value) => {
-      if (!value) {
-        return new Error("请输入邮箱");
-      }
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value))) {
-        return new Error("邮箱格式不正确");
-      }
-      return true;
+const rules = computed<FormRules>(() => {
+  const base: FormRules = {
+    username: {required: true, message: "请输入账号", trigger: ["blur", "input"]},
+    password: {
+      required: true,
+      trigger: ["blur", "input"],
+      validator: (_rule, value) => {
+        if (!value) return new Error("请输入密码");
+        if (value.length < 8 || value.length > 64) return new Error("密码长度需为 8-64 位");
+        return true;
+      },
     },
-  },
-};
+    confirmPassword: {
+      required: true,
+      trigger: ["blur", "input"],
+      validator: (_rule, value) => {
+        if (!value) return new Error("请再次输入密码");
+        if (value !== form.password) return new Error("两次密码不一致");
+        return true;
+      },
+    },
+    emailCode: {required: true, message: "请输入邮箱验证码", trigger: ["blur", "input"]},
+    email: {
+      required: true,
+      trigger: ["blur", "input"],
+      validator: (_rule, value) => {
+        if (!value) return new Error("请输入邮箱");
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value))) return new Error("邮箱格式不正确");
+        return true;
+      },
+    },
+  };
+  if (mode.value === "invite") {
+    base.inviteCode = {required: true, message: "请输入邀请码", trigger: ["blur", "input"]};
+  }
+  return base;
+});
 
-// 项目管理注册：POST /api/auth/register/manager（公开，凭一次性邀请码）
-// 邀请码由后端原子消费（一码一次）；注册成功后跳转登录页，用刚注册的账号登录。
+// 注册：公开注册（POST /api/auth/register）或邀请码注册（POST /api/auth/register/manager）
 const handleSubmit = async () => {
   try {
     await formRef.value?.validate();
@@ -127,20 +186,24 @@ const handleSubmit = async () => {
   }
   try {
     submitting.value = true;
-    const result = await registerManager({
-      inviteCode: form.inviteCode.trim(),
+    const payload = {
       username: form.username.trim(),
       password: form.password,
+      confirmPassword: form.confirmPassword,
       email: form.email.trim(),
       emailCode: form.emailCode.trim(),
-    });
+    };
+    const result = mode.value === "invite"
+      ? await registerManager({inviteCode: form.inviteCode.trim(), ...payload})
+      : await registerUser(payload);
     message.success(`注册成功：${result.username}，请登录`);
     form.password = "";
+    form.confirmPassword = "";
     form.inviteCode = "";
     form.emailCode = "";
     await navigateTo("/admin");
   } catch (error) {
-    message.error(error instanceof Error && error.message ? error.message : "注册失败，请检查邀请码或稍后再试");
+    message.error(error instanceof Error && error.message ? error.message : "注册失败，请检查输入或稍后再试");
   } finally {
     submitting.value = false;
   }
@@ -187,6 +250,50 @@ const handleSubmit = async () => {
   margin: 8px 0 0;
   color: #60462b;
   font-weight: 600;
+}
+
+.tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.tab {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 2px solid #8b6a3d;
+  border-radius: 10px;
+  background: rgba(255, 248, 223, 0.6);
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+}
+
+.tab:hover {
+  background: #fff8df;
+  border-color: #6b8f32;
+}
+
+.tab.active {
+  background: #fff8df;
+  border-color: #6b8f32;
+  box-shadow: 0 4px 0 #6b8f32;
+}
+
+.tab-title {
+  font-weight: 900;
+  font-size: 16px;
+  color: #2d2418;
+}
+
+.tab-sub {
+  font-size: 12px;
+  color: #795b36;
 }
 
 :deep(.n-card) {

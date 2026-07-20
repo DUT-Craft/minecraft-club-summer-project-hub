@@ -42,8 +42,8 @@
           </template>
 
           <n-alert :bordered="false" class="login-banner" type="success">
-            <strong>已登录项目方后台。</strong>
-            登录时间：{{ formatTime(session.loginAt) }}。可在此编辑项目信息、修改管理密码、处理加入申请。
+            <strong>已登录项目管理后台。</strong>
+            登录时间：{{ formatTime(session.loginAt) }}。可在此编辑项目信息、处理加入申请、管理动态与评论。
           </n-alert>
 
           <dl class="info-list">
@@ -102,49 +102,6 @@
             </div>
           </div>
         </n-card>
-
-        <div class="action-grid">
-          <n-card :bordered="false" class="action-card">
-            <template #header>
-              <div class="panel-head">
-                <span class="eyebrow">Security</span>
-                <h3>修改管理密码</h3>
-              </div>
-            </template>
-            <n-form
-                ref="passwordFormRef"
-                :model="passwordForm"
-                :rules="passwordRules"
-                :show-require-mark="false"
-                class="password-form"
-                label-placement="top"
-                size="medium"
-                @submit.prevent="handleChangePassword"
-            >
-              <n-form-item label="新管理密码" path="newPassword">
-                <n-input
-                    v-model:value="passwordForm.newPassword"
-                    placeholder="至少 6 位"
-                    show-password-on="click"
-                    type="password"
-                />
-              </n-form-item>
-              <n-form-item label="确认新密码" path="confirmPassword">
-                <n-input
-                    v-model:value="passwordForm.confirmPassword"
-                    placeholder="再次输入新密码"
-                    show-password-on="click"
-                    type="password"
-                    @keyup.enter="handleChangePassword"
-                />
-              </n-form-item>
-              <n-button :loading="submittingPassword" attr-type="submit" type="primary">
-                {{ submittingPassword ? "提交中..." : "更新密码" }}
-              </n-button>
-            </n-form>
-            <p class="action-hint">当前密码取自已登录会话，无需重复输入；更新后新密码会自动覆盖会话。</p>
-          </n-card>
-        </div>
 
         <n-card :bordered="false" class="applications-panel">
           <template #header>
@@ -219,14 +176,12 @@
           </div>
         </n-card>
 
-        <!-- 动态管理：发布 / 编辑 / 删除项目动态（自带图片上传） -->
+        <!-- 动态管理：发布 / 编辑 / 删除项目动态（自带图片上传）；走 JWT 鉴权 -->
         <AdminProjectUpdates
-            :control-password="session.controlPassword"
             :project-id="session.project.id"
         />
-        <!-- 评论审核：通过 / 拒绝 / 删除待审核评论 -->
+        <!-- 评论审核：通过 / 拒绝 / 删除待审核评论；走 JWT 鉴权 -->
         <AdminProjectComments
-            :control-password="session.controlPassword"
             :project-id="session.project.id"
         />
 
@@ -358,11 +313,11 @@
       <n-empty
           v-else
           class="empty-state"
-          description="尚未登录项目方后台"
+          description="尚未登录项目管理后台"
       >
         <template #extra>
           <p class="empty-subtext">
-            项目方会话仅在当前标签页有效，关闭或刷新过久会失效。请重新用项目 ID + 管理密码登录。
+            请先登录账号，再通过项目 ID 进入该项目管理页。
           </p>
           <n-button type="primary" @click="navigateTo('/admin')">前往登录</n-button>
         </template>
@@ -390,17 +345,16 @@ const OPERATIONAL_STATUSES = ["PREPARING", "RECRUITING", "IN_PROGRESS", "PAUSED"
 const route = useRoute();
 const message = useMessage();
 const {themeOverrides} = useMinecraftTheme();
-// session 直接绑定 useOwnerSession 的共享 ref：updateProjectSession / updateControlPassword /
-// clear 回写后 hero 与 info 面板自动刷新，不再用本地副本（本地副本会断开响应式，导致「刷新」点完不更新）
-const {session, read, clear, updateProject: updateProjectSession, updateControlPassword} = useOwnerSession();
+// session 直接绑定 useOwnerSession 的共享 ref：updateProjectSession / clear 回写后
+// hero 与 info 面板自动刷新，不再用本地副本（本地副本会断开响应式，导致「刷新」点完不更新）
+const {session, read, clear, updateProject: updateProjectSession} = useOwnerSession();
 const {
-  updateProject: updateProjectApi,
-  changeControlPassword,
-  loadJoinApplications,
-  acceptJoinApplication,
-  rejectJoinApplication,
-  verifyProjectOwner,
-  deleteProject,
+  updateProjectAdmin,
+  deleteProjectBatch,
+  listJoinApplicationsAdmin,
+  acceptJoinApplicationAdmin,
+  rejectJoinApplicationAdmin,
+  listProjectsAdmin,
 } = useProjectHubApi();
 
 const loading = ref(true);
@@ -441,8 +395,8 @@ const handleLogout = () => {
 const refreshing = ref(false);
 const deleting = ref(false);
 
-// 刷新：用当前会话密码重新调 verify，拿到后端最新项目详情回写会话，
-// 避免管理页一直停留在登录时刻的快照（例如管理员改了状态后项目方还看到旧值）
+// 刷新：重新拉取名下项目列表，按 id 取最新详情回写会话，
+// 避免管理页一直停留在登录时刻的快照（例如状态被改后还看到旧值）
 const handleRefresh = async () => {
   const current = session.value;
   if (!current) {
@@ -450,19 +404,25 @@ const handleRefresh = async () => {
   }
   try {
     refreshing.value = true;
-    const latest = await verifyProjectOwner(current.project.id, current.controlPassword);
-    updateProjectSession(latest);
-    message.success("已同步最新项目信息");
+    const mine = await listProjectsAdmin(undefined, true);
+    const latest = mine.find((p) => String(p.id) === String(current.project.id));
+    if (latest) {
+      updateProjectSession(latest);
+      message.success("已同步最新项目信息");
+    } else {
+      message.warning("该项目已不在你的名下，可能已被移除或转交");
+    }
   } catch (error) {
     message.error(error instanceof Error && error.message
         ? error.message
-        : "刷新失败，控制密码可能已变更，请重新登录");
+        : "刷新失败，请稍后再试");
   } finally {
     refreshing.value = false;
   }
 };
 
 // 软删除项目（后端置 DELETED，不再公开展示）；不可在前端恢复，需二次确认
+// 阶段八下线 controlPassword，改用 JWT 批量删除接口（单条用 [projectId]）
 const handleDeleteProject = async () => {
   const current = session.value;
   if (!current) {
@@ -470,7 +430,7 @@ const handleDeleteProject = async () => {
   }
   try {
     deleting.value = true;
-    await deleteProject(current.project.id, current.controlPassword);
+    await deleteProjectBatch([current.project.id]);
     // clear() 已把共享 session 置空，模板自动切回「未登录」空态
     clear();
     message.success("项目已删除");
@@ -554,7 +514,7 @@ const handleEditSubmit = async () => {
   }
   try {
     submittingEdit.value = true;
-    const updated = await updateProjectApi(current.project.id, current.controlPassword, {
+    const updated = await updateProjectAdmin(current.project.id, {
       title: editForm.title.trim(),
       tagIds: editForm.tagIds,
       status: editForm.status,
@@ -585,59 +545,7 @@ const handleEditSubmit = async () => {
   }
 };
 
-/* ---------- 修改管理密码 ---------- */
-
-const passwordFormRef = ref<FormInst | null>(null);
-const submittingPassword = ref(false);
-
-const passwordForm = reactive({
-  newPassword: "",
-  confirmPassword: "",
-});
-
-const passwordRules: FormRules = {
-  newPassword: [
-    {required: true, message: "请输入新密码", trigger: ["blur", "input"]},
-    {min: 6, message: "密码至少 6 位", trigger: ["blur", "input"]},
-  ],
-  confirmPassword: [
-    {required: true, message: "请再次输入新密码", trigger: ["blur", "input"]},
-    {
-      validator: (_rule, value) => value === passwordForm.newPassword,
-      message: "两次输入的密码不一致",
-      trigger: ["blur", "input"],
-    },
-  ],
-};
-
-const handleChangePassword = async () => {
-  const current = session.value;
-  if (!current) {
-    return;
-  }
-  try {
-    await passwordFormRef.value?.validate();
-  } catch {
-    return;
-  }
-  try {
-    submittingPassword.value = true;
-    await changeControlPassword(current.project.id, current.controlPassword, passwordForm.newPassword);
-    // 后续所有管理操作都要带 controlPassword，必须把会话里的明文同步成新密码
-    updateControlPassword(passwordForm.newPassword);
-    message.success("管理密码已更新");
-    passwordForm.newPassword = "";
-    passwordForm.confirmPassword = "";
-  } catch (error) {
-    message.error(error instanceof Error && error.message
-        ? error.message
-        : "修改密码失败，请稍后再试");
-  } finally {
-    submittingPassword.value = false;
-  }
-};
-
-/* ---------- 加入申请管理 ---------- */
+/* ---------- 加入申请管理（JWT 鉴权，阶段八下线 controlPassword） ---------- */
 
 const applications = ref<JoinApplicationResponse[]>([]);
 const loadingApplications = ref(false);
@@ -662,9 +570,8 @@ const loadApplications = async () => {
   }
   try {
     loadingApplications.value = true;
-    const list = await loadJoinApplications(
+    const list = await listJoinApplicationsAdmin(
         current.project.id,
-        current.controlPassword,
         applicationFilter.value || undefined,
     );
     // 按 createTime 倒序，最新的申请排在最前
@@ -702,7 +609,7 @@ const handleAccept = async (app: JoinApplicationResponse) => {
   }
   try {
     processingId.value = app.id;
-    await acceptJoinApplication(current.project.id, app.id, current.controlPassword);
+    await acceptJoinApplicationAdmin(current.project.id, app.id);
     message.success(`已同意 ${app.nickName || "申请人"} 的加入申请`);
     await reloadAfterProcess();
   } catch (error) {
@@ -721,7 +628,7 @@ const handleReject = async (app: JoinApplicationResponse) => {
   }
   try {
     processingId.value = app.id;
-    await rejectJoinApplication(current.project.id, app.id, current.controlPassword);
+    await rejectJoinApplicationAdmin(current.project.id, app.id);
     message.success(`已拒绝 ${app.nickName || "申请人"} 的加入申请`);
     await reloadAfterProcess();
   } catch (error) {

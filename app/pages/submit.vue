@@ -80,10 +80,6 @@
               </n-form-item>
             </div>
 
-            <n-form-item label="项目管理密码" path="ownerPassword">
-              <n-input v-model:value="projectForm.ownerPassword" placeholder="以后项目发起者后台使用" type="password"/>
-            </n-form-item>
-
             <n-button :loading="submitting" attr-type="submit" type="primary">
               {{ submitting ? "提交中..." : "提交项目，等待审核" }}
             </n-button>
@@ -170,7 +166,6 @@ const projectForm = reactive({
   ownerMinecraftId: "",
   description: "",
   publicContact: "",
-  ownerPassword: "",
   recruitmentNeeds: [newNeed()],
 });
 
@@ -188,7 +183,6 @@ const projectRules: FormRules = {
   description: {required: true, message: "请填写项目详细介绍", trigger: ["blur", "input"]},
   ownerMinecraftId: {required: true, message: "请填写 Minecraft ID", trigger: ["blur", "input"]},
   publicContact: {required: true, message: "请填写联系方式", trigger: ["blur", "input"]},
-  ownerPassword: {required: true, message: "请填写管理密码", trigger: ["blur", "input"]},
 };
 
 const ideaRules: FormRules = {
@@ -224,7 +218,6 @@ const resetProject = () => {
     ownerMinecraftId: "",
     description: "",
     publicContact: "",
-    ownerPassword: "",
     recruitmentNeeds: [newNeed()],
   });
 };
@@ -245,18 +238,15 @@ const handleSubmitProject = async () => {
       ownerMinecraftId: projectForm.ownerMinecraftId,
       description: projectForm.description,
       publicContact: projectForm.publicContact,
-      ownerPassword: projectForm.ownerPassword,
       coverImageUrl: projectForm.coverImageUrl || undefined,
       recruitmentNeeds: projectForm.recruitmentNeeds.map((need) => ({
         ...need,
         count: Number(need.count) || 1,
       })),
     });
-    // 后端返回的 controlPassword 是密文无法回显，这里把表单里的明文密码连同
-    // 返回的项目信息存到 useLastSubmission，带到 /submit/success 做一次性展示
+    // 把返回的项目信息存到 useLastSubmission，带到 /submit/success 做一次性展示
     writeSubmission({
       project: created,
-      ownerPassword: projectForm.ownerPassword,
       submittedAt: new Date().toISOString(),
     });
     resetProject();
@@ -294,6 +284,12 @@ const handleSubmitIdea = async () => {
 onMounted(() => {
   if (route.hash === "#idea") {
     mode.value = "idea";
+  }
+  // 投稿收紧为需登录（设计 §8.3 / §14.12）：未登录跳转登录页
+  const authToken = useCookie<string | null>("chat_auth_token");
+  if (!authToken.value) {
+    message.warning("投稿需先登录");
+    navigateTo("/admin");
   }
 });
 </script>

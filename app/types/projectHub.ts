@@ -1,4 +1,4 @@
-export type ReviewStatus = "pending" | "approved" | "rejected" | "contacted" | "accepted" | "deleted";
+export type ReviewStatus = "pending" | "approved" | "rejected" | "contacted" | "accepted" | "withdrawn" | "deleted";
 
 export interface RecruitmentNeed {
   id?: string;
@@ -117,7 +117,6 @@ export interface SubmitProjectPayload {
   ownerMinecraftId: string;
   description: string;
   publicContact: string;
-  ownerPassword: string;
     coverImageUrl?: string;
   recruitmentNeeds: RecruitmentNeed[];
 }
@@ -145,7 +144,7 @@ export interface SubmitCommentPayload {
 }
 
 // 项目方后台「编辑项目信息」表单：字段全部可选，只更新被改动的展示类属性。
-// 与 SubmitProjectPayload 的区别：投稿是全新创建（含 ownerPassword），编辑是增量修改已存在项目。
+// 与 SubmitProjectPayload 的区别：投稿是全新创建，编辑是增量修改已存在项目。
 export interface UpdateProjectPayload {
   title?: string;
   // 标签 ID：null/undefined = 不修改；空数组 = 清空全部标签；非空数组 = 完整替换。
@@ -174,18 +173,17 @@ export interface ProjectUpdatePayload {
 }
 
 // 总管理分配项目时下拉用的可归属账号摘要（GET /api/admin/users/managers）。
-// 含项目管理与总管理（总管理也可拥有并管理自有项目），role 用于在下拉里标注身份。
+// 含拥有项目创建资格的用户与超级管理员，role 用于在下拉里标注身份。
 export interface ManagerSummary {
     id: number | string;
     username: string;
     nickname: string;
-    role: "SUPER_ADMIN" | "PROJECT_MANAGER";
+    role: "SUPER_ADMIN" | "USER" | "PROJECT_MANAGER";
 }
 
 // 管理员直接创建归属自己的项目（POST /api/admin/object-items）。
-// 与匿名投稿 SubmitProjectPayload 的区别：归属人为当前管理员（后端按 JWT 写入 ownerId），
-// status 可由总管理指定（默认后端 RECRUITING 上线），项目管理固定 PENDING 由后端强制；
-// controlPassword 可选——留空则该项目不支持「项目方控制密码自服务」，仅管理员 JWT 管理。
+// 归属人为当前登录用户（后端按 JWT 写入 ownerId），status 可由总管理指定（默认后端 RECRUITING 上线），
+// 普通用户固定 PENDING 由后端强制。
 export interface CreateProjectAdminPayload {
     title: string;
     // 标签 ID（0~10 个，仅能从管理员预设的 Tag 字典里选择）；与匿名投稿同一套后端校验。
@@ -198,7 +196,6 @@ export interface CreateProjectAdminPayload {
     coverImageUrl?: string;
     recruitmentNeeds?: RecruitmentNeed[];
     status?: string;
-    controlPassword?: string;
 }
 
 // 项目管理凭一次性邀请码注册的请求体（POST /api/auth/register/manager）。
@@ -206,12 +203,22 @@ export interface RegisterManagerPayload {
     inviteCode: string;
     username: string;
     password: string;
+    confirmPassword: string;
+    email: string;
+    emailCode: string;
+}
+
+// 普通用户公开注册请求体（POST /api/auth/register，无需邀请码，设计 §4.1）。
+export interface RegisterUserPayload {
+    username: string;
+    password: string;
+    confirmPassword: string;
     email: string;
     emailCode: string;
 }
 
 // 邮箱验证码场景（与后端 VerificationCodeService.Scene 枚举一致）。
-export type VerificationScene = "REGISTER" | "CHANGE_PASSWORD" | "RESET_PASSWORD" | "EMAIL_LOGIN";
+export type VerificationScene = "REGISTER" | "CHANGE_PASSWORD" | "RESET_PASSWORD" | "EMAIL_LOGIN" | "RECOVER_USERNAME" | "REACTIVATE";
 
 // 发送邮箱验证码请求（POST /api/auth/verification-code）。
 export interface SendCodePayload {
@@ -228,19 +235,28 @@ export interface EmailLoginPayload {
     emailCode: string;
 }
 
-// 修改密码请求（POST /api/auth/change-password，已登录）：旧密码 + 新密码 + 邮箱 + 验证码。
+// 修改密码请求（POST /api/auth/change-password，已登录）：旧密码 + 新密码 + 确认密码 + 本人邮箱验证码。
+// 后端只认已认证用户绑定邮箱的验证码（设计 §6.2），请求体不再携带 email。
 export interface ChangePasswordPayload {
     oldPassword: string;
     newPassword: string;
-    email: string;
+    confirmPassword: string;
     emailCode: string;
 }
 
-// 找回密码请求（POST /api/auth/reset-password，匿名）：邮箱 + 验证码 + 新密码。
+// 找回密码请求（POST /api/auth/reset-password，匿名）：邮箱 + 验证码 + 新密码 + 确认密码。
 export interface ResetPasswordPayload {
     email: string;
     emailCode: string;
     newPassword: string;
+    confirmPassword: string;
+}
+
+// 找回用户名请求（POST /api/auth/username/recover，匿名）：邮箱 + 验证码。
+// 验证通过后用户名发送到绑定邮箱，接口不回显用户名（设计 §6.3）。
+export interface RecoverUsernamePayload {
+    email: string;
+    emailCode: string;
 }
 
 // 总管理历史邀请码记录（GET /api/admin/invites）。status 为后端枚举：UNUSED / USED / EXPIRED。
@@ -278,6 +294,34 @@ export interface FilePage {
     totalPages: number;
     page: number;
     size: number;
+}
+
+// 项目内角色（与后端 ProjectRole 枚举一致，设计 §2.3）。
+export type ProjectRole = "OWNER" | "MANAGER" | "MEMBER";
+
+// 成员关系状态（与后端 MemberStatus 枚举一致）。
+export type MemberStatus = "ACTIVE" | "LEFT" | "REMOVED";
+
+// 项目成员（GET /api/project/object-items/{id}/members）。
+export interface ProjectMemberItem {
+    id?: number | string;
+    projectId?: number | string;
+    userId?: number | string;
+    role?: ProjectRole;
+    status?: MemberStatus;
+    joinedAt?: string;
+    leftAt?: string | null;
+}
+
+// 添加成员请求（POST /api/project/object-items/{id}/members）。
+export interface AddMemberPayload {
+    userId: number | string;
+    role?: ProjectRole;
+}
+
+// 转交所有权请求（POST /api/project/object-items/{id}/transfer）。
+export interface TransferOwnerPayload {
+    newOwnerId: number | string;
 }
 
 // 公开项目分页结果（GET /api/project/object-items 带 page/size 时返回）。

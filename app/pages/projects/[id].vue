@@ -141,6 +141,33 @@
           </n-card>
         </div>
 
+        <n-card v-if="projectMembers.length" :bordered="false" class="members-panel">
+          <template #header>
+            <div class="comments-head">
+              <div class="comments-titles">
+                <span class="comments-eyebrow">Team</span>
+                <h2>项目成员</h2>
+              </div>
+              <n-tag :bordered="false" class="comments-count" round size="small">
+                {{ projectMembers.length }} 人
+              </n-tag>
+            </div>
+          </template>
+          <ul class="members-list">
+            <li v-for="m in projectMembers" :key="String(m.userId ?? m.id)" class="member-row">
+              <span class="member-avatar">用户 #{{ m.userId }}</span>
+              <n-tag
+                  :bordered="false"
+                  :type="m.role === 'OWNER' ? 'warning' : m.role === 'MANAGER' ? 'info' : 'default'"
+                  round
+                  size="small"
+              >
+                {{ m.role === "OWNER" ? "拥有者" : m.role === "MANAGER" ? "管理员" : "成员" }}
+              </n-tag>
+            </li>
+          </ul>
+        </n-card>
+
         <n-card :bordered="false" class="comments-panel">
           <template #header>
             <div class="comments-head">
@@ -228,7 +255,7 @@
 
 <script lang="ts" setup>
 import type {FormInst, FormRules} from "naive-ui";
-import type {Project, ProjectComment, ProjectUpdate, RecruitmentNeed} from "~/types/projectHub";
+import type {Project, ProjectComment, ProjectMemberItem, ProjectUpdate, RecruitmentNeed} from "~/types/projectHub";
 
 
 definePageMeta({
@@ -242,13 +269,14 @@ const HIDDEN_STATUSES = new Set(["PENDING", "REJECTED", "DELETED"]);
 
 const route = useRoute();
 const message = useMessage();
-const {loadProjectById, loadProjectUpdates, loadProjectComments, submitJoin, submitComment} = useProjectHubApi();
+const {loadProjectById, loadProjectUpdates, loadProjectComments, submitJoin, submitComment, listProjectMembers} = useProjectHubApi();
 const {read: readOwnerSession} = useOwnerSession();
 
 const loading = ref(true);
 const project = ref<Project | null>(null);
 const updates = ref<ProjectUpdate[]>([]);
 const comments = ref<ProjectComment[]>([]);
+const projectMembers = ref<ProjectMemberItem[]>([]);
 const submittingJoin = ref(false);
 const submittingComment = ref(false);
 // 当前访客若恰好是已登录的本项目负责人，展示一个跳转到管理面板的入口
@@ -291,11 +319,12 @@ const projectId = computed(() => String(route.params.id));
 
 onMounted(async () => {
   const id = projectId.value;
-  // 三个数据源并行拉取：项目本体（openapi.json 已有）+ 动态 / 评论（api.json 补充）
-  const [found, projectUpdates, projectComments] = await Promise.all([
+  // 四个数据源并行拉取：项目本体 + 动态 / 评论 / 成员（设计 §9，成员列表公开可读）
+  const [found, projectUpdates, projectComments, members] = await Promise.all([
     loadProjectById(id),
     loadProjectUpdates(id),
     loadProjectComments(id),
+    listProjectMembers(id),
   ]);
 
   // 仅在项目处于对外可见状态时展示，否则落到“未找到”空态
@@ -304,6 +333,7 @@ onMounted(async () => {
   }
   updates.value = projectUpdates;
   comments.value = projectComments;
+  projectMembers.value = members;
   // 命中本项目负责人的会话时，开放管理面板入口（编辑信息 / 改密 / 处理申请）
   const ownerSession = readOwnerSession();
   ownerCanManage.value = !!ownerSession && String(ownerSession.project.id) === id;
@@ -748,5 +778,34 @@ const handleComment = async () => {
     flex-direction: column;
     gap: 2px;
   }
+}
+
+.members-panel {
+  margin-top: 18px;
+}
+
+.members-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.member-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 2px solid #8b6a3d;
+  border-radius: 10px;
+  background: rgba(255, 248, 223, 0.6);
+}
+
+.member-avatar {
+  font-weight: 700;
+  color: #2d2418;
 }
 </style>

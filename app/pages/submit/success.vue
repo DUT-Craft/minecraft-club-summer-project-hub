@@ -10,7 +10,7 @@
             <span class="eyebrow">Submitted</span>
             <h1>项目已提交，等待审核</h1>
             <p class="hero-sub">
-              管理员审核通过后，项目会出现在公开列表里。请先记好下面的项目 ID 和管理密码——这是后续登录项目方后台的唯一凭据。
+              管理员审核通过后，项目会出现在公开列表里。记好下面的项目 ID，后续可用账号登录后台管理该项目。
             </p>
           </div>
         </n-card>
@@ -19,7 +19,7 @@
           <template #header>
             <div class="card-head">
               <span class="card-eyebrow">Credentials</span>
-              <h2>登录凭据 · 请立刻保存</h2>
+              <h2>项目 ID · 请保存</h2>
             </div>
           </template>
 
@@ -35,25 +35,10 @@
                 复制
               </n-button>
             </div>
-            <div class="credential-row">
-              <span class="credential-label">管理密码</span>
-              <code class="credential-value password">{{ record.ownerPassword || "——" }}</code>
-              <n-button
-                  :disabled="!record.ownerPassword"
-                  size="small"
-                  @click="copy(record.ownerPassword)"
-              >
-                复制
-              </n-button>
-            </div>
           </div>
 
-          <n-alert :bordered="false" class="credential-alert" type="warning">
-            密码以明文显示这一次，离开本页后会自动清除；后端只保存加密后的密文，无法找回，请现在就抄走。
-          </n-alert>
-
           <n-button size="large" type="primary" @click="navigateTo('/admin')">
-            前往项目方后台
+            前往项目管理后台
           </n-button>
         </n-card>
 

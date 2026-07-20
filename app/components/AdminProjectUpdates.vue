@@ -106,36 +106,23 @@
 import type {FormInst, FormRules} from "naive-ui";
 import type {ProjectUpdate} from "~/types/projectHub";
 
-// 由父级传入：项目 ID。
-// - mode="owner"（默认，项目方后台）：还需传 controlPassword，走 controlPassword 鉴权接口
-// - mode="admin"（管理员后台）：走 JWT 鉴权接口，无需 controlPassword
-const props = withDefaults(defineProps<{
+// 由父级传入项目 ID；统一走 JWT 鉴权接口（项目 OWNER/MANAGER 或超管，由后端 AccessService 校验）。
+const props = defineProps<{
   projectId: string | number;
-  controlPassword?: string;
-  mode?: "owner" | "admin";
-}>(), {
-  controlPassword: "",
-  mode: "owner",
-});
+}>();
 
 const message = useMessage();
 const {
-  loadProjectUpdatesAdmin,
-  createProjectUpdate,
-  updateProjectUpdate,
-  deleteProjectUpdate,
   listProjectUpdatesAdmin,
   createProjectUpdateAdmin,
   updateProjectUpdateAdmin,
   deleteProjectUpdateAdmin,
 } = useProjectHubApi();
 
-const isAdmin = computed(() => props.mode === "admin");
-
 const updates = ref<ProjectUpdate[]>([]);
 const loading = ref(false);
 const loaded = ref(false);
-// 默认拉全部，让项目方一眼看到刚发布的 PENDING 与已公开的 APPROVED
+// 默认拉全部，让管理者一眼看到刚发布的 PENDING 与已公开的 APPROVED
 const filter = ref<string>("");
 
 const filterOptions = [
@@ -148,9 +135,7 @@ const filterOptions = [
 const load = async () => {
   try {
     loading.value = true;
-    const list = isAdmin.value
-        ? await listProjectUpdatesAdmin(props.projectId, filter.value || undefined)
-        : await loadProjectUpdatesAdmin(props.projectId, props.controlPassword, filter.value || undefined);
+    const list = await listProjectUpdatesAdmin(props.projectId, filter.value || undefined);
     updates.value = list;
     loaded.value = true;
   } catch (error) {
@@ -226,18 +211,10 @@ const handleSubmit = async () => {
       imageUrl: form.imageUrl.trim(),
     };
     if (editingId.value) {
-      if (isAdmin.value) {
-        await updateProjectUpdateAdmin(props.projectId, editingId.value, payload);
-      } else {
-        await updateProjectUpdate(props.projectId, editingId.value, props.controlPassword, payload);
-      }
+      await updateProjectUpdateAdmin(props.projectId, editingId.value, payload);
       message.success("动态已更新");
     } else {
-      if (isAdmin.value) {
-        await createProjectUpdateAdmin(props.projectId, payload);
-      } else {
-        await createProjectUpdate(props.projectId, props.controlPassword, payload);
-      }
+      await createProjectUpdateAdmin(props.projectId, payload);
       message.success("动态已发布");
     }
     showModal.value = false;
@@ -251,11 +228,7 @@ const handleSubmit = async () => {
 
 const handleDelete = async (item: ProjectUpdate) => {
   try {
-    if (isAdmin.value) {
-      await deleteProjectUpdateAdmin(props.projectId, item.id);
-    } else {
-      await deleteProjectUpdate(props.projectId, item.id, props.controlPassword);
-    }
+    await deleteProjectUpdateAdmin(props.projectId, item.id);
     message.success("动态已删除");
     await load();
   } catch (error) {

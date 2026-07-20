@@ -175,6 +175,9 @@
           </n-form-item>
           <n-form-item label="注册邮箱" path="email">
             <n-input v-model:value="passwordForm.email" clearable placeholder="输入账号注册邮箱"/>
+            <template #feedback>
+              <span class="email-hint">验证码将发送至当前账号绑定的邮箱（以服务端记录为准）。</span>
+            </template>
           </n-form-item>
           <n-form-item label="邮箱验证码" path="emailCode">
             <VerificationCodeInput
@@ -187,7 +190,15 @@
           <n-form-item label="新密码" path="newPassword">
             <n-input
                 v-model:value="passwordForm.newPassword"
-                placeholder="设置新的登录密码"
+                placeholder="8-64 位，含大写/小写/数字/特殊字符三类"
+                show-password-on="click"
+                type="password"
+            />
+          </n-form-item>
+          <n-form-item label="确认新密码" path="confirmPassword">
+            <n-input
+                v-model:value="passwordForm.confirmPassword"
+                placeholder="再次输入新密码"
                 show-password-on="click"
                 type="password"
             />
@@ -393,6 +404,7 @@ const passwordForm = reactive({
   email: "",
   emailCode: "",
   newPassword: "",
+  confirmPassword: "",
 });
 const passwordRules: FormRules = {
   oldPassword: {required: true, message: "请输入当前密码", trigger: ["blur", "input"]},
@@ -410,10 +422,28 @@ const passwordRules: FormRules = {
     },
   },
   emailCode: {required: true, message: "请输入邮箱验证码", trigger: ["blur", "input"]},
-  newPassword: {required: true, message: "请输入新密码", trigger: ["blur", "input"]},
+  newPassword: {
+    required: true,
+    trigger: ["blur", "input"],
+    validator: (_rule, value) => {
+      if (!value) return new Error("请输入新密码");
+      if (value.length < 8 || value.length > 64) return new Error("密码长度需为 8-64 位");
+      return true;
+    },
+  },
+  confirmPassword: {
+    required: true,
+    trigger: ["blur", "input"],
+    validator: (_rule, value) => {
+      if (!value) return new Error("请再次输入新密码");
+      if (value !== passwordForm.newPassword) return new Error("两次密码不一致");
+      return true;
+    },
+  },
 };
 
 // 修改密码：POST /api/auth/change-password（JWT 鉴权，后端按 userId+UA 绑定验证码）
+// 后端只认已认证用户绑定邮箱的验证码（设计 §6.2），请求体不携带 email。
 // 修改成功后后端踢掉所有会话，前端需清会话并跳回登录页。
 const handleChangePassword = async () => {
   if (!session.value?.id) {
@@ -430,7 +460,7 @@ const handleChangePassword = async () => {
     await changePassword({
       oldPassword: passwordForm.oldPassword,
       newPassword: passwordForm.newPassword,
-      email: passwordForm.email.trim(),
+      confirmPassword: passwordForm.confirmPassword,
       emailCode: passwordForm.emailCode.trim(),
     });
     message.success("密码已修改，请用新密码重新登录");
@@ -640,5 +670,10 @@ const handleChangePassword = async () => {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
+}
+
+.email-hint {
+  color: #795b36;
+  font-size: 12px;
 }
 </style>
