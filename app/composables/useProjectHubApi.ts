@@ -646,8 +646,8 @@ export const useProjectHubApi = () => {
     deleteProjectBatch: async (ids: (string | number)[]): Promise<void> => {
       await httpRequest("/project/object-items/batch", {ids}, {method: "DELETE", payloadMode: "json"});
     },
-    // 管理员修改单个项目信息：PUT /api/project/object-items/{id}（全局接口，JWT 鉴权）。
-    // 项目方维护走 /api/admin/project/object-items/{id}（JWT + 成员鉴权）。
+    // 修改单个项目信息：PUT /api/project/object-items/{id}（JWT 鉴权，ensureCanManage 统一判定）。
+    // 管理员与项目方（OWNER/MANAGER）共用此接口，后端按成员关系/ownerId 兜底区分权限。
     updateProjectAdmin: async (projectId: string | number, body: UpdateProjectPayload): Promise<Project> => {
       const item = await put<ObjectItemResponse>(
           `/project/object-items/${projectId}`,
@@ -771,10 +771,10 @@ export const useProjectHubApi = () => {
           {payloadMode: "json"},
       );
     },
-    /* ---------- 管理员「单个项目维护」（JWT 鉴权，对标项目方自服务接口） ----------
+    /* ---------- 管理员「单个项目维护」（JWT 鉴权） ----------
        命名约定区分两套同形接口：
-        - list*Admin / *Admin  = 管理员（JWT）专用接口，走 /api/admin/object-items/{id}/...
-        - load*Admin / 同名    = 项目方（JWT + 成员鉴权）接口，走 /api/admin/project/object-items/{id}/... */
+        - list*Admin / *Admin  = 管理员专用接口，走 /api/admin/object-items/{id}/...（返回全状态、可审核）
+        - load*Admin / 同名    = 公开/项目方接口，走 /api/project/object-items/{id}/...（ensureCanManage 鉴权） */
     // 管理员查看加入申请：GET /api/admin/object-items/{id}/join-applications?status=（JWT 鉴权，返回全状态）
     listJoinApplicationsAdmin: async (
         projectId: string | number,
