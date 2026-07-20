@@ -30,12 +30,16 @@
         <n-select v-model:value="skillFilter" :options="skillSelectOptions"/>
       </section>
 
+      <n-alert v-if="loadError" class="load-error" type="error">
+        {{ loadError }}
+      </n-alert>
+
       <section v-if="filteredProjects.length" class="project-grid">
         <ProjectHubCard v-for="project in filteredProjects" :key="project.id" :project="project"/>
       </section>
 
       <n-empty
-          v-else
+          v-else-if="!loadError"
           class="empty-space"
           description="暂时没有匹配的公开项目"
       >
@@ -61,6 +65,7 @@ definePageMeta({
 const {loadPublicProjects} = useProjectHubApi();
 const projects = ref<Project[]>([]);
 const loading = ref(false);
+const loadError = ref("");
 
 const keyword = ref("");
 const tagIds = ref<Array<number | string>>([]);
@@ -79,14 +84,16 @@ const tagMatchOptions = [
 
 const fetchProjects = async () => {
   loading.value = true;
+  loadError.value = "";
   try {
     projects.value = await loadPublicProjects({
       keyword: keyword.value,
       tagIds: tagIds.value,
       tagMatch: tagMatch.value,
     });
-  } catch {
+  } catch (error) {
     projects.value = [];
+    loadError.value = error instanceof Error && error.message ? error.message : "加载公开项目失败，请稍后重试";
   } finally {
     loading.value = false;
   }
@@ -155,6 +162,7 @@ const {themeOverrides} = useMinecraftTheme();
 
 .page-head,
 .filters,
+.load-error,
 .project-grid,
 .empty-space {
   width: min(1180px, calc(100% - 28px));

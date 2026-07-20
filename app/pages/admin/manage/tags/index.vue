@@ -72,8 +72,8 @@
             </template>
             <template #actions="{ row }">
               <n-space :size="6" align="center">
-                <n-button size="tiny" @click="openCreate(row.id)">加子标签</n-button>
-                <n-button size="tiny" type="primary" ghost @click="openEdit(row)">编辑</n-button>
+                <n-button :disabled="row.deleted" size="tiny" @click="openCreate(row.id)">加子标签</n-button>
+                <n-button :disabled="row.deleted" size="tiny" type="primary" ghost @click="openEdit(row)">编辑</n-button>
                 <n-popconfirm @positive-click="handleDelete(row)">
                   <template #trigger>
                     <n-button :disabled="row.deleted" ghost size="tiny" type="error">删除</n-button>
@@ -130,7 +130,7 @@
           </n-form-item>
           <div class="form-row">
             <n-form-item label="是否可选" path="selectable">
-              <n-switch v-model:value="tagForm.selectable">
+              <n-switch v-model:value="tagForm.selectable" :disabled="selectableLocked">
                 <template #checked>可选（项目可关联）</template>
                 <template #unchecked>仅分组</template>
               </n-switch>
@@ -318,6 +318,10 @@ const tagRules: FormRules = {
 };
 
 const formTitle = computed(() => (tagForm.id == null ? "新增标签" : "编辑标签"));
+const editingTag = computed(() => tags.value.find((tag) => tag.id === tagForm.id));
+const selectableLocked = computed(() =>
+    Boolean(editingTag.value?.selectable && editingTag.value.projectCount > 0),
+);
 
 const resetForm = () => {
   Object.assign(tagForm, {
@@ -331,12 +335,18 @@ const resetForm = () => {
 };
 
 const openCreate = (presetParentId: number | string | null) => {
+  if (presetParentId != null && tags.value.find((tag) => tag.id === presetParentId)?.deleted) {
+    return;
+  }
   resetForm();
   tagForm.parentId = presetParentId;
   showFormModal.value = true;
 };
 
 const openEdit = (row: TagRow) => {
+  if (row.deleted) {
+    return;
+  }
   Object.assign(tagForm, {
     id: row.id,
     name: row.name ?? "",
@@ -352,6 +362,11 @@ const handleSubmit = async () => {
   try {
     await formRef.value?.validate();
   } catch {
+    return;
+  }
+  if (selectableLocked.value && !tagForm.selectable) {
+    message.warning("有关联项目的标签不能改为仅分组");
+    tagForm.selectable = true;
     return;
   }
   const payload: TagSavePayload = {

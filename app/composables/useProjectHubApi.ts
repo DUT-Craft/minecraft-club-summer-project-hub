@@ -304,24 +304,20 @@ export const useProjectHubApi = () => {
     tagIds?: Array<number | string>;
     tagMatch?: "ANY" | "ALL";
   } = {}): Promise<Project[]> => {
-    try {
-      const params: Record<string, unknown> = {};
-      if (query.keyword?.trim()) {
-        params.keyword = query.keyword.trim();
-      }
-      if (query.tagIds?.length) {
-        params.tagIds = query.tagIds;
-        if (query.tagMatch) {
-          params.tagMatch = query.tagMatch;
-        }
-      }
-      const items = await get<ObjectItemResponse[]>("/project/object-items", params);
-      return normalizeArray<ObjectItemResponse>(items)
-          .map(mapObjectItemToProject)
-          .map(normalizeProject);
-    } catch {
-      return [];
+    const params: Record<string, unknown> = {};
+    if (query.keyword?.trim()) {
+      params.keyword = query.keyword.trim();
     }
+    if (query.tagIds?.length) {
+      params.tagIds = query.tagIds;
+      if (query.tagMatch) {
+        params.tagMatch = query.tagMatch;
+      }
+    }
+    const items = await get<ObjectItemResponse[]>("/project/object-items", params);
+    return normalizeArray<ObjectItemResponse>(items)
+        .map(mapObjectItemToProject)
+        .map(normalizeProject);
   };
 
   // 不带筛选的公开项目全集（首页 hot tags / 公开项目总数等场景的便捷入口）
@@ -1035,13 +1031,13 @@ export const useProjectHubApi = () => {
     // 公开 Tag 树：GET /api/project/tags/tree（匿名可读，仅活跃节点，已按 sortOrder/id 排序）。
     // 投稿 / 编辑 / 项目墙 Cascader 共用；后端组装父子层级，前端直接喂给 n-cascader。
     loadTagTree: async (): Promise<TagTreeNode[]> => {
-      const items = await get<unknown>("/project/tags/tree").catch(() => null);
+      const items = await get<unknown>("/project/tags/tree");
       return extractList<TagTreeNode>(items);
     },
     // 管理端 Tag 列表：GET /api/admin/tags（仅总管理，含已删除节点 + 每个 Tag 的关联项目数 projectCount）。
     // 平铺返回（带 parentId），前端按需组树展示。
     listTagsAdmin: async (): Promise<TagAdminItem[]> => {
-      const data = await get<unknown>("/admin/tags").catch(() => null);
+      const data = await get<unknown>("/admin/tags");
       return extractList<TagAdminItem>(data);
     },
     // 新增 Tag：POST /api/admin/tags（仅总管理）。名称 trim 后全局唯一（忽略大小写）；parentId 不存在或已删除时后端 400/404。

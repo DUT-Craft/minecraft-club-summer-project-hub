@@ -3,7 +3,7 @@
     <n-cascader
         :clearable="clearable"
         :cascade="false"
-        :check-strategy="'child'"
+        :check-strategy="'all'"
         :disabled="disabled"
         :expand-trigger="'hover'"
         :filterable="filterable"
@@ -26,7 +26,7 @@
 <script lang="ts" setup>
 // 项目标签 Cascader：投稿 / 项目编辑 / 项目墙筛选共用。
 // 数据源 GET /api/project/tags/tree（公开 Tag 字典，父子层级）。
-// - selectable=false 的分组节点 disabled，仅作层级展示，不能被项目直接选择；
+// - selectable=false 的分组节点保持可展开，但在回写前过滤，不能被项目直接选择；
 // - cascade=false：每个标签独立勾选（不会因勾选分组而连带选中子节点）；
 // - 多选模式下受 maxCount（默认 10，对标后端 MAX_TAGS_PER_PROJECT）限制，超限时拦截并提示。
 // v-model 始终是扁平的 tagIds 数组（兼容 Naive UI 不同 check-strategy 的输出形态）。
@@ -68,12 +68,12 @@ const tree = ref<TagTreeNode[]>([]);
 const loading = ref(false);
 
 onMounted(async () => {
-  // 树很小且公开可读；加载失败时 options 为空，Cascader 退化为「无可选项」而非阻塞表单
   loading.value = true;
   try {
     tree.value = await loadTagTree();
-  } catch {
+  } catch (error) {
     tree.value = [];
+    message?.error(error instanceof Error && error.message ? error.message : "加载标签失败，请稍后重试");
   } finally {
     loading.value = false;
   }
@@ -82,27 +82,41 @@ onMounted(async () => {
 interface CascaderOption {
   label: string;
   value: number | string;
-  disabled?: boolean;
+  selectable: boolean;
   children?: CascaderOption[];
 }
 
-// TagTreeNode → Naive UI Cascader option：分组节点（selectable=false）disabled，
-// 仅活跃可选节点能被勾选；children 为空时不挂 children，避免出现空展开行。
+// 分组节点不能 disabled，否则 hover/click 都无法展开；是否可选在回写时单独校验。
 const toOptions = (nodes: TagTreeNode[]): CascaderOption[] =>
     nodes.map((node) => {
       const children = node.children?.length ? toOptions(node.children) : undefined;
       return {
         label: node.name,
         value: node.id,
-        disabled: !node.selectable,
+        selectable: node.selectable,
         ...(children ? {children} : {}),
       };
     });
 
 const options = computed<CascaderOption[]>(() => toOptions(tree.value));
 
-// Naive UI 多选 Cascader 在 cascade=false + check-strategy=child 下输出扁平叶子 id 数组；
-// 这里再兜底拍平一次，兼容历史 / 其它 check-strategy 输出的路径数组形态。
+const selectableIds = computed(() => {
+  const ids = new Set<string>();
+  const collect = (nodes: TagTreeNode[]) => {
+    for (const node of nodes) {
+      if (node.selectable) {
+        ids.add(String(node.id));
+      }
+      if (node.children?.length) {
+        collect(node.children);
+      }
+    }
+  };
+  collect(tree.value);
+  return ids;
+});
+
+// 兼容历史路径数组形态，并确保分组节点永远不会进入 v-model。
 const normalizeIds = (val: unknown): Array<number | string> => {
   if (!Array.isArray(val)) {
     return [];
@@ -112,7 +126,7 @@ const normalizeIds = (val: unknown): Array<number | string> => {
       return entry.length ? [entry[entry.length - 1]] : [];
     }
     return entry == null ? [] : [entry];
-  });
+  }).filter((id) => selectableIds.value.has(String(id)));
 };
 
 const ids = computed(() => normalizeIds(props.modelValue));

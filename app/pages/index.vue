@@ -146,6 +146,7 @@ const {themeOverrides} = useMinecraftTheme();
 // - openapi 没有评论 / 建议接口，原"公开建议"统计改为"招募岗位"（needMembers.number 合计）
 // ⚠️ 公开项目总数直接取列表 .length，不再走 /count/in-progress（只数 IN_PROGRESS 会漏掉刚审核通过的项目）
 const {loadPublicProjectCatalog, loadApprovedIdeaCount} = useProjectHubApi();
+const message = useMessage();
 
 // 接口层已按状态过滤，这里保存的就是可直接公开展示的数据
 const publicProjects = ref<Project[]>([]);
@@ -188,14 +189,23 @@ const portalEntries = [
 ];
 
 onMounted(async () => {
-  // 项目列表与想法总数互不依赖，并行拉取；任一失败时各自方法内部已降级为空数组 / 0
-  const [projects, ideaCount] = await Promise.all([
+  const [projectsResult, ideaCountResult] = await Promise.allSettled([
     loadPublicProjectCatalog(),
     loadApprovedIdeaCount(),
   ]);
 
-  publicProjects.value = projects;
-  approvedIdeaCount.value = ideaCount;
+  if (projectsResult.status === "fulfilled") {
+    publicProjects.value = projectsResult.value;
+  } else {
+    message.error(
+        projectsResult.reason instanceof Error && projectsResult.reason.message
+            ? projectsResult.reason.message
+            : "加载公开项目失败，请稍后重试",
+    );
+  }
+  if (ideaCountResult.status === "fulfilled") {
+    approvedIdeaCount.value = ideaCountResult.value;
+  }
 });
 
 // 招募岗位 = 所有公开项目 recruitmentNeeds.count 之和（由 needMembers.number 映射）
