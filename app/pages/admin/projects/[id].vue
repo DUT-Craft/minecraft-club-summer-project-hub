@@ -317,7 +317,7 @@
       >
         <template #extra>
           <p class="empty-subtext">
-            请先登录账号，再通过项目 ID 进入该项目管理页。
+            当前账号无权管理该项目，或尚未登录。请登录有该项目管理权限的账号后再试。
           </p>
           <n-button type="primary" @click="navigateTo('/admin')">前往登录</n-button>
         </template>
@@ -347,7 +347,7 @@ const message = useMessage();
 const {themeOverrides} = useMinecraftTheme();
 // session 直接绑定 useOwnerSession 的共享 ref：updateProjectSession / clear 回写后
 // hero 与 info 面板自动刷新，不再用本地副本（本地副本会断开响应式，导致「刷新」点完不更新）
-const {session, read, clear, updateProject: updateProjectSession} = useOwnerSession();
+const {session, read, clear, write: writeOwnerSession, updateProject: updateProjectSession} = useOwnerSession();
 const {
   updateProjectAdmin,
   deleteProjectBatch,
@@ -361,16 +361,35 @@ const loading = ref(true);
 
 const projectId = computed(() => String(route.params.id));
 
-onMounted(() => {
-  // 项目方会话由登录页写入（useOwnerSession），刷新时从 sessionStorage 兜底恢复。
-  // 注意：会话里的 project.id 必须与当前路径 id 一致，避免登录 A 项目后手动跳到 B 的管理页
-  const current = read();
-  if (current && String(current.project.id) === projectId.value) {
-    // read() 已把共享 session 恢复就绪，无需再赋值；直接拉取一次加入申请
-    loadApplications();
-  } else if (current && String(current.project.id) !== projectId.value) {
-    // 路径 id 与会话不匹配：清掉脏会话，落到「未登录」空态让用户重登
+// 项目方会话来源：登录后从公开项目详情页「前往管理面板」进入，或刷新时从 sessionStorage 恢复。
+// 若 ownerSession 缺失 / 不匹配当前项目，则用 admin JWT 拉名下项目自动回填（自给自足，
+// 不再依赖登录页写入）。命中失败说明当前账号无权管理该项目，落到空态提示去登录。
+const ensureSessionForCurrentProject = async (): Promise<boolean> => {
+  const existing = read();
+  if (existing && String(existing.project.id) === projectId.value) {
+    return true;
+  }
+  if (existing && String(existing.project.id) !== projectId.value) {
     clear();
+  }
+  // 用 admin JWT 拉名下项目，按路径 id 命中则写入会话
+  try {
+    const mine = await listProjectsAdmin(undefined, true);
+    const target = mine.find((p) => String(p.id) === projectId.value);
+    if (target) {
+      writeOwnerSession({project: target, loginAt: new Date().toISOString()});
+      return true;
+    }
+  } catch {
+    // 未登录或拉取失败：落到空态让用户去登录
+  }
+  return false;
+};
+
+onMounted(async () => {
+  const ok = await ensureSessionForCurrentProject();
+  if (ok) {
+    loadApplications();
   }
   loading.value = false;
 });
@@ -421,8 +440,8 @@ const handleRefresh = async () => {
   }
 };
 
-// 软删除项目（后端置 DELETED，不再公开展示）；不可在前端恢复，需二次确认
-// 阶段八下线 controlPassword，改用 JWT 批量删除接口（单条用 [projectId]）
+// 软删除项目（后端置 DELETED，不再公开展示）；不可在前端恢复，需二次确认。
+// 走 JWT 批量删除接口（单条用 [projectId]）。
 const handleDeleteProject = async () => {
   const current = session.value;
   if (!current) {
@@ -545,7 +564,7 @@ const handleEditSubmit = async () => {
   }
 };
 
-/* ---------- 加入申请管理（JWT 鉴权，阶段八下线 controlPassword） ---------- */
+/* ---------- 加入申请管理（JWT 鉴权） ---------- */
 
 const applications = ref<JoinApplicationResponse[]>([]);
 const loadingApplications = ref(false);

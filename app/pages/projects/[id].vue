@@ -30,7 +30,7 @@
             type="success"
         >
           <strong>你是本项目负责人。</strong>
-          <span class="owner-banner-note">可编辑项目信息、修改管理密码、处理加入申请。</span>
+          <span class="owner-banner-note">可编辑项目信息、管理项目成员、处理加入申请。</span>
           <n-button
               class="owner-banner-link"
               text

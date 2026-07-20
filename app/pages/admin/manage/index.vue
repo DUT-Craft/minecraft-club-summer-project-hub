@@ -10,12 +10,12 @@
       <template v-else-if="session">
         <n-card :bordered="false" class="manage-hero">
           <div class="hero-info">
-            <p class="eyebrow">{{ isSuperAdmin ? "Super Admin" : "Project Manager" }}</p>
-            <h1>{{ isSuperAdmin ? "总管理控制台" : "项目管理控制台" }}</h1>
+            <p class="eyebrow">{{ isSuperAdmin ? "Super Admin" : "Project Owner" }}</p>
+            <h1>{{ isSuperAdmin ? "总管理控制台" : "项目控制台" }}</h1>
             <span>
-              {{ session.username || "管理员" }}
+              {{ session.username || "用户" }}
               <n-tag :bordered="false" :type="isSuperAdmin ? 'success' : 'info'" class="role-tag" round size="small">
-                {{ isSuperAdmin ? "总管理" : "项目管理" }}
+                {{ isSuperAdmin ? "总管理" : "项目用户" }}
               </n-tag>
               · 登录于 {{ formatTime(session.loginAt) }}
             </span>
@@ -34,7 +34,7 @@
               <span class="eyebrow">Invite</span>
               <h2>项目管理邀请码</h2>
             </div>
-            <p class="entry-desc">生成一次性邀请码，发给项目管理用于注册账号。</p>
+            <p class="entry-desc">生成一次性邀请码，发给用户用于补授项目创建资格（凭码注册或已登录用户补授）。</p>
             <n-space :size="10" align="center" wrap>
               <n-button :loading="generatingInvite" type="primary" @click="handleGenerateInvite">
                 {{ inviteCode ? "重新生成" : "生成邀请码" }}
@@ -69,7 +69,7 @@
               <span class="eyebrow">Assign</span>
               <h2>项目分配</h2>
             </div>
-            <p class="entry-desc">把项目分配给项目管理或总管理（含你自己，每账号名下上限 10 个），或收回为未分配。</p>
+            <p class="entry-desc">把项目分配给有创建资格的用户或总管理（含你自己，每账号名下上限 10 个），或收回为未分配。</p>
             <n-space :size="10" align="center" wrap>
               <n-select
                   v-model:value="assignProjectId"
@@ -83,7 +83,7 @@
                   :options="assignManagerOptions"
                   class="assign-select"
                   filterable
-                  placeholder="选择项目管理"
+                  placeholder="选择归属用户"
               />
               <n-button :disabled="assignProjectId == null" :loading="assigning" type="primary" @click="handleAssign">
                 {{ assignManagerId == null ? "收回" : "分配" }}
@@ -93,6 +93,15 @@
         </div>
 
         <div class="entry-grid">
+          <n-card v-if="isSuperAdmin" :bordered="false" class="entry-card" hoverable>
+            <div class="entry-head">
+              <span class="eyebrow">Users</span>
+              <h2>用户管理</h2>
+            </div>
+            <p class="entry-desc">管理全部账号：授予 / 撤销项目创建资格，查看角色与状态。被授权的用户可创建并管理自己的项目。</p>
+            <n-button size="large" type="primary" @click="navigateTo('/admin/manage/users')">进入用户管理</n-button>
+          </n-card>
+
           <n-card :bordered="false" class="entry-card" hoverable>
             <div class="entry-head">
               <span class="eyebrow">Projects</span>
@@ -137,7 +146,7 @@
         </div>
 
         <p v-if="!isSuperAdmin" class="scope-hint">
-          项目管理仅能管理分配给自己的项目；如需管理全部项目或想法，请联系总管理。
+          普通用户仅能管理归属自己的项目；如需管理全部项目或想法，请联系总管理。
         </p>
       </template>
 
@@ -173,19 +182,16 @@
                 type="password"
             />
           </n-form-item>
-          <n-form-item label="注册邮箱" path="email">
-            <n-input v-model:value="passwordForm.email" clearable placeholder="输入账号注册邮箱"/>
-            <template #feedback>
-              <span class="email-hint">验证码将发送至当前账号绑定的邮箱（以服务端记录为准）。</span>
-            </template>
-          </n-form-item>
           <n-form-item label="邮箱验证码" path="emailCode">
             <VerificationCodeInput
                 :code="passwordForm.emailCode"
-                :email="passwordForm.email"
+                :email="sessionEmail"
                 scene="CHANGE_PASSWORD"
                 @update:code="passwordForm.emailCode = $event"
             />
+            <template #feedback>
+              <span class="email-hint">验证码将发送至当前账号绑定的邮箱（以服务端记录为准）。</span>
+            </template>
           </n-form-item>
           <n-form-item label="新密码" path="newPassword">
             <n-input
@@ -255,7 +261,7 @@ onMounted(async () => {
   }
   try {
     const me = await adminMe();
-    const updated = {...existing, role: me.role};
+    const updated = {...existing, role: me.role, email: me.email, canCreateProject: me.canCreateProject, id: me.id};
     session.value = updated;
     write(updated);
   } catch {
@@ -346,11 +352,11 @@ const assigning = ref(false);
 const assignProjectOptions = computed(() =>
     assignProjects.value.map((p) => ({label: `#${p.id} ${p.title || "未命名项目"}`, value: p.id})),
 );
-// 首项「未分配」用于收回项目（ownerId=null）；其余为可归属账号（项目管理 + 总管理，标注身份）。
+// 首项「未分配」用于收回项目（ownerId=null）；其余为可归属账号（有项目创建资格的用户 + 总管理，标注身份）。
 const assignManagerOptions = computed(() => [
   {label: "（未分配）", value: null},
   ...assignManagers.value.map((m) => ({
-    label: `${m.nickname}（${m.username}）· ${m.role === "SUPER_ADMIN" ? "总管理" : "项目管理"}`,
+    label: `${m.nickname}（${m.username}）· ${m.role === "SUPER_ADMIN" ? "总管理" : "可创建项目"}`,
     value: m.id,
   })),
 ]);
@@ -401,26 +407,15 @@ const changingPassword = ref(false);
 const passwordFormRef = ref<FormInst | null>(null);
 const passwordForm = reactive({
   oldPassword: "",
-  email: "",
   emailCode: "",
   newPassword: "",
   confirmPassword: "",
 });
+// 改密验证码发到当前账号绑定邮箱：后端按 userId 绑定，忽略请求体 email（设计 §6.2）。
+// 这里用会话里的 email 作为 VerificationCodeInput 的占位（组件要求 email 合法才允许发码）。
+const sessionEmail = computed(() => session.value?.email ?? "");
 const passwordRules: FormRules = {
   oldPassword: {required: true, message: "请输入当前密码", trigger: ["blur", "input"]},
-  email: {
-    required: true,
-    trigger: ["blur", "input"],
-    validator: (_rule, value) => {
-      if (!value) {
-        return new Error("请输入邮箱");
-      }
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value))) {
-        return new Error("邮箱格式不正确");
-      }
-      return true;
-    },
-  },
   emailCode: {required: true, message: "请输入邮箱验证码", trigger: ["blur", "input"]},
   newPassword: {
     required: true,

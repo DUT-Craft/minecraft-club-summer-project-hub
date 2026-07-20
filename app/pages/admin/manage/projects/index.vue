@@ -341,7 +341,7 @@ const applyStatusBatch = async () => {
   }
 };
 
-// 批量删除：走 DELETE /object-items/batch（只需 ids，不涉及 controlPassword，比改状态更可靠）
+// 批量删除：走 DELETE /object-items/batch（只需 ids，JWT 鉴权，比改状态更可靠）
 const applyDeleteBatch = async () => {
   if (!selectedIds.value.length) {
     return;

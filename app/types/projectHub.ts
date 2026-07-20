@@ -181,6 +181,18 @@ export interface ManagerSummary {
     role: "SUPER_ADMIN" | "USER" | "PROJECT_MANAGER";
 }
 
+// 全量用户摘要（GET /api/admin/users，用户管理页用）：含状态与项目创建资格标记。
+export interface UserSummary {
+    id: number | string;
+    username: string;
+    nickname: string;
+    email: string;
+    role: "SUPER_ADMIN" | "USER" | "PROJECT_MANAGER";
+    status: "ACTIVE" | "BANNED" | "DEACTIVATED" | "DELETED";
+    canCreateProject: boolean;
+    createdAt?: string;
+}
+
 // 管理员直接创建归属自己的项目（POST /api/admin/object-items）。
 // 归属人为当前登录用户（后端按 JWT 写入 ownerId），status 可由总管理指定（默认后端 RECRUITING 上线），
 // 普通用户固定 PENDING 由后端强制。

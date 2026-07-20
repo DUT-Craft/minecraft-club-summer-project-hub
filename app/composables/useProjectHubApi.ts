@@ -30,6 +30,7 @@ import type {
   TagSavePayload,
   TagTreeNode,
   UpdateProjectPayload,
+  UserSummary,
 } from "~/types/projectHub";
 
 type ApiEnvelope<T> = {
@@ -625,8 +626,8 @@ export const useProjectHubApi = () => {
       const items = extractList<ObjectItemResponse>(data);
       return items.map(mapObjectItemToProject).map(normalizeProject);
     },
-    // 管理员批量更新项目状态：PUT /api/admin/object-items/batch/status（openapi.json）
-    // 后端已提供专用接口：body 为 { ids, status }，JWT 鉴权，无需 controlPassword。
+    // 管理员批量更新项目状态：PUT /api/admin/object-items/batch/status
+    // 后端专用接口：body 为 { ids, status }，JWT 鉴权。
     updateProjectStatusBatch: async (items: { id: string | number; status: string }[]): Promise<void> => {
       // 同一状态才能批量，按 status 分组各发一次请求
       const groups = new Map<string, (string | number)[]>();
@@ -641,14 +642,12 @@ export const useProjectHubApi = () => {
           ),
       );
     },
-    // 管理员批量删除项目（软删除）：DELETE /api/project/object-items/batch，controlPassword 走请求体 { ids }。
-    // 注意：批量删除只需 ids，不需要每条的 controlPassword（与单条删除不同）。
+    // 管理员批量删除项目（软删除）：DELETE /api/project/object-items/batch，请求体 { ids }，JWT 鉴权。
     deleteProjectBatch: async (ids: (string | number)[]): Promise<void> => {
       await httpRequest("/project/object-items/batch", {ids}, {method: "DELETE", payloadMode: "json"});
     },
-    // 管理员修改单个项目信息：PUT /api/project/object-items/{id}（openapi.json，全局接口）
-    // 与项目方的 PUT /admin/project/object-items/{id} 不同：全局接口面向管理员，走 JWT 鉴权，
-    // 不携带 controlPassword（openapi 该接口 body 里的 controlPassword 字段仅项目方自服务时使用）。
+    // 管理员修改单个项目信息：PUT /api/project/object-items/{id}（全局接口，JWT 鉴权）。
+    // 项目方维护走 /api/admin/project/object-items/{id}（JWT + 成员鉴权）。
     updateProjectAdmin: async (projectId: string | number, body: UpdateProjectPayload): Promise<Project> => {
       const item = await put<ObjectItemResponse>(
           `/project/object-items/${projectId}`,
@@ -712,8 +711,8 @@ export const useProjectHubApi = () => {
         return null;
       }
     },
-    // 管理员修改单个想法：PUT /api/project/minds/{id}（openapi.json）
-    // minds 更新不需要 controlPassword（与项目不同），管理员可直接改任意字段；空值字段不修改。
+    // 管理员修改单个想法：PUT /api/project/minds/{id}
+    // 管理员可直接改任意字段；空值字段不修改。
     updateIdeaAdmin: async (
         id: string | number,
         body: { title?: string; content?: string; nickName?: string; mcId?: string; status?: string },
@@ -746,8 +745,8 @@ export const useProjectHubApi = () => {
           ),
       );
     },
-    // 管理员审核项目评论：PATCH /api/admin/object-items/{id}/comments/{commentId}/status（openapi.json）
-    // 后端已提供 JWT 版审核接口，body 只含 status（APPROVED/REJECTED/DELETED），无需 controlPassword。
+    // 管理员审核项目评论：PATCH /api/admin/object-items/{id}/comments/{commentId}/status
+    // JWT 鉴权，body 只含 status（APPROVED/REJECTED/DELETED）。
     moderateProjectCommentAdmin: async (
         projectId: string | number,
         commentId: string | number,
@@ -759,8 +758,8 @@ export const useProjectHubApi = () => {
           {payloadMode: "json"},
       );
     },
-    // 管理员审核项目动态：PATCH /api/admin/object-items/{id}/updates/{updateId}/status（openapi.json）
-    // JWT 鉴权，body 只含 status（APPROVED/REJECTED/DELETED），无需 controlPassword。
+    // 管理员审核项目动态：PATCH /api/admin/object-items/{id}/updates/{updateId}/status
+    // JWT 鉴权，body 只含 status（APPROVED/REJECTED/DELETED）。
     moderateProjectUpdateAdmin: async (
         projectId: string | number,
         updateId: string | number,
@@ -772,10 +771,10 @@ export const useProjectHubApi = () => {
           {payloadMode: "json"},
       );
     },
-    /* ---------- 管理员「单个项目维护」（JWT 鉴权，无需项目控制密码，对标项目方自服务） ----------
+    /* ---------- 管理员「单个项目维护」（JWT 鉴权，对标项目方自服务接口） ----------
        命名约定区分两套同形接口：
         - list*Admin / *Admin  = 管理员（JWT）专用接口，走 /api/admin/object-items/{id}/...
-        - load*Admin / 同名    = 项目方（controlPassword）接口，走 /api/admin/project/object-items/{id}/... */
+        - load*Admin / 同名    = 项目方（JWT + 成员鉴权）接口，走 /api/admin/project/object-items/{id}/... */
     // 管理员查看加入申请：GET /api/admin/object-items/{id}/join-applications?status=（JWT 鉴权，返回全状态）
     listJoinApplicationsAdmin: async (
         projectId: string | number,
@@ -880,12 +879,14 @@ export const useProjectHubApi = () => {
       await httpRequest("/project/minds/batch", {ids}, {method: "DELETE", payloadMode: "json"});
     },
     /* ---------- 账号等级：角色 / 邀请码 / 项目分配 ---------- */
-    // 当前管理员信息：GET /api/auth/me（JWT 鉴权）。登录后取角色（总管理 / 普通用户），
-    // 驱动总管理专属入口（邀请码生成、项目分配）的显隐。
+    // 当前登录用户信息：GET /api/auth/me（JWT 鉴权）。重读 DB 取最新 email / role /
+    // canCreateProject，驱动总管理专属入口显隐与改密验证码邮箱占位。
     adminMe: async (): Promise<{
       id: number | string;
       username: string;
-      role: "SUPER_ADMIN" | "USER" | "PROJECT_MANAGER"
+      email: string;
+      role: "SUPER_ADMIN" | "USER" | "PROJECT_MANAGER";
+      canCreateProject: boolean;
     }> => {
       return get("/auth/me");
     },
@@ -936,6 +937,12 @@ export const useProjectHubApi = () => {
     listManagers: async (): Promise<ManagerSummary[]> => {
       const data = await get<unknown>("/admin/users/managers").catch(() => null);
       return extractList<ManagerSummary>(data);
+    },
+    // 总管理列出全部用户（用户管理页用）：GET /api/admin/users?keyword=（仅总管理）
+    // keyword 可选，模糊搜用户名 / 昵称 / 邮箱。
+    listUsersAdmin: async (keyword?: string): Promise<UserSummary[]> => {
+      const data = await get<unknown>("/admin/users", keyword?.trim() ? {keyword: keyword.trim()} : {}).catch(() => null);
+      return extractList<UserSummary>(data);
     },
     // 总管理授予用户项目创建资格（设计 §2.2 / §4.2）：POST /api/admin/users/{id}/grant-create-project
     grantCreateProject: async (userId: number | string, reason?: string): Promise<void> => {
