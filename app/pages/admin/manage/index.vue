@@ -27,43 +27,8 @@
           </div>
         </n-card>
 
-        <!-- 总管理专属：邀请码生成 + 项目分配 -->
+        <!-- 总管理专属：项目分配 -->
         <div v-if="isSuperAdmin" class="super-grid">
-          <n-card :bordered="false" class="entry-card" hoverable>
-            <div class="entry-head">
-              <span class="eyebrow">Invite</span>
-              <h2>项目管理邀请码</h2>
-            </div>
-            <p class="entry-desc">生成一次性邀请码，发给用户用于补授项目创建资格（凭码注册或已登录用户补授）。</p>
-            <n-space :size="10" align="center" wrap>
-              <n-button :loading="generatingInvite" type="primary" @click="handleGenerateInvite">
-                {{ inviteCode ? "重新生成" : "生成邀请码" }}
-              </n-button>
-              <n-input v-if="inviteCode" :value="inviteCode" class="invite-code" readonly/>
-              <n-button v-if="inviteCode" text type="primary" @click="copyInvite">复制</n-button>
-            </n-space>
-
-            <div class="invite-history">
-              <div class="invite-history-head">
-                <strong>历史邀请码</strong>
-                <n-button :loading="loadingInvites" quaternary size="tiny" @click="loadInviteHistory">刷新</n-button>
-              </div>
-              <n-empty v-if="!inviteHistory.length" description="暂无邀请码记录"/>
-              <div v-else class="invite-history-list">
-                <div v-for="item in inviteHistory" :key="item.code" class="invite-history-row">
-                  <code class="ih-code">{{ item.code }}</code>
-                  <n-tag :bordered="false" :type="inviteStatusType(item.status)" round size="small">
-                    {{ inviteStatusLabel(item.status) }}
-                  </n-tag>
-                  <span class="ih-meta">生成：{{ item.createdBy }} · {{ formatTime(item.createdAt) }}</span>
-                  <span v-if="item.usedBy" class="ih-meta">
-                    已注册：{{ item.usedBy }} · {{ formatTime(item.usedAt) }}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </n-card>
-
           <n-card :bordered="false" class="entry-card" hoverable>
             <div class="entry-head">
               <span class="eyebrow">Assign</span>
@@ -224,7 +189,7 @@
 <script lang="ts" setup>
 import type {AdminSession} from "~/composables/useAdminAuth";
 import type {FormInst, FormRules} from "naive-ui";
-import type {InviteHistoryItem, ManagerSummary, Project} from "~/types/projectHub";
+import type {ManagerSummary, Project} from "~/types/projectHub";
 
 definePageMeta({
   layout: false,
@@ -236,8 +201,6 @@ const {read, clear, write} = useAdminAuth();
 const {
   adminLogout,
   adminMe,
-  generateInviteCode,
-  listInviteCodes,
   listProjectsAdmin,
   listManagers,
   assignProjectOwner,
@@ -270,77 +233,10 @@ onMounted(async () => {
   loading.value = false;
   if (session.value?.role === "SUPER_ADMIN") {
     void loadAssignData();
-    void loadInviteHistory();
   }
 });
 
 const formatTime = (value?: string) => (value ? new Date(value).toLocaleString("zh-CN") : "未记录时间");
-
-/* ---------- 邀请码 ---------- */
-const inviteCode = ref("");
-const generatingInvite = ref(false);
-const inviteHistory = ref<InviteHistoryItem[]>([]);
-const loadingInvites = ref(false);
-
-const inviteStatusLabel = (status?: string) => {
-  switch (status) {
-    case "UNUSED":
-      return "未使用";
-    case "USED":
-      return "已使用";
-    case "EXPIRED":
-      return "已过期";
-    default:
-      return status || "未知";
-  }
-};
-
-const inviteStatusType = (status?: string): "success" | "warning" | "default" => {
-  switch (status) {
-    case "UNUSED":
-      return "warning";
-    case "USED":
-      return "success";
-    default:
-      return "default";
-  }
-};
-
-const loadInviteHistory = async () => {
-  try {
-    loadingInvites.value = true;
-    inviteHistory.value = await listInviteCodes();
-  } catch {
-    // 忽略：历史拉取失败不阻塞页面
-  } finally {
-    loadingInvites.value = false;
-  }
-};
-
-const handleGenerateInvite = async () => {
-  try {
-    generatingInvite.value = true;
-    inviteCode.value = await generateInviteCode();
-    message.success("邀请码已生成，请复制后发给项目管理（仅一次有效）");
-    void loadInviteHistory();
-  } catch (error) {
-    message.error(error instanceof Error && error.message ? error.message : "生成邀请码失败");
-  } finally {
-    generatingInvite.value = false;
-  }
-};
-
-const copyInvite = async () => {
-  if (!inviteCode.value) {
-    return;
-  }
-  try {
-    await navigator.clipboard.writeText(inviteCode.value);
-    message.success("邀请码已复制");
-  } catch {
-    message.warning("复制失败，请手动选中复制");
-  }
-};
 
 /* ---------- 项目分配 ---------- */
 const assignProjects = ref<Project[]>([]);
@@ -572,57 +468,6 @@ const handleChangePassword = async () => {
   margin: 0 0 16px;
   color: #60462b;
   line-height: 1.7;
-}
-
-.invite-code {
-  max-width: 280px;
-  font-family: monospace;
-}
-
-.invite-history {
-  margin-top: 14px;
-  padding-top: 12px;
-  border-top: 2px dashed #8b6a3d;
-}
-
-.invite-history-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 8px;
-  color: #5a3a21;
-  font-size: 14px;
-}
-
-.invite-history-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  max-height: 240px;
-  overflow-y: auto;
-}
-
-.invite-history-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
-  border: 1px solid #8b6a3d;
-  border-radius: 8px;
-  background: #fff8df;
-}
-
-.ih-code {
-  font-family: monospace;
-  font-size: 13px;
-  color: #2d2418;
-  word-break: break-all;
-}
-
-.ih-meta {
-  color: #795b36;
-  font-size: 12px;
 }
 
 .assign-select {

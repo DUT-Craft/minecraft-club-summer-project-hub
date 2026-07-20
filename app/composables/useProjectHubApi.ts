@@ -7,7 +7,6 @@ import type {
   FileItem,
   FilePage,
   Idea,
-  InviteHistoryItem,
   ManagerSummary,
   Project,
   ProjectComment,
@@ -17,7 +16,6 @@ import type {
   ProjectUpdate,
   ProjectUpdatePayload,
   RecoverUsernamePayload,
-  RegisterManagerPayload,
   RegisterUserPayload,
   ResetPasswordPayload,
   ReviewStatus,
@@ -878,7 +876,7 @@ export const useProjectHubApi = () => {
     deleteIdeaBatch: async (ids: (string | number)[]): Promise<void> => {
       await httpRequest("/project/minds/batch", {ids}, {method: "DELETE", payloadMode: "json"});
     },
-    /* ---------- 账号等级：角色 / 邀请码 / 项目分配 ---------- */
+    /* ---------- 账号等级：角色 / 项目创建资格 / 项目分配 ---------- */
     // 当前登录用户信息：GET /api/auth/me（JWT 鉴权）。重读 DB 取最新 email / role /
     // canCreateProject，驱动总管理专属入口显隐与改密验证码邮箱占位。
     adminMe: async (): Promise<{
@@ -890,22 +888,7 @@ export const useProjectHubApi = () => {
     }> => {
       return get("/auth/me");
     },
-    // 项目管理注册（公开，凭一次性邀请码）：POST /api/auth/register/manager
-    registerManager: async (body: RegisterManagerPayload): Promise<{
-      id: number | string;
-      username: string;
-      role: string
-    }> => {
-      return post("/auth/register/manager", {
-        inviteCode: body.inviteCode,
-        username: body.username,
-        password: body.password,
-        confirmPassword: body.confirmPassword,
-        email: body.email,
-        emailCode: body.emailCode,
-      }, {payloadMode: "json"});
-    },
-    // 普通用户公开注册（无需邀请码，设计 §4.1）：POST /api/auth/register
+    // 普通用户公开注册（设计 §4.1）：POST /api/auth/register
     registerUser: async (body: RegisterUserPayload): Promise<{
       id: number | string;
       username: string;
@@ -918,20 +901,6 @@ export const useProjectHubApi = () => {
         email: body.email,
         emailCode: body.emailCode,
       }, {payloadMode: "json"});
-    },
-    // 已登录用户凭邀请码补授项目创建资格（设计 §4.2）：POST /api/auth/create-project-grant
-    createProjectGrant: async (inviteCode: string): Promise<void> => {
-      await post("/auth/create-project-grant", {inviteCode}, {payloadMode: "json"});
-    },
-    // 总管理生成项目管理邀请码：POST /api/admin/invites（仅总管理），返回一次性明文码。
-    generateInviteCode: async (): Promise<string> => {
-      const data = await post<{ inviteCode: string }>("/admin/invites", undefined, {payloadMode: "json"});
-      return data?.inviteCode ?? "";
-    },
-    // 总管理查看历史邀请码（含状态 / 创建者 / 消费者）：GET /api/admin/invites
-    listInviteCodes: async (): Promise<InviteHistoryItem[]> => {
-      const data = await get<unknown>("/admin/invites").catch(() => null);
-      return extractList<InviteHistoryItem>(data);
     },
     // 总管理列出项目管理账号（分配项目下拉用）：GET /api/admin/users/managers（仅总管理）
     listManagers: async (): Promise<ManagerSummary[]> => {

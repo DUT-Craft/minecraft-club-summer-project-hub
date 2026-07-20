@@ -7,31 +7,8 @@
         <header class="login-head">
           <p class="eyebrow">Sign Up</p>
           <h1>注册账号</h1>
-          <p class="sub">公开注册为普通用户；凭邀请码注册可创建项目</p>
+          <p class="sub">公开注册为普通用户，创建项目需总管理授权</p>
         </header>
-
-        <div class="tabs" role="tablist">
-          <button
-              :aria-selected="mode === 'public'"
-              :class="['tab', { active: mode === 'public' }]"
-              role="tab"
-              type="button"
-              @click="switchMode('public')"
-          >
-            <span class="tab-title">公开注册</span>
-            <span class="tab-sub">无需邀请码</span>
-          </button>
-          <button
-              :aria-selected="mode === 'invite'"
-              :class="['tab', { active: mode === 'invite' }]"
-              role="tab"
-              type="button"
-              @click="switchMode('invite')"
-          >
-            <span class="tab-title">邀请码注册</span>
-            <span class="tab-sub">可创建项目</span>
-          </button>
-        </div>
 
         <n-card :bordered="false" class="panel">
           <n-form
@@ -43,13 +20,6 @@
               size="large"
               @submit.prevent="handleSubmit"
           >
-            <n-form-item v-if="mode === 'invite'" label="邀请码" path="inviteCode">
-              <n-input
-                  v-model:value="form.inviteCode"
-                  clearable
-                  placeholder="总管理生成的一次性邀请码"
-              />
-            </n-form-item>
             <n-form-item label="账号" path="username">
               <n-input
                   v-model:value="form.username"
@@ -89,15 +59,13 @@
               />
             </n-form-item>
             <n-button :loading="submitting" attr-type="submit" block type="primary">
-              {{ submitting ? "注册中..." : "注册并登录" }}
+              {{ submitting ? "注册中..." : "注册" }}
             </n-button>
           </n-form>
         </n-card>
 
         <p class="hint">
-          {{ mode === "invite"
-            ? "邀请码注册的用户拥有项目创建资格。邀请码仅可使用一次。"
-            : "公开注册为普通用户，可投稿想法 / 评论 / 加入申请；创建项目需邀请码或总管理授权。" }}
+          注册为普通用户，可投稿想法 / 评论 / 加入申请；创建项目需总管理在用户管理页授权。
         </p>
 
         <div class="back">
@@ -117,21 +85,13 @@ definePageMeta({
 
 const message = useMessage();
 const {themeOverrides} = useMinecraftTheme();
-const {registerManager, registerUser} = useProjectHubApi();
+const {registerUser} = useProjectHubApi();
 
-type RegisterMode = "public" | "invite";
-const mode = ref<RegisterMode>("public");
 const submitting = ref(false);
-
-const switchMode = (next: RegisterMode) => {
-  if (mode.value === next || submitting.value) return;
-  mode.value = next;
-};
 
 const formRef = ref<FormInst | null>(null);
 
 const form = reactive({
-  inviteCode: "",
   username: "",
   password: "",
   confirmPassword: "",
@@ -171,13 +131,10 @@ const rules = computed<FormRules>(() => {
       },
     },
   };
-  if (mode.value === "invite") {
-    base.inviteCode = {required: true, message: "请输入邀请码", trigger: ["blur", "input"]};
-  }
   return base;
 });
 
-// 注册：公开注册（POST /api/auth/register）或邀请码注册（POST /api/auth/register/manager）
+// 公开注册（POST /api/auth/register）
 const handleSubmit = async () => {
   try {
     await formRef.value?.validate();
@@ -186,20 +143,16 @@ const handleSubmit = async () => {
   }
   try {
     submitting.value = true;
-    const payload = {
+    const result = await registerUser({
       username: form.username.trim(),
       password: form.password,
       confirmPassword: form.confirmPassword,
       email: form.email.trim(),
       emailCode: form.emailCode.trim(),
-    };
-    const result = mode.value === "invite"
-      ? await registerManager({inviteCode: form.inviteCode.trim(), ...payload})
-      : await registerUser(payload);
+    });
     message.success(`注册成功：${result.username}，请登录`);
     form.password = "";
     form.confirmPassword = "";
-    form.inviteCode = "";
     form.emailCode = "";
     await navigateTo("/admin");
   } catch (error) {
@@ -250,50 +203,6 @@ const handleSubmit = async () => {
   margin: 8px 0 0;
   color: #60462b;
   font-weight: 600;
-}
-
-.tabs {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-  margin-bottom: 14px;
-}
-
-.tab {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
-  padding: 12px 14px;
-  border: 2px solid #8b6a3d;
-  border-radius: 10px;
-  background: rgba(255, 248, 223, 0.6);
-  cursor: pointer;
-  text-align: left;
-  font-family: inherit;
-  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease, border-color 0.18s ease;
-}
-
-.tab:hover {
-  background: #fff8df;
-  border-color: #6b8f32;
-}
-
-.tab.active {
-  background: #fff8df;
-  border-color: #6b8f32;
-  box-shadow: 0 4px 0 #6b8f32;
-}
-
-.tab-title {
-  font-weight: 900;
-  font-size: 16px;
-  color: #2d2418;
-}
-
-.tab-sub {
-  font-size: 12px;
-  color: #795b36;
 }
 
 :deep(.n-card) {

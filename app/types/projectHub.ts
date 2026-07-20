@@ -210,17 +210,7 @@ export interface CreateProjectAdminPayload {
     status?: string;
 }
 
-// 项目管理凭一次性邀请码注册的请求体（POST /api/auth/register/manager）。
-export interface RegisterManagerPayload {
-    inviteCode: string;
-    username: string;
-    password: string;
-    confirmPassword: string;
-    email: string;
-    emailCode: string;
-}
-
-// 普通用户公开注册请求体（POST /api/auth/register，无需邀请码，设计 §4.1）。
+// 普通用户公开注册请求体（POST /api/auth/register，设计 §4.1）。
 export interface RegisterUserPayload {
     username: string;
     password: string;
@@ -269,19 +259,6 @@ export interface ResetPasswordPayload {
 export interface RecoverUsernamePayload {
     email: string;
     emailCode: string;
-}
-
-// 总管理历史邀请码记录（GET /api/admin/invites）。status 为后端枚举：UNUSED / USED / EXPIRED。
-export interface InviteHistoryItem {
-  code: string;
-  status: "UNUSED" | "USED" | "EXPIRED";
-  createdById: number;
-  createdBy: string;
-  createdAt: string;
-  usedById?: number | null;
-  usedBy?: string | null;
-  usedAt?: string | null;
-  expiresAt: string;
 }
 
 // 文件分类（与后端 FileCategory 枚举一致）：图片 / 文档。
